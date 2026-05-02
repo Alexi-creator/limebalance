@@ -5,6 +5,9 @@
     "clientKind": "git",
     "useIgnoreFile": true
   },
+  "files": {
+    "ignoreUnknown": true
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -19,6 +22,10 @@
         "noUnusedVariables": "warn",
         "noUnusedImports": "warn"
       },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noConsole": "warn"
+      },
       "style": {
         "noNonNullAssertion": "warn",
         "useImportType": "off"
@@ -32,7 +39,12 @@
       "semicolons": "always"
     }
   },
-  "files": {
-    "includes": ["src/**", "test/**"]
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   }
 }
