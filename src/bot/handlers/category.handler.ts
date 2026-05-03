@@ -39,9 +39,10 @@ export class CategoryHandler {
       return;
     }
     const keyboard = new InlineKeyboard();
-    for (const cat of categories) {
-      keyboard.text(`🗑 ${cat.name}`, `/deletecategory:${cat.id}`).row();
-    }
+    categories.forEach((cat, i) => {
+      keyboard.text(`🗑 ${cat.name}`, `/deletecategory:${cat.id}`);
+      if (i % 2 === 1) keyboard.row();
+    });
     await ctx.reply('Выберите категорию для удаления:', { reply_markup: keyboard });
   }
 

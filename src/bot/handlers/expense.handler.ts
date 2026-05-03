@@ -20,9 +20,10 @@ export class ExpenseHandler {
       return;
     }
     const keyboard = new InlineKeyboard();
-    for (const cat of categories) {
-      keyboard.text(cat.name, `/addexpense:${cat.id}`).row();
-    }
+    categories.forEach((cat, i) => {
+      keyboard.text(cat.name, `/addexpense:${cat.id}`);
+      if (i % 2 === 1) keyboard.row();
+    });
     await ctx.reply('Выберите категорию:', { reply_markup: keyboard });
   }
 
