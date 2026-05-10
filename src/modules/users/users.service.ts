@@ -41,4 +41,23 @@ export class UsersService {
     const user = await this.prisma.user.create({ data: { telegramId } });
     return { user, isNew: true };
   }
+
+  findByEmail(email: string) {
+    return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  async findOrCreateByEmail(email: string) {
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) return { user: existing, isNew: false };
+    const user = await this.prisma.user.create({ data: { email } });
+    return { user, isNew: true };
+  }
+
+  setEmail(userId: string, email: string) {
+    return this.prisma.user.update({ where: { id: userId }, data: { email } });
+  }
+
+  setTelegramId(userId: string, telegramId: bigint) {
+    return this.prisma.user.update({ where: { id: userId }, data: { telegramId } });
+  }
 }

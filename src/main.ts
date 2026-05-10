@@ -19,6 +19,7 @@ async function bootstrap() {
     .setTitle('Expense Accounting API')
     .setDescription('REST API для учёта расходов')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

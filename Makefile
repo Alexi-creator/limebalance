@@ -5,6 +5,9 @@ dev:
 	-kill $$(lsof -ti:$(PORT)) 2>/dev/null
 	npm run start:dev
 
+ngrok:
+	ngrok http $(PORT)
+
 db-up:
 	docker compose -f docker-compose.dev.yml up -d
 
@@ -33,9 +36,6 @@ db-studio:
 set-webhook:
 	curl -F "url=$(WEBHOOK_URL)/webhook" \
 		https://api.telegram.org/bot$(BOT_TOKEN)/setWebhook
-
-ngrok:
-	ngrok http $(PORT)
 
 build:
 	npm run build
