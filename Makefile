@@ -7,23 +7,23 @@ dev:
 	@trap 'docker compose down' EXIT; ngrok http $(PORT)
 
 migrate:
-	npx prisma migrate dev
+	docker compose run --rm app npx prisma migrate dev
 
 migrate-create:
 	@if [ -z "$(name)" ]; then \
 		echo "Ошибка: укажи имя миграции, например: make migrate-create name=add_user_settings"; \
 		exit 1; \
 	fi
-	npx prisma migrate dev --name $(name)
+	docker compose run --rm app npx prisma migrate dev --name $(name)
 
 migrate-status:
-	npx prisma migrate status
+	docker compose run --rm app npx prisma migrate status
 
 migrate-deploy:
-	npx prisma migrate deploy
+	docker compose run --rm app npx prisma migrate deploy
 
 db-studio:
-	npx prisma studio
+	docker compose run --rm -p 5555:5555 app npx prisma studio
 
 set-webhook:
 	curl -F "url=$(WEBHOOK_URL)/webhook" \
