@@ -63,7 +63,7 @@ jobs:
 
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin
 
-            cd /opt/myapp
+            cd /opt/expense-accounting
 
             echo "::group::Pull new image"
             docker pull "$GHCR_IMAGE"
