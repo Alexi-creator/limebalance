@@ -51,10 +51,9 @@ export class CategoryHandler {
     const keyboard = new InlineKeyboard()
       .text('✅ Да, удалить', `/confirmdelete:${categoryId}`)
       .text('❌ Отмена', '/canceldelete');
-    await ctx.reply(
-      `Удалить категорию «${category.name}»?\n\nВсе траты по ней тоже удалятся.`,
-      { reply_markup: keyboard },
-    );
+    await ctx.reply(`Удалить категорию «${category.name}»?\n\nВсе траты по ней тоже удалятся.`, {
+      reply_markup: keyboard,
+    });
   }
 
   async handleDelete(ctx: Context, categoryId: string) {

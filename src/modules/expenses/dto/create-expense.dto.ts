@@ -10,7 +10,7 @@ export class CreateExpenseDto {
   @IsUUID()
   categoryId: string;
 
-  @ApiProperty({ example: 1500.50 })
+  @ApiProperty({ example: 1500.5 })
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
   amount: number;

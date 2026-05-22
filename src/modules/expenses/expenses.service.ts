@@ -64,14 +64,21 @@ export class ExpensesService {
       orderBy: { createdAt: 'asc' },
     });
 
-    const map = new Map<string, { total: number; items: { date: Date; amount: number; description?: string }[] }>();
+    const map = new Map<
+      string,
+      { total: number; items: { date: Date; amount: number; description?: string }[] }
+    >();
     for (const e of expenses) {
       const name = e.category?.name ?? '—';
       if (!map.has(name)) map.set(name, { total: 0, items: [] });
       const group = map.get(name);
       if (group) {
         group.total += Number(e.amount);
-        group.items.push({ date: e.createdAt, amount: Number(e.amount), description: e.description ?? undefined });
+        group.items.push({
+          date: e.createdAt,
+          amount: Number(e.amount),
+          description: e.description ?? undefined,
+        });
       }
     }
     return Array.from(map.entries()).map(([category, data]) => ({ category, ...data }));

@@ -23,7 +23,7 @@ migrate-deploy:
 	docker compose run --rm app npx prisma migrate deploy
 
 db-studio:
-	docker compose run --rm -p 5555:5555 app npx prisma studio
+	docker compose run --rm -p 5555:5555 app npx prisma studio --port 5555 --browser none
 
 set-webhook:
 	curl -F "url=$(WEBHOOK_URL)/bot/webhook" \

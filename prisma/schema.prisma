@@ -10,11 +10,13 @@ model User {
   id         String    @id @default(uuid())
   telegramId BigInt?   @unique @map("telegram_id")
   email      String?   @unique
+  password   String?
   createdAt  DateTime  @default(now()) @map("created_at")
 
-  categories Category[]
-  expenses   Expense[]
-  state      UserState?
+  categories     Category[]
+  expenses       Expense[]
+  state          UserState?
+  refreshTokens  RefreshToken[]
 
   @@map("users")
 }
@@ -43,6 +45,18 @@ model Expense {
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@map("expenses")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
 }
 
 model UserState {

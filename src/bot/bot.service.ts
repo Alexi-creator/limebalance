@@ -10,7 +10,7 @@ import { StateService } from './state.service';
 
 @Injectable()
 export class BotService implements OnModuleInit {
-readonly bot: Bot;
+  readonly bot: Bot;
 
   constructor(
     private readonly config: ConfigService,
@@ -44,7 +44,11 @@ readonly bot: Bot;
       const { user } = await this.usersService.findOrCreateByTelegramId(telegramId);
 
       if (data.startsWith('/addexpense:')) {
-        await this.expenseHandler.handleCategorySelected(ctx, user.id, data.slice('/addexpense:'.length));
+        await this.expenseHandler.handleCategorySelected(
+          ctx,
+          user.id,
+          data.slice('/addexpense:'.length),
+        );
       } else if (data.startsWith('/deletecategory:')) {
         await this.categoryHandler.handleDeleteConfirm(ctx, data.slice('/deletecategory:'.length));
       } else if (data.startsWith('/confirmdelete:')) {
@@ -56,7 +60,11 @@ readonly bot: Bot;
       } else if (data.startsWith('/period:')) {
         await this.statHandler.handlePeriodSelected(ctx, user.id, data.slice('/period:'.length));
       } else if (data.startsWith('/details:')) {
-        await this.statHandler.handleDetailsSelected(ctx, user.id, data.slice('/details:'.length) === 'yes');
+        await this.statHandler.handleDetailsSelected(
+          ctx,
+          user.id,
+          data.slice('/details:'.length) === 'yes',
+        );
       }
 
       await ctx.answerCallbackQuery();
