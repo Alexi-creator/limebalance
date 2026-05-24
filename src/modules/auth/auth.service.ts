@@ -93,9 +93,7 @@ export class AuthService {
   }
 
   async issueTokens(userId: string) {
-    await this.prisma.refreshToken.deleteMany({
-      where: { userId, expiresAt: { lt: new Date() } },
-    });
+    await this.prisma.refreshToken.deleteMany({ where: { userId } });
 
     const accessToken = this.jwtService.sign({ sub: userId });
 

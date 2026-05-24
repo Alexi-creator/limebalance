@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { ExpensesService } from './expenses.service';
@@ -11,18 +12,21 @@ export class ExpensesController {
 
   @Post()
   @ApiOperation({ summary: 'Создать трату' })
-  create(@Body() dto: CreateExpenseDto) {
-    return this.expensesService.create(dto);
+  create(@CurrentUser() user: { id: string }, @Body() dto: CreateExpenseDto) {
+    return this.expensesService.create(user.id, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Получить траты пользователя' })
-  @ApiQuery({ name: 'userId', required: true })
   @ApiQuery({ name: 'from', required: false, example: '2026-01-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-12-31' })
-  findAll(@Query('userId') userId: string, @Query('from') from?: string, @Query('to') to?: string) {
+  findAll(
+    @CurrentUser() user: { id: string },
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
     return this.expensesService.findAllByUser(
-      userId,
+      user.id,
       from ? new Date(from) : undefined,
       to ? new Date(to) : undefined,
     );

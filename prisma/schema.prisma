@@ -30,6 +30,7 @@ model Category {
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses Expense[]
 
+  @@index([userId])
   @@map("categories")
 }
 
@@ -44,6 +45,8 @@ model Expense {
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
+  @@index([userId, createdAt])
+  @@index([categoryId])
   @@map("expenses")
 }
 
@@ -56,6 +59,8 @@ model RefreshToken {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([expiresAt])
   @@map("refresh_tokens")
 }
 

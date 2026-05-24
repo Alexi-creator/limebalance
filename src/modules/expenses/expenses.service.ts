@@ -7,8 +7,8 @@ import { UpdateExpenseDto } from './dto/update-expense.dto';
 export class ExpensesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(dto: CreateExpenseDto) {
-    return this.prisma.expense.create({ data: dto });
+  create(userId: string, dto: CreateExpenseDto) {
+    return this.prisma.expense.create({ data: { ...dto, userId } });
   }
 
   findAllByUser(userId: string, from?: Date, to?: Date) {
@@ -43,24 +43,36 @@ export class ExpensesService {
 
   async statSummary(userId: string, categoryId: string | null, period: string) {
     const { from, to } = this.getPeriodDates(period);
-    const expenses = await this.prisma.expense.findMany({
+
+    const grouped = await this.prisma.expense.groupBy({
+      by: ['categoryId'],
       where: { userId, ...(categoryId ? { categoryId } : {}), createdAt: { gte: from, lte: to } },
-      include: { category: true },
+      _sum: { amount: true },
     });
 
-    const map = new Map<string, number>();
-    for (const e of expenses) {
-      const name = e.category?.name ?? '—';
-      map.set(name, (map.get(name) ?? 0) + Number(e.amount));
-    }
-    return Array.from(map.entries()).map(([category, total]) => ({ category, total }));
+    const categories = await this.prisma.category.findMany({
+      where: { id: { in: grouped.map((g) => g.categoryId) } },
+      select: { id: true, name: true },
+    });
+
+    const nameMap = new Map(categories.map((c) => [c.id, c.name]));
+
+    return grouped.map((g) => ({
+      category: nameMap.get(g.categoryId) ?? '—',
+      total: Number(g._sum.amount ?? 0),
+    }));
   }
 
   async statDetails(userId: string, categoryId: string | null, period: string) {
     const { from, to } = this.getPeriodDates(period);
     const expenses = await this.prisma.expense.findMany({
       where: { userId, ...(categoryId ? { categoryId } : {}), createdAt: { gte: from, lte: to } },
-      include: { category: true },
+      select: {
+        amount: true,
+        description: true,
+        createdAt: true,
+        category: { select: { name: true } },
+      },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -72,14 +84,9 @@ export class ExpensesService {
       const name = e.category?.name ?? '—';
       if (!map.has(name)) map.set(name, { total: 0, items: [] });
       const group = map.get(name);
-      if (group) {
-        group.total += Number(e.amount);
-        group.items.push({
-          date: e.createdAt,
-          amount: Number(e.amount),
-          description: e.description ?? undefined,
-        });
-      }
+      if (!group) continue;
+      group.total += Number(e.amount);
+      group.items.push({ date: e.createdAt, amount: Number(e.amount), description: e.description });
     }
     return Array.from(map.entries()).map(([category, data]) => ({ category, ...data }));
   }

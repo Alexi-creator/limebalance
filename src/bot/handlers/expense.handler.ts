@@ -58,8 +58,7 @@ export class ExpenseHandler {
       return;
     }
 
-    await this.expensesService.create({
-      userId,
+    await this.expensesService.create(userId, {
       categoryId: state.categoryId,
       amount: Number(state.amount),
       description: text,
