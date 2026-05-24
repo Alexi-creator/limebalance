@@ -6,6 +6,11 @@ dev:
 	docker compose up -d --build
 	@trap 'docker compose down' EXIT; ngrok http $(PORT)
 
+dev-start:
+	-kill $$(lsof -ti:$(PORT)) 2>/dev/null
+	docker compose up -d
+	@trap 'docker compose down' EXIT; docker compose logs -f app
+
 migrate:
 	docker compose run --rm app npx prisma migrate dev
 

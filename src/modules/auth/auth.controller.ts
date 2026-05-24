@@ -54,6 +54,7 @@ export class AuthController {
 
   @Post('google')
   @Public()
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login via Google ID token' })
   async loginGoogle(@Body() dto: GoogleAuthDto, @Res({ passthrough: true }) res: FastifyReply) {
     const tokens = await this.authService.loginWithGoogle(dto);
@@ -63,6 +64,7 @@ export class AuthController {
 
   @Post('telegram')
   @Public()
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login via Telegram Login Widget' })
   async loginTelegram(@Body() dto: TelegramAuthDto, @Res({ passthrough: true }) res: FastifyReply) {
     const tokens = await this.authService.loginWithTelegram(dto);

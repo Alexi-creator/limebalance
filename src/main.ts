@@ -8,8 +8,12 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
 
+  const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
+    .split(',')
+    .map((o) => o.trim());
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+    origin: allowedOrigins,
     credentials: true,
   });
 
