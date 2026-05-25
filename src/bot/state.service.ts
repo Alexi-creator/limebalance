@@ -3,11 +3,16 @@ import { PrismaService } from '../prisma/prisma.service';
 
 export type Step =
   | 'idle'
-  | 'addcategory:waiting_name'
+  | 'addcategory:expense:waiting_name'
+  | 'addcategory:income:waiting_name'
   | 'addexpense:waiting_amount'
   | 'addexpense:waiting_description'
-  | 'stat:waiting_for_period'
-  | 'stat:waiting_for_details';
+  | 'addincome:waiting_amount'
+  | 'addincome:waiting_description'
+  | 'stat:expense:waiting_for_period'
+  | 'stat:income:waiting_for_period'
+  | 'stat:expense:waiting_for_details'
+  | 'stat:income:waiting_for_details';
 
 @Injectable()
 export class StateService {

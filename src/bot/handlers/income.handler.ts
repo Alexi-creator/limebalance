@@ -1,36 +1,36 @@
 import { Injectable } from '@nestjs/common';
 import { Context, InlineKeyboard } from 'grammy';
-import { ExpenseCategoriesService } from '../../modules/expense-categories/expense-categories.service';
-import { ExpensesService } from '../../modules/expenses/expenses.service';
+import { IncomeCategoriesService } from '../../modules/income-categories/income-categories.service';
+import { IncomesService } from '../../modules/incomes/incomes.service';
 import { StateService } from '../state.service';
 import { MAIN_MENU } from './start.handler';
 
 @Injectable()
-export class ExpenseHandler {
+export class IncomeHandler {
   constructor(
-    private readonly categoriesService: ExpenseCategoriesService,
-    private readonly expensesService: ExpensesService,
+    private readonly incomeCategoriesService: IncomeCategoriesService,
+    private readonly incomesService: IncomesService,
     private readonly stateService: StateService,
   ) {}
 
   async handleAdd(ctx: Context, userId: string) {
-    const categories = await this.categoriesService.findAllByUser(userId);
+    const categories = await this.incomeCategoriesService.findAllByUser(userId);
     if (!categories.length) {
-      await ctx.reply('Для начала добавьте хотя бы одну категорию.', { reply_markup: MAIN_MENU });
+      await ctx.reply('Для начала добавьте хотя бы одну категорию доходов.', { reply_markup: MAIN_MENU });
       return;
     }
     const keyboard = new InlineKeyboard();
     categories.forEach((cat, i) => {
-      keyboard.text(cat.name, `/addexpense:${cat.id}`);
+      keyboard.text(cat.name, `/addincome:${cat.id}`);
       if (i % 2 === 1) keyboard.row();
     });
     await ctx.reply('Выберите категорию:', { reply_markup: keyboard });
   }
 
   async handleCategorySelected(ctx: Context, userId: string, categoryId: string) {
-    const category = await this.categoriesService.findOne(categoryId);
+    const category = await this.incomeCategoriesService.findOne(categoryId);
     await this.stateService.set(userId, {
-      step: 'addexpense:waiting_amount',
+      step: 'addincome:waiting_amount',
       categoryId,
       categoryName: category.name,
     });
@@ -40,11 +40,11 @@ export class ExpenseHandler {
   async handleAmountInput(ctx: Context, userId: string, text: string) {
     const amount = parseFloat(text.replace(',', '.'));
     if (Number.isNaN(amount) || amount <= 0) {
-      await ctx.reply('Введите корректную сумму (например: 500 или 1500.50):');
+      await ctx.reply('Введите корректную сумму (например: 50000 или 1500.50):');
       return;
     }
     await this.stateService.set(userId, {
-      step: 'addexpense:waiting_description',
+      step: 'addincome:waiting_description',
       amount,
     });
     await ctx.reply('Введите описание:');
@@ -58,7 +58,7 @@ export class ExpenseHandler {
       return;
     }
 
-    await this.expensesService.create(userId, {
+    await this.incomesService.create(userId, {
       categoryId: state.categoryId,
       amount: Number(state.amount),
       description: text,
@@ -66,7 +66,7 @@ export class ExpenseHandler {
 
     await this.stateService.reset(userId);
     await ctx.reply(
-      `✅ Трата добавлена!\n\nКатегория: ${state.categoryName}\nСумма: ${Number(state.amount)} \nОписание: ${text}`,
+      `✅ Доход добавлен!\n\nКатегория: ${state.categoryName}\nСумма: ${Number(state.amount)}\nОписание: ${text}`,
       { reply_markup: MAIN_MENU },
     );
   }

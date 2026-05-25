@@ -63,6 +63,34 @@ export class IncomesService {
     }));
   }
 
+  async statDetails(userId: string, categoryId: string | null, period: string) {
+    const { from, to } = this.getPeriodDates(period);
+    const incomes = await this.prisma.income.findMany({
+      where: { userId, ...(categoryId ? { categoryId } : {}), createdAt: { gte: from, lte: to } },
+      select: {
+        amount: true,
+        description: true,
+        createdAt: true,
+        category: { select: { name: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const map = new Map<
+      string,
+      { total: number; items: { date: Date; amount: number; description?: string }[] }
+    >();
+    for (const e of incomes) {
+      const name = e.category?.name ?? '—';
+      if (!map.has(name)) map.set(name, { total: 0, items: [] });
+      const group = map.get(name);
+      if (!group) continue;
+      group.total += Number(e.amount);
+      group.items.push({ date: e.createdAt, amount: Number(e.amount), description: e.description });
+    }
+    return Array.from(map.entries()).map(([category, data]) => ({ category, ...data }));
+  }
+
   private getPeriodDates(period: string): { from: Date; to: Date } {
     const now = new Date();
     if (period === 'day') {

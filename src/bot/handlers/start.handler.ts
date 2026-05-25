@@ -3,10 +3,10 @@ import { Context, Keyboard } from 'grammy';
 import { UsersService } from '../../modules/users/users.service';
 
 export const MAIN_MENU = new Keyboard()
-  .text('Удалить категорию')
   .text('Посмотреть все категории')
-  .row()
   .text('Добавить категорию')
+  .row()
+  .text('Добавить доход')
   .text('Статистика')
   .row()
   .text('Добавить трату')

@@ -4,7 +4,8 @@ import { Bot } from 'grammy';
 import { UsersService } from '../modules/users/users.service';
 import { CategoryHandler } from './handlers/category.handler';
 import { ExpenseHandler } from './handlers/expense.handler';
-import { StartHandler } from './handlers/start.handler';
+import { IncomeHandler } from './handlers/income.handler';
+import { MAIN_MENU, StartHandler } from './handlers/start.handler';
 import { StatHandler } from './handlers/stat.handler';
 import { StateService } from './state.service';
 
@@ -19,6 +20,7 @@ export class BotService implements OnModuleInit {
     private readonly startHandler: StartHandler,
     private readonly categoryHandler: CategoryHandler,
     private readonly expenseHandler: ExpenseHandler,
+    private readonly incomeHandler: IncomeHandler,
     private readonly statHandler: StatHandler,
   ) {
     const token = this.config.get<string>('BOT_TOKEN');
@@ -43,20 +45,29 @@ export class BotService implements OnModuleInit {
       const telegramId = BigInt(ctx.from.id);
       const { user } = await this.usersService.findOrCreateByTelegramId(telegramId);
 
-      if (data.startsWith('/addexpense:')) {
+      if (data === '/addcategory:expense') {
+        await this.categoryHandler.handleTypeSelected(ctx, user.id, 'expense');
+      } else if (data === '/addcategory:income') {
+        await this.categoryHandler.handleTypeSelected(ctx, user.id, 'income');
+      } else if (data.startsWith('/addincome:')) {
+        await this.incomeHandler.handleCategorySelected(
+          ctx,
+          user.id,
+          data.slice('/addincome:'.length),
+        );
+      } else if (data.startsWith('/addexpense:')) {
         await this.expenseHandler.handleCategorySelected(
           ctx,
           user.id,
           data.slice('/addexpense:'.length),
         );
-      } else if (data.startsWith('/deletecategory:')) {
-        await this.categoryHandler.handleDeleteConfirm(ctx, data.slice('/deletecategory:'.length));
-      } else if (data.startsWith('/confirmdelete:')) {
-        await this.categoryHandler.handleDelete(ctx, data.slice('/confirmdelete:'.length));
-      } else if (data === '/canceldelete') {
-        await this.categoryHandler.handleDeleteCancel(ctx);
-      } else if (data.startsWith('/stat:')) {
-        await this.statHandler.handleCategorySelected(ctx, user.id, data.slice('/stat:'.length));
+      } else if (data.startsWith('/stattype:')) {
+        const type = data.slice('/stattype:'.length) as 'expense' | 'income';
+        await this.statHandler.handleTypeSelected(ctx, user.id, type);
+      } else if (data.startsWith('/statexpense:')) {
+        await this.statHandler.handleCategorySelected(ctx, user.id, data.slice('/statexpense:'.length), 'expense');
+      } else if (data.startsWith('/statincome:')) {
+        await this.statHandler.handleCategorySelected(ctx, user.id, data.slice('/statincome:'.length), 'income');
       } else if (data.startsWith('/period:')) {
         await this.statHandler.handlePeriodSelected(ctx, user.id, data.slice('/period:'.length));
       } else if (data.startsWith('/details:')) {
@@ -85,16 +96,19 @@ export class BotService implements OnModuleInit {
       const step = await this.stateService.getStep(userId);
 
       // роутинг по тексту кнопок меню
-      if (text === 'Добавить категорию') return this.categoryHandler.handleAdd(ctx, userId);
+      if (text === 'Добавить категорию') return this.categoryHandler.handleAdd(ctx);
       if (text === 'Посмотреть все категории')
         return this.categoryHandler.handleViewAll(ctx, userId);
-      if (text === 'Удалить категорию') return this.categoryHandler.handleDeleteMenu(ctx, userId);
       if (text === 'Добавить трату') return this.expenseHandler.handleAdd(ctx, userId);
-      if (text === 'Статистика') return this.statHandler.handleStat(ctx, userId);
+      if (text === 'Добавить доход') return this.incomeHandler.handleAdd(ctx, userId);
+      if (text === 'Статистика') return this.statHandler.handleStat(ctx);
 
       // роутинг по текущему шагу FSM
-      if (step === 'addcategory:waiting_name') {
-        return this.categoryHandler.handleNameInput(ctx, userId, text);
+      if (
+        step === 'addcategory:expense:waiting_name' ||
+        step === 'addcategory:income:waiting_name'
+      ) {
+        return this.categoryHandler.handleNameInput(ctx, userId, text, step);
       }
       if (step === 'addexpense:waiting_amount') {
         return this.expenseHandler.handleAmountInput(ctx, userId, text);
@@ -102,8 +116,14 @@ export class BotService implements OnModuleInit {
       if (step === 'addexpense:waiting_description') {
         return this.expenseHandler.handleDescriptionInput(ctx, userId, text);
       }
+      if (step === 'addincome:waiting_amount') {
+        return this.incomeHandler.handleAmountInput(ctx, userId, text);
+      }
+      if (step === 'addincome:waiting_description') {
+        return this.incomeHandler.handleDescriptionInput(ctx, userId, text);
+      }
 
-      await ctx.reply('Выберите действие из меню.');
+      await ctx.reply('Выберите действие из меню.', { reply_markup: MAIN_MENU });
     });
   }
 }

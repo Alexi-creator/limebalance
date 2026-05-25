@@ -1,67 +1,62 @@
 import { Injectable } from '@nestjs/common';
 import { Context, InlineKeyboard } from 'grammy';
 import { ExpenseCategoriesService } from '../../modules/expense-categories/expense-categories.service';
+import { IncomeCategoriesService } from '../../modules/income-categories/income-categories.service';
 import { StateService } from '../state.service';
 import { MAIN_MENU } from './start.handler';
 
 @Injectable()
 export class CategoryHandler {
   constructor(
-    private readonly categoriesService: ExpenseCategoriesService,
+    private readonly expenseCategoriesService: ExpenseCategoriesService,
+    private readonly incomeCategoriesService: IncomeCategoriesService,
     private readonly stateService: StateService,
   ) {}
 
-  async handleAdd(ctx: Context, userId: string) {
-    await this.stateService.set(userId, { step: 'addcategory:waiting_name' });
+  async handleAdd(ctx: Context) {
+    const keyboard = new InlineKeyboard()
+      .text('Расходы', '/addcategory:expense')
+      .text('Доходы', '/addcategory:income');
+    await ctx.reply('Для какого типа создать категорию?', { reply_markup: keyboard });
+  }
+
+  async handleTypeSelected(ctx: Context, userId: string, type: 'expense' | 'income') {
+    const step =
+      type === 'expense' ? 'addcategory:expense:waiting_name' : 'addcategory:income:waiting_name';
+    await this.stateService.set(userId, { step });
     await ctx.reply('Введите название категории:');
   }
 
-  async handleNameInput(ctx: Context, userId: string, text: string) {
-    await this.categoriesService.create(userId, { name: text });
+  async handleNameInput(ctx: Context, userId: string, text: string, step: string) {
+    if (step === 'addcategory:expense:waiting_name') {
+      await this.expenseCategoriesService.create(userId, { name: text });
+    } else {
+      await this.incomeCategoriesService.create(userId, { name: text });
+    }
     await this.stateService.reset(userId);
     await ctx.reply('✅ Категория успешно создана!', { reply_markup: MAIN_MENU });
   }
 
   async handleViewAll(ctx: Context, userId: string) {
-    const categories = await this.categoriesService.findAllByUser(userId);
-    if (!categories.length) {
-      await ctx.reply('У вас пока нет категорий.');
+    const [expenseCategories, incomeCategories] = await Promise.all([
+      this.expenseCategoriesService.findAllByUser(userId),
+      this.incomeCategoriesService.findAllByUser(userId),
+    ]);
+
+    if (!expenseCategories.length && !incomeCategories.length) {
+      await ctx.reply('У вас пока нет категорий.', { reply_markup: MAIN_MENU });
       return;
     }
-    const text = categories.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
-    await ctx.reply(`Ваши категории:\n\n${text}`);
-  }
 
-  async handleDeleteMenu(ctx: Context, userId: string) {
-    const categories = await this.categoriesService.findAllByUser(userId);
-    if (!categories.length) {
-      await ctx.reply('У вас пока нет категорий.');
-      return;
+    let text = '';
+    if (expenseCategories.length) {
+      text += `Расходы:\n${expenseCategories.map((c, i) => `${i + 1}. ${c.name}`).join('\n')}`;
     }
-    const keyboard = new InlineKeyboard();
-    categories.forEach((cat, i) => {
-      keyboard.text(`🗑 ${cat.name}`, `/deletecategory:${cat.id}`);
-      if (i % 2 === 1) keyboard.row();
-    });
-    await ctx.reply('Выберите категорию для удаления:', { reply_markup: keyboard });
-  }
+    if (incomeCategories.length) {
+      if (text) text += '\n\n';
+      text += `Доходы:\n${incomeCategories.map((c, i) => `${i + 1}. ${c.name}`).join('\n')}`;
+    }
 
-  async handleDeleteConfirm(ctx: Context, categoryId: string) {
-    const category = await this.categoriesService.findOne(categoryId);
-    const keyboard = new InlineKeyboard()
-      .text('✅ Да, удалить', `/confirmdelete:${categoryId}`)
-      .text('❌ Отмена', '/canceldelete');
-    await ctx.reply(`Удалить категорию «${category.name}»?\n\nВсе траты по ней тоже удалятся.`, {
-      reply_markup: keyboard,
-    });
-  }
-
-  async handleDelete(ctx: Context, categoryId: string) {
-    await this.categoriesService.remove(categoryId);
-    await ctx.reply('✅ Категория и все её траты удалены.', { reply_markup: MAIN_MENU });
-  }
-
-  async handleDeleteCancel(ctx: Context) {
-    await ctx.reply('Отменено.', { reply_markup: MAIN_MENU });
+    await ctx.reply(text, { reply_markup: MAIN_MENU });
   }
 }
