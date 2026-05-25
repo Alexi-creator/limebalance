@@ -5,10 +5,10 @@ import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import { REFRESH_TOKEN_TTL_DAYS } from './auth.constants';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { REFRESH_TOKEN_TTL_DAYS } from './auth.constants';
 import { TelegramAuthDto } from './dto/telegram-auth.dto';
 
 @Injectable()

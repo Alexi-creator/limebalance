@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Context, InlineKeyboard } from 'grammy';
-import { CategoriesService } from '../../modules/categories/categories.service';
+import { ExpenseCategoriesService } from '../../modules/expense-categories/expense-categories.service';
 import { StateService } from '../state.service';
 import { MAIN_MENU } from './start.handler';
 
 @Injectable()
 export class CategoryHandler {
   constructor(
-    private readonly categoriesService: CategoriesService,
+    private readonly categoriesService: ExpenseCategoriesService,
     private readonly stateService: StateService,
   ) {}
 
@@ -17,7 +17,7 @@ export class CategoryHandler {
   }
 
   async handleNameInput(ctx: Context, userId: string, text: string) {
-    await this.categoriesService.create({ userId, name: text });
+    await this.categoriesService.create(userId, { name: text });
     await this.stateService.reset(userId);
     await ctx.reply('✅ Категория успешно создана!', { reply_markup: MAIN_MENU });
   }

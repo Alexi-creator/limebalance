@@ -50,7 +50,7 @@ export class ExpensesService {
       _sum: { amount: true },
     });
 
-    const categories = await this.prisma.category.findMany({
+    const categories = await this.prisma.expenseCategory.findMany({
       where: { id: { in: grouped.map((g) => g.categoryId) } },
       select: { id: true, name: true },
     });

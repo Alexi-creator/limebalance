@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Context, InlineKeyboard } from 'grammy';
-import { CategoriesService } from '../../modules/categories/categories.service';
+import { ExpenseCategoriesService } from '../../modules/expense-categories/expense-categories.service';
 import { ExpensesService } from '../../modules/expenses/expenses.service';
 import { StateService } from '../state.service';
 import { MAIN_MENU } from './start.handler';
@@ -8,7 +8,7 @@ import { MAIN_MENU } from './start.handler';
 @Injectable()
 export class ExpenseHandler {
   constructor(
-    private readonly categoriesService: CategoriesService,
+    private readonly categoriesService: ExpenseCategoriesService,
     private readonly expensesService: ExpensesService,
     private readonly stateService: StateService,
   ) {}

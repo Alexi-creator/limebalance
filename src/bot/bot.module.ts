@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { CategoriesModule } from '../modules/categories/categories.module';
+import { ExpenseCategoriesModule } from '../modules/expense-categories/expense-categories.module';
 import { ExpensesModule } from '../modules/expenses/expenses.module';
 import { UsersModule } from '../modules/users/users.module';
 import { BotController } from './bot.controller';
@@ -11,7 +11,7 @@ import { StatHandler } from './handlers/stat.handler';
 import { StateService } from './state.service';
 
 @Module({
-  imports: [UsersModule, CategoriesModule, ExpensesModule],
+  imports: [UsersModule, ExpenseCategoriesModule, ExpensesModule],
   controllers: [BotController],
   providers: [BotService, StateService, StartHandler, CategoryHandler, ExpenseHandler, StatHandler],
 })
