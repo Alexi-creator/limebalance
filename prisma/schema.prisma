@@ -6,11 +6,43 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
+model Plan {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  maxCategories Int?
+  maxExpenses   Int?
+  maxIncomes    Int?
+  price         Decimal  @db.Decimal(10, 2)
+
+  subscriptions UserSubscription[]
+
+  @@map("plans")
+}
+
+model UserSubscription {
+  id        String    @id @default(uuid())
+  userId    String    @unique @map("user_id")
+  planId    String    @map("plan_id")
+  expiresAt DateTime?
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planId], references: [id])
+
+  @@map("user_subscriptions")
+}
+
 model User {
   id         String    @id @default(uuid())
   telegramId BigInt?   @unique @map("telegram_id")
   email      String?   @unique
   password   String?
+  role       Role      @default(USER)
   createdAt  DateTime  @default(now()) @map("created_at")
 
   expenseCategories  ExpenseCategory[]
@@ -19,6 +51,7 @@ model User {
   incomes            Income[]
   state              UserState?
   refreshTokens      RefreshToken[]
+  subscription       UserSubscription?
 
   @@map("users")
 }
