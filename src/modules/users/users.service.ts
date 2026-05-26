@@ -60,4 +60,25 @@ export class UsersService {
   setTelegramId(userId: string, telegramId: bigint) {
     return this.prisma.user.update({ where: { id: userId }, data: { telegramId } });
   }
+
+  async findMe(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        email: true,
+        telegramId: true,
+        subscription: {
+          select: {
+            plan: true,
+            expiresAt: true,
+          },
+        },
+      },
+    });
+    if (!user) throw new NotFoundException(`User ${id} not found`);
+    return {
+      ...user,
+      telegramId: user.telegramId?.toString() ?? null,
+    };
+  }
 }

@@ -73,6 +73,10 @@ jobs:
             docker run --rm --env-file /opt/expense-accounting/.env --network host "$GHCR_IMAGE" npm run migration:run
             echo "::endgroup::"
 
+            echo "::group::Seed database"
+            docker run --rm --env-file /opt/expense-accounting/.env --network host "$GHCR_IMAGE" npx prisma db seed
+            echo "::endgroup::"
+
             echo "::group::Restart app"
             docker stop expense-accounting 2>/dev/null || true
             docker rm expense-accounting 2>/dev/null || true

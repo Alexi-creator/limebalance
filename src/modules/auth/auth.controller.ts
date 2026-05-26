@@ -14,6 +14,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import '@fastify/cookie';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { UsersService } from '../users/users.service';
 import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from './auth.constants';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -31,7 +32,10 @@ const REFRESH_COOKIE = 'refresh_token';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Post('register')
   @Public()
@@ -99,10 +103,9 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-
   @ApiOperation({ summary: 'Get current user' })
   me(@CurrentUser() user: { id: string }) {
-    return user;
+    return this.usersService.findMe(user.id);
   }
 
   @Post('link/google')
