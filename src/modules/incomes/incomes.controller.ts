@@ -32,6 +32,13 @@ export class IncomesController {
     );
   }
 
+  @Get('summary')
+  @ApiOperation({ summary: 'Итог доходов за период' })
+  @ApiQuery({ name: 'months', required: false, enum: [1, 6, 12], example: 1 })
+  summary(@CurrentUser() user: { id: string }, @Query('months') months?: string) {
+    return this.incomesService.getSummary(user.id, Number(months) || 1);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Получить доход по id' })
   findOne(@Param('id') id: string) {

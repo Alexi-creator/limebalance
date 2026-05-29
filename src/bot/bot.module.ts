@@ -14,8 +14,22 @@ import { StatHandler } from './handlers/stat.handler';
 import { StateService } from './state.service';
 
 @Module({
-  imports: [UsersModule, ExpenseCategoriesModule, ExpensesModule, IncomeCategoriesModule, IncomesModule],
+  imports: [
+    UsersModule,
+    ExpenseCategoriesModule,
+    ExpensesModule,
+    IncomeCategoriesModule,
+    IncomesModule,
+  ],
   controllers: [BotController],
-  providers: [BotService, StateService, StartHandler, CategoryHandler, ExpenseHandler, IncomeHandler, StatHandler],
+  providers: [
+    BotService,
+    StateService,
+    StartHandler,
+    CategoryHandler,
+    ExpenseHandler,
+    IncomeHandler,
+    StatHandler,
+  ],
 })
 export class BotModule {}

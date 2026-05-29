@@ -16,7 +16,9 @@ export class IncomeHandler {
   async handleAdd(ctx: Context, userId: string) {
     const categories = await this.incomeCategoriesService.findAllByUser(userId);
     if (!categories.length) {
-      await ctx.reply('Для начала добавьте хотя бы одну категорию доходов.', { reply_markup: MAIN_MENU });
+      await ctx.reply('Для начала добавьте хотя бы одну категорию доходов.', {
+        reply_markup: MAIN_MENU,
+      });
       return;
     }
     const keyboard = new InlineKeyboard();

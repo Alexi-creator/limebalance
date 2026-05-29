@@ -65,9 +65,19 @@ export class BotService implements OnModuleInit {
         const type = data.slice('/stattype:'.length) as 'expense' | 'income';
         await this.statHandler.handleTypeSelected(ctx, user.id, type);
       } else if (data.startsWith('/statexpense:')) {
-        await this.statHandler.handleCategorySelected(ctx, user.id, data.slice('/statexpense:'.length), 'expense');
+        await this.statHandler.handleCategorySelected(
+          ctx,
+          user.id,
+          data.slice('/statexpense:'.length),
+          'expense',
+        );
       } else if (data.startsWith('/statincome:')) {
-        await this.statHandler.handleCategorySelected(ctx, user.id, data.slice('/statincome:'.length), 'income');
+        await this.statHandler.handleCategorySelected(
+          ctx,
+          user.id,
+          data.slice('/statincome:'.length),
+          'income',
+        );
       } else if (data.startsWith('/period:')) {
         await this.statHandler.handlePeriodSelected(ctx, user.id, data.slice('/period:'.length));
       } else if (data.startsWith('/details:')) {

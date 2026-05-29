@@ -1,5 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsPositive, IsString, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+  IsDate,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  MaxDate,
+} from 'class-validator';
 
 export class CreateIncomeDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440001' })
@@ -14,4 +23,11 @@ export class CreateIncomeDto {
   @ApiProperty({ example: 'Зарплата за май' })
   @IsString()
   description: string;
+
+  @ApiPropertyOptional({ example: '2026-05-27T10:00:00.000Z' })
+  @IsOptional()
+  @IsDate()
+  @MaxDate(() => new Date())
+  @Type(() => Date)
+  date?: Date;
 }

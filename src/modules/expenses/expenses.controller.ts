@@ -32,6 +32,13 @@ export class ExpensesController {
     );
   }
 
+  @Get('summary')
+  @ApiOperation({ summary: 'Итог трат за период' })
+  @ApiQuery({ name: 'months', required: false, enum: [1, 6, 12], example: 1 })
+  summary(@CurrentUser() user: { id: string }, @Query('months') months?: string) {
+    return this.expensesService.getSummary(user.id, Number(months) || 1);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Получить трату по id' })
   findOne(@Param('id') id: string) {

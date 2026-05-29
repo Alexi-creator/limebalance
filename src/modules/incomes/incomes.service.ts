@@ -22,6 +22,35 @@ export class IncomesService {
     });
   }
 
+  async getSummary(userId: string, months: number) {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const incomes = await this.prisma.income.findMany({
+      where: { userId, date: { gte: from, lte: to } },
+      select: { amount: true, date: true },
+    });
+
+    const byMonthMap = new Map<string, number>();
+    let total = 0;
+
+    for (const e of incomes) {
+      const key = `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, '0')}`;
+      byMonthMap.set(key, (byMonthMap.get(key) ?? 0) + Number(e.amount));
+      total += Number(e.amount);
+    }
+
+    const byMonth: { month: string; total: string }[] = [];
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      byMonth.push({ month: key, total: (byMonthMap.get(key) ?? 0).toFixed(2) });
+    }
+
+    return { total: total.toFixed(2), byMonth };
+  }
+
   async findOne(id: string) {
     const income = await this.prisma.income.findUnique({
       where: { id },
