@@ -50,9 +50,10 @@ model User {
   expenses           Expense[]
   incomeCategories   IncomeCategory[]
   incomes            Income[]
-  state              UserState?
-  refreshTokens      RefreshToken[]
-  subscription       UserSubscription?
+  state               UserState?
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  subscription        UserSubscription?
 
   @@map("users")
 }
@@ -115,6 +116,19 @@ model Income {
   @@index([userId, date])
   @@index([categoryId])
   @@map("incomes")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 model RefreshToken {

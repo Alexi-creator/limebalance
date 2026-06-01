@@ -1,5 +1,10 @@
 import { createHash, createHmac, randomUUID } from 'node:crypto';
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
@@ -89,6 +94,38 @@ export class AuthService {
       throw new ConflictException('Telegram account already linked to another user');
     }
     await this.usersService.setTelegramId(userId, BigInt(dto.id));
+    return { success: true };
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) return { success: true }; // не раскрываем что email не существует
+
+    await this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+
+    const token = randomUUID();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 минут
+    await this.prisma.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } });
+
+    // TODO: отправить письмо с токеном
+    return { success: true };
+  }
+
+  async resetPassword(token: string, password: string) {
+    const record = await this.prisma.passwordResetToken.findUnique({ where: { token } });
+
+    if (!record || record.expiresAt < new Date()) {
+      if (record) await this.prisma.passwordResetToken.delete({ where: { id: record.id } });
+      throw new BadRequestException('Token is invalid or expired');
+    }
+
+    const passwordHash = await hash(password, 10);
+    await this.prisma.user.update({
+      where: { id: record.userId },
+      data: { password: passwordHash },
+    });
+    await this.prisma.passwordResetToken.delete({ where: { id: record.id } });
+
     return { success: true };
   }
 
