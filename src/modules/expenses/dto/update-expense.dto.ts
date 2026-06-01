@@ -1,14 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsDate,
-  IsNumber,
-  IsOptional,
-  IsPositive,
-  IsString,
-  IsUUID,
-  MaxDate,
-} from 'class-validator';
+import { IsDate, IsNumber, IsOptional, IsPositive, IsString, IsUUID } from 'class-validator';
 
 export class UpdateExpenseDto {
   @ApiPropertyOptional({ example: 2000 })
@@ -27,10 +19,9 @@ export class UpdateExpenseDto {
   @IsOptional()
   description?: string;
 
-  @ApiPropertyOptional({ example: '2026-05-27T10:00:00.000Z' })
+  @ApiPropertyOptional({ example: '2026-06-01T00:30:00' })
   @IsOptional()
   @IsDate()
-  @MaxDate(() => new Date())
   @Type(() => Date)
   date?: Date;
 }
