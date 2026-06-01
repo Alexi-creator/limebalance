@@ -55,9 +55,11 @@ export class TransactionsService {
     `;
 
     const union =
-      type === TransactionType.EXPENSE ? expensePart
-      : type === TransactionType.INCOME ? incomePartQuery
-      : Prisma.sql`${expensePart} UNION ALL ${incomePartQuery}`;
+      type === TransactionType.EXPENSE
+        ? expensePart
+        : type === TransactionType.INCOME
+          ? incomePartQuery
+          : Prisma.sql`${expensePart} UNION ALL ${incomePartQuery}`;
 
     const [items, countResult] = await Promise.all([
       this.prisma.$queryRaw<TransactionRow[]>`
@@ -88,9 +90,7 @@ export class TransactionsService {
     to?: string,
   ): Prisma.Sql {
     const a = Prisma.raw(alias);
-    const conditions: Prisma.Sql[] = [
-      Prisma.sql`${a}.user_id::text = ${userId}`,
-    ];
+    const conditions: Prisma.Sql[] = [Prisma.sql`${a}.user_id::text = ${userId}`];
 
     if (categoryId) {
       conditions.push(Prisma.sql`${a}.category_id::text = ${categoryId}`);
