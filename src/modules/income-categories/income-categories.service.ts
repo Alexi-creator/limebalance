@@ -15,6 +15,33 @@ export class IncomeCategoriesService {
     return this.prisma.incomeCategory.findMany({ where: { userId } });
   }
 
+  async statsByCategory(userId: string, from?: Date, to?: Date) {
+    const grouped = await this.prisma.income.groupBy({
+      by: ['categoryId'],
+      where: { userId, ...(from || to ? { date: { gte: from, lte: to } } : {}) },
+      _sum: { amount: true },
+      _count: { _all: true },
+    });
+
+    const categories = await this.prisma.incomeCategory.findMany({
+      where: { userId },
+      select: { id: true, name: true, emoji: true },
+    });
+
+    const statsMap = new Map(grouped.map((g) => [g.categoryId, g]));
+
+    return categories.map((c) => {
+      const stat = statsMap.get(c.id);
+      return {
+        id: c.id,
+        name: c.name,
+        emoji: c.emoji,
+        total: Number(stat?._sum.amount ?? 0),
+        count: stat?._count._all ?? 0,
+      };
+    });
+  }
+
   async findOne(id: string) {
     const category = await this.prisma.incomeCategory.findUnique({ where: { id } });
     if (!category) throw new NotFoundException(`IncomeCategory ${id} not found`);

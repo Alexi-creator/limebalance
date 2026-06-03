@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateIncomeCategoryDto } from './dto/create-income-category.dto';
 import { UpdateIncomeCategoryDto } from './dto/update-income-category.dto';
@@ -20,6 +20,22 @@ export class IncomeCategoriesController {
   @ApiOperation({ summary: 'Получить все категории доходов пользователя' })
   findAll(@CurrentUser() user: { id: string }) {
     return this.incomeCategoriesService.findAllByUser(user.id);
+  }
+
+  @Get('stats')
+  @ApiOperation({ summary: 'Суммы и количество доходов по категориям' })
+  @ApiQuery({ name: 'from', required: false, example: '2026-01-01' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-12-31' })
+  statsByCategory(
+    @CurrentUser() user: { id: string },
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.incomeCategoriesService.statsByCategory(
+      user.id,
+      from ? new Date(from) : undefined,
+      to ? new Date(to) : undefined,
+    );
   }
 
   @Get(':id')
