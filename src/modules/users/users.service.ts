@@ -67,6 +67,7 @@ export class UsersService {
       select: {
         email: true,
         telegramId: true,
+        currency: true,
         subscription: {
           select: {
             plan: true,
