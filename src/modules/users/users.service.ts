@@ -1,35 +1,50 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+
+// Поля, безопасные для отдачи наружу: без password и без BigInt telegramId
+const PUBLIC_USER_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  role: true,
+  currency: true,
+  timezone: true,
+  createdAt: true,
+} satisfies Prisma.UserSelect;
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   create(dto: CreateUserDto) {
-    return this.prisma.user.create({ data: dto });
+    return this.prisma.user.create({ data: dto, select: PUBLIC_USER_SELECT });
   }
 
   findAll() {
-    return this.prisma.user.findMany();
+    return this.prisma.user.findMany({ select: PUBLIC_USER_SELECT });
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: PUBLIC_USER_SELECT,
+    });
     if (!user) throw new NotFoundException(`User ${id} not found`);
     return user;
   }
 
   async update(id: string, dto: UpdateUserDto) {
     await this.findOne(id);
-    return this.prisma.user.update({ where: { id }, data: dto });
+    return this.prisma.user.update({ where: { id }, data: dto, select: PUBLIC_USER_SELECT });
   }
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.user.delete({ where: { id } });
+    return this.prisma.user.delete({ where: { id }, select: PUBLIC_USER_SELECT });
   }
 
   findByTelegramId(telegramId: bigint) {

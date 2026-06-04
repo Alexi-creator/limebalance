@@ -11,10 +11,12 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { SuccessResponseDto } from '../../common/dto/success-response.dto';
 import '@fastify/cookie';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { ProfileResponseDto } from '../users/dto/profile-response.dto';
 import { UpdateProfileDto } from '../users/dto/update-profile.dto';
 import { UsersService } from '../users/users.service';
 import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from './auth.constants';
@@ -44,6 +46,10 @@ export class AuthController {
   @Post('register')
   @Public()
   @ApiOperation({ summary: 'Register with email and password' })
+  @ApiCreatedResponse({
+    type: SuccessResponseDto,
+    description: 'Токены ставятся в httpOnly cookie',
+  })
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: FastifyReply) {
     const tokens = await this.authService.register(dto);
     this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
@@ -54,6 +60,7 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
+  @ApiOkResponse({ type: SuccessResponseDto, description: 'Токены ставятся в httpOnly cookie' })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: FastifyReply) {
     const tokens = await this.authService.login(dto);
     this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
@@ -64,6 +71,7 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login via Google ID token' })
+  @ApiOkResponse({ type: SuccessResponseDto })
   async loginGoogle(@Body() dto: GoogleAuthDto, @Res({ passthrough: true }) res: FastifyReply) {
     const tokens = await this.authService.loginWithGoogle(dto);
     this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
@@ -74,6 +82,7 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login via Telegram Login Widget' })
+  @ApiOkResponse({ type: SuccessResponseDto })
   async loginTelegram(@Body() dto: TelegramAuthDto, @Res({ passthrough: true }) res: FastifyReply) {
     const tokens = await this.authService.loginWithTelegram(dto);
     this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
@@ -84,6 +93,7 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
+  @ApiOkResponse({ type: SuccessResponseDto })
   async refresh(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
     const refreshToken = req.cookies?.[REFRESH_COOKIE];
     if (!refreshToken) throw new UnauthorizedException('No refresh token');
@@ -97,6 +107,7 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout — delete refresh token' })
+  @ApiOkResponse({ type: SuccessResponseDto })
   async logout(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
     const refreshToken = req.cookies?.[REFRESH_COOKIE];
     if (refreshToken) await this.authService.logout(refreshToken);
@@ -108,6 +119,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get current user' })
+  @ApiOkResponse({ type: ProfileResponseDto })
   me(@CurrentUser() user: { id: string }) {
     return this.usersService.findMe(user.id);
   }
@@ -115,6 +127,7 @@ export class AuthController {
   @Patch('me')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Update current user profile (name, currency, timezone)' })
+  @ApiOkResponse({ type: ProfileResponseDto })
   updateMe(@CurrentUser() user: { id: string }, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(user.id, dto);
   }
@@ -123,6 +136,10 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request password reset' })
+  @ApiOkResponse({
+    type: SuccessResponseDto,
+    description: 'Всегда success (не раскрываем наличие email)',
+  })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);
   }
@@ -131,6 +148,7 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset password using token' })
+  @ApiOkResponse({ type: SuccessResponseDto })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.password);
   }
@@ -138,6 +156,7 @@ export class AuthController {
   @Post('link/google')
   @UseGuards(JwtAuthGuard)
 
+  @ApiOkResponse({ type: SuccessResponseDto })
   @ApiOperation({ summary: 'Link Google to account' })
   linkGoogle(@CurrentUser() user: { id: string }, @Body() dto: GoogleAuthDto) {
     return this.authService.linkGoogle(user.id, dto);
@@ -146,6 +165,7 @@ export class AuthController {
   @Post('link/telegram')
   @UseGuards(JwtAuthGuard)
 
+  @ApiOkResponse({ type: SuccessResponseDto })
   @ApiOperation({ summary: 'Link Telegram to account' })
   linkTelegram(@CurrentUser() user: { id: string }, @Body() dto: TelegramAuthDto) {
     return this.authService.linkTelegram(user.id, dto);
