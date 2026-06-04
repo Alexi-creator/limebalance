@@ -35,6 +35,7 @@ export class AuthService {
         email: dto.email,
         password: passwordHash,
         ...(dto.currency ? { currency: dto.currency } : {}),
+        ...(dto.timezone ? { timezone: dto.timezone } : {}),
       },
     });
 

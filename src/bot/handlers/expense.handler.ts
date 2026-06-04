@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Context, InlineKeyboard } from 'grammy';
+import { localWallClockNow } from '../../common/timezone.util';
 import { ExpenseCategoriesService } from '../../modules/expense-categories/expense-categories.service';
 import { ExpensesService } from '../../modules/expenses/expenses.service';
+import { UsersService } from '../../modules/users/users.service';
 import { StateService } from '../state.service';
 import { MAIN_MENU } from './start.handler';
 
@@ -10,6 +12,7 @@ export class ExpenseHandler {
   constructor(
     private readonly categoriesService: ExpenseCategoriesService,
     private readonly expensesService: ExpensesService,
+    private readonly usersService: UsersService,
     private readonly stateService: StateService,
   ) {}
 
@@ -28,7 +31,7 @@ export class ExpenseHandler {
   }
 
   async handleCategorySelected(ctx: Context, userId: string, categoryId: string) {
-    const category = await this.categoriesService.findOne(categoryId);
+    const category = await this.categoriesService.findOne(categoryId, userId);
     await this.stateService.set(userId, {
       step: 'addexpense:waiting_amount',
       categoryId,
@@ -58,10 +61,12 @@ export class ExpenseHandler {
       return;
     }
 
+    const timezone = await this.usersService.getTimezone(userId);
     await this.expensesService.create(userId, {
       categoryId: state.categoryId,
       amount: Number(state.amount),
       description: text,
+      date: localWallClockNow(timezone),
     });
 
     await this.stateService.reset(userId);

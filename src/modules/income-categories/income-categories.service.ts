@@ -42,19 +42,19 @@ export class IncomeCategoriesService {
     });
   }
 
-  async findOne(id: string) {
-    const category = await this.prisma.incomeCategory.findUnique({ where: { id } });
+  async findOne(id: string, userId: string) {
+    const category = await this.prisma.incomeCategory.findFirst({ where: { id, userId } });
     if (!category) throw new NotFoundException(`IncomeCategory ${id} not found`);
     return category;
   }
 
-  async update(id: string, dto: UpdateIncomeCategoryDto) {
-    await this.findOne(id);
+  async update(id: string, userId: string, dto: UpdateIncomeCategoryDto) {
+    await this.findOne(id, userId);
     return this.prisma.incomeCategory.update({ where: { id }, data: dto });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, userId: string) {
+    await this.findOne(id, userId);
     return this.prisma.incomeCategory.delete({ where: { id } });
   }
 }

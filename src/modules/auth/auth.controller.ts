@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   Res,
@@ -14,6 +15,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import '@fastify/cookie';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { UpdateProfileDto } from '../users/dto/update-profile.dto';
 import { UsersService } from '../users/users.service';
 import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from './auth.constants';
 import { AuthService } from './auth.service';
@@ -108,6 +110,13 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user' })
   me(@CurrentUser() user: { id: string }) {
     return this.usersService.findMe(user.id);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Update current user profile (name, currency, timezone)' })
+  updateMe(@CurrentUser() user: { id: string }, @Body() dto: UpdateProfileDto) {
+    return this.usersService.updateProfile(user.id, dto);
   }
 
   @Post('forgot-password')

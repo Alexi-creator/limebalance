@@ -40,19 +40,23 @@ export class IncomeCategoriesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Получить категорию доходов по id' })
-  findOne(@Param('id') id: string) {
-    return this.incomeCategoriesService.findOne(id);
+  findOne(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.incomeCategoriesService.findOne(id, user.id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Обновить категорию доходов' })
-  update(@Param('id') id: string, @Body() dto: UpdateIncomeCategoryDto) {
-    return this.incomeCategoriesService.update(id, dto);
+  update(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: UpdateIncomeCategoryDto,
+  ) {
+    return this.incomeCategoriesService.update(id, user.id, dto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Удалить категорию доходов' })
-  remove(@Param('id') id: string) {
-    return this.incomeCategoriesService.remove(id);
+  remove(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.incomeCategoriesService.remove(id, user.id);
   }
 }

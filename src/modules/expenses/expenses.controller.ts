@@ -41,19 +41,23 @@ export class ExpensesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Получить трату по id' })
-  findOne(@Param('id') id: string) {
-    return this.expensesService.findOne(id);
+  findOne(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.expensesService.findOne(id, user.id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Обновить трату' })
-  update(@Param('id') id: string, @Body() dto: UpdateExpenseDto) {
-    return this.expensesService.update(id, dto);
+  update(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: UpdateExpenseDto,
+  ) {
+    return this.expensesService.update(id, user.id, dto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Удалить трату' })
-  remove(@Param('id') id: string) {
-    return this.expensesService.remove(id);
+  remove(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.expensesService.remove(id, user.id);
   }
 }

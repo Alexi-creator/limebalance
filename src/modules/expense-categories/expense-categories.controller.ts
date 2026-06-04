@@ -40,19 +40,23 @@ export class ExpenseCategoriesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Получить категорию расходов по id' })
-  findOne(@Param('id') id: string) {
-    return this.expenseCategoriesService.findOne(id);
+  findOne(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.expenseCategoriesService.findOne(id, user.id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Обновить категорию расходов' })
-  update(@Param('id') id: string, @Body() dto: UpdateExpenseCategoryDto) {
-    return this.expenseCategoriesService.update(id, dto);
+  update(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: UpdateExpenseCategoryDto,
+  ) {
+    return this.expenseCategoriesService.update(id, user.id, dto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Удалить категорию расходов' })
-  remove(@Param('id') id: string) {
-    return this.expenseCategoriesService.remove(id);
+  remove(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.expenseCategoriesService.remove(id, user.id);
   }
 }

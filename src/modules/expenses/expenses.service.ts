@@ -7,8 +7,17 @@ import { UpdateExpenseDto } from './dto/update-expense.dto';
 export class ExpensesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(userId: string, dto: CreateExpenseDto) {
-    return this.prisma.expense.create({ data: { ...dto, userId } });
+  async create(userId: string, dto: CreateExpenseDto) {
+    const currency = dto.currency ?? (await this.resolveUserCurrency(userId));
+    return this.prisma.expense.create({ data: { ...dto, userId, currency } });
+  }
+
+  private async resolveUserCurrency(userId: string): Promise<string> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { currency: true },
+    });
+    return user?.currency ?? 'USD';
   }
 
   findAllByUser(userId: string, from?: Date, to?: Date) {
@@ -51,22 +60,22 @@ export class ExpensesService {
     return { total: total.toFixed(2), byMonth };
   }
 
-  async findOne(id: string) {
-    const expense = await this.prisma.expense.findUnique({
-      where: { id },
+  async findOne(id: string, userId: string) {
+    const expense = await this.prisma.expense.findFirst({
+      where: { id, userId },
       include: { category: true },
     });
     if (!expense) throw new NotFoundException(`Expense ${id} not found`);
     return expense;
   }
 
-  async update(id: string, dto: UpdateExpenseDto) {
-    await this.findOne(id);
+  async update(id: string, userId: string, dto: UpdateExpenseDto) {
+    await this.findOne(id, userId);
     return this.prisma.expense.update({ where: { id }, data: dto });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, userId: string) {
+    await this.findOne(id, userId);
     return this.prisma.expense.delete({ where: { id } });
   }
 

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
@@ -61,13 +62,29 @@ export class UsersService {
     return this.prisma.user.update({ where: { id: userId }, data: { telegramId } });
   }
 
+  async getTimezone(id: string): Promise<string> {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { timezone: true },
+    });
+    return user?.timezone ?? 'UTC';
+  }
+
+  async updateProfile(id: string, dto: UpdateProfileDto) {
+    await this.findOne(id);
+    await this.prisma.user.update({ where: { id }, data: dto });
+    return this.findMe(id);
+  }
+
   async findMe(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
         email: true,
+        name: true,
         telegramId: true,
         currency: true,
+        timezone: true,
         subscription: {
           select: {
             plan: true,

@@ -41,19 +41,23 @@ export class IncomesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Получить доход по id' })
-  findOne(@Param('id') id: string) {
-    return this.incomesService.findOne(id);
+  findOne(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.incomesService.findOne(id, user.id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Обновить доход' })
-  update(@Param('id') id: string, @Body() dto: UpdateIncomeDto) {
-    return this.incomesService.update(id, dto);
+  update(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: UpdateIncomeDto,
+  ) {
+    return this.incomesService.update(id, user.id, dto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Удалить доход' })
-  remove(@Param('id') id: string) {
-    return this.incomesService.remove(id);
+  remove(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.incomesService.remove(id, user.id);
   }
 }

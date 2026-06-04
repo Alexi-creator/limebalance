@@ -1,6 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsNumber, IsOptional, IsPositive, IsString, IsUUID } from 'class-validator';
+import {
+  IsDate,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  Matches,
+} from 'class-validator';
 
 export class UpdateExpenseDto {
   @ApiPropertyOptional({ example: 2000 })
@@ -24,4 +32,10 @@ export class UpdateExpenseDto {
   @IsDate()
   @Type(() => Date)
   date?: Date;
+
+  @ApiPropertyOptional({ example: 'THB', description: 'ISO 4217 код валюты' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO 4217 code' })
+  currency?: string;
 }

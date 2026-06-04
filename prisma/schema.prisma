@@ -45,6 +45,7 @@ model User {
   name       String?
   role       Role      @default(USER)
   currency   String    @default("USD")
+  timezone   String    @default("UTC")
   createdAt  DateTime  @default(now()) @map("created_at")
 
   expenseCategories  ExpenseCategory[]
@@ -78,8 +79,9 @@ model Expense {
   userId      String          @map("user_id")
   categoryId  String          @map("category_id")
   amount      Decimal         @db.Decimal(12, 2)
+  currency    String
   description String
-  date        DateTime        @default(now())
+  date        DateTime
   createdAt   DateTime        @default(now()) @map("created_at")
 
   user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -109,8 +111,9 @@ model Income {
   userId      String         @map("user_id")
   categoryId  String         @map("category_id")
   amount      Decimal        @db.Decimal(12, 2)
+  currency    String
   description String
-  date        DateTime       @default(now())
+  date        DateTime
   createdAt   DateTime       @default(now()) @map("created_at")
 
   user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
