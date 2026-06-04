@@ -8,6 +8,7 @@ export interface TransactionRow {
   categoryId: string;
   categoryName: string | null;
   amount: number;
+  currency: string;
   description: string;
   date: Date;
   type: 'income' | 'expense';
@@ -32,6 +33,7 @@ export class TransactionsService {
         e.category_id AS "categoryId",
         ec.name AS "categoryName",
         e.amount::float8 AS amount,
+        e.currency,
         e.description,
         e.date,
         'expense'::text AS type
@@ -46,6 +48,7 @@ export class TransactionsService {
         i.category_id AS "categoryId",
         ic.name AS "categoryName",
         i.amount::float8 AS amount,
+        i.currency,
         i.description,
         i.date,
         'income'::text AS type

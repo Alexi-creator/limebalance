@@ -2,6 +2,7 @@ import { createHash, createHmac, randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { REFRESH_TOKEN_TTL_DAYS } from './auth.constants';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { SetCredentialsDto } from './dto/set-credentials.dto';
 import { TelegramAuthDto } from './dto/telegram-auth.dto';
 
 @Injectable()
@@ -99,6 +101,59 @@ export class AuthService {
       throw new ConflictException('Telegram account already linked to another user');
     }
     await this.usersService.setTelegramId(userId, BigInt(dto.id));
+    return { success: true };
+  }
+
+  // Почта и пароль в одном роуте:
+  // - почты нет (например, регистрация через Telegram) → email и пароль обязательны вместе;
+  // - почта уже есть → менять её нельзя, пароль можно сменить (необязательно).
+  async setCredentials(userId: string, dto: SetCredentialsDto) {
+    const user = await this.usersService.findOne(userId);
+
+    if (user.email) {
+      if (dto.email && dto.email !== user.email) {
+        throw new ForbiddenException('Email уже задан и не может быть изменён');
+      }
+      if (dto.password) {
+        const record = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { password: true },
+        });
+        // Если пароль уже задан — требуем текущий и проверяем его.
+        if (record?.password) {
+          if (!dto.currentPassword) {
+            throw new BadRequestException('Нужно указать текущий пароль');
+          }
+          const valid = await compare(dto.currentPassword, record.password);
+          if (!valid) {
+            throw new UnauthorizedException('Неверный текущий пароль');
+          }
+        }
+        const passwordHash = await hash(dto.password, 10);
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: { password: passwordHash },
+        });
+      }
+      return { success: true };
+    }
+
+    // Почты нет — задаём email и пароль вместе, оба обязательны.
+    if (!dto.email || !dto.password) {
+      throw new BadRequestException('Нужно задать и email, и пароль');
+    }
+
+    const existing = await this.usersService.findByEmail(dto.email);
+    if (existing) {
+      throw new ConflictException('Email уже используется');
+    }
+
+    const passwordHash = await hash(dto.password, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { email: dto.email, password: passwordHash },
+    });
+
     return { success: true };
   }
 

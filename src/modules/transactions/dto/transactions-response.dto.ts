@@ -14,6 +14,9 @@ export class TransactionRowDto {
   @ApiProperty({ example: 1500.5, description: 'Сумма (число, float)' })
   amount: number;
 
+  @ApiProperty({ example: 'USD', description: 'Валюта' })
+  currency: string;
+
   @ApiProperty({ example: 'Продукты в супермаркете' })
   description: string;
 

@@ -28,6 +28,7 @@ import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SetCredentialsDto } from './dto/set-credentials.dto';
 import { TelegramAuthDto } from './dto/telegram-auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -130,6 +131,18 @@ export class AuthController {
   @ApiOkResponse({ type: ProfileResponseDto })
   updateMe(@CurrentUser() user: { id: string }, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(user.id, dto);
+  }
+
+  @Post('me/credentials')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Почта и пароль: если почты нет — задать email+пароль (оба обязательны); если почта есть — сменить пароль (email менять нельзя)',
+  })
+  @ApiOkResponse({ type: SuccessResponseDto })
+  setCredentials(@CurrentUser() user: { id: string }, @Body() dto: SetCredentialsDto) {
+    return this.authService.setCredentials(user.id, dto);
   }
 
   @Post('forgot-password')
