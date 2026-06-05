@@ -97,6 +97,25 @@ export class ExpensesService {
     return this.prisma.expense.delete({ where: { id } });
   }
 
+  // Массовое удаление: сначала проверяем, что все id принадлежат пользователю,
+  // иначе 404 и ничего не удаляем (атомарно, в транзакции).
+  async removeMany(userId: string, ids: string[]) {
+    return this.prisma.$transaction(async (tx) => {
+      const owned = await tx.expense.findMany({
+        where: { id: { in: ids }, userId },
+        select: { id: true },
+      });
+      const ownedIds = new Set(owned.map((e) => e.id));
+      const missing = ids.filter((id) => !ownedIds.has(id));
+      if (missing.length) {
+        throw new NotFoundException(`Expenses not found: ${missing.join(', ')}`);
+      }
+
+      const { count } = await tx.expense.deleteMany({ where: { id: { in: ids }, userId } });
+      return { deleted: count };
+    });
+  }
+
   async statSummary(userId: string, categoryId: string | null, period: string) {
     const { from, to } = this.getPeriodDates(period);
 

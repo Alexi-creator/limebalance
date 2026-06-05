@@ -7,6 +7,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { BulkDeleteExpensesDto } from './dto/bulk-delete-expenses.dto';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { ExpenseResponseDto, ExpenseSummaryResponseDto } from './dto/expense-response.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
@@ -65,6 +66,13 @@ export class ExpensesController {
     @Body() dto: UpdateExpenseDto,
   ) {
     return this.expensesService.update(id, user.id, dto);
+  }
+
+  @Delete()
+  @ApiOperation({ summary: 'Массовое удаление трат' })
+  @ApiOkResponse({ schema: { example: { deleted: 2 } }, description: 'Количество удалённых записей' })
+  removeMany(@CurrentUser() user: { id: string }, @Body() dto: BulkDeleteExpensesDto) {
+    return this.expensesService.removeMany(user.id, dto.ids);
   }
 
   @Delete(':id')
