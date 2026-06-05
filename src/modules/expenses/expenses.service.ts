@@ -1,15 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CurrencyService } from '../currency/currency.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 
 @Injectable()
 export class ExpensesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly currency: CurrencyService,
+  ) {}
 
   async create(userId: string, dto: CreateExpenseDto) {
     const currency = dto.currency ?? (await this.resolveUserCurrency(userId));
-    return this.prisma.expense.create({ data: { ...dto, userId, currency } });
+    // Снапшот стоимости в USD по текущему курсу (фиксируется на момент создания).
+    const amountUsd = await this.currency.convert(dto.amount, currency, 'USD');
+    return this.prisma.expense.create({ data: { ...dto, userId, currency, amountUsd } });
   }
 
   private async resolveUserCurrency(userId: string): Promise<string> {
@@ -70,8 +76,20 @@ export class ExpensesService {
   }
 
   async update(id: string, userId: string, dto: UpdateExpenseDto) {
-    await this.findOne(id, userId);
-    return this.prisma.expense.update({ where: { id }, data: dto });
+    const existing = await this.findOne(id, userId);
+
+    // Пересчитываем USD-снапшот только если изменились сумма или валюта.
+    let amountUsd: number | null | undefined;
+    if (dto.amount !== undefined || dto.currency !== undefined) {
+      const amount = dto.amount ?? Number(existing.amount);
+      const currency = dto.currency ?? existing.currency;
+      amountUsd = await this.currency.convert(amount, currency, 'USD');
+    }
+
+    return this.prisma.expense.update({
+      where: { id },
+      data: { ...dto, ...(amountUsd !== undefined ? { amountUsd } : {}) },
+    });
   }
 
   async remove(id: string, userId: string) {

@@ -19,13 +19,13 @@ export class TransactionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(userId: string, dto: GetTransactionsDto) {
-    const { type, categoryId, search, from, to } = dto;
+    const { type, categoryId, search, currency, from, to } = dto;
     const page = dto.page ?? 1;
     const limit = dto.limit ?? 20;
     const offset = (page - 1) * limit;
 
-    const expenseWhere = this.buildWhere('e', userId, categoryId, search, from, to);
-    const incomePart = this.buildWhere('i', userId, categoryId, search, from, to);
+    const expenseWhere = this.buildWhere('e', userId, categoryId, search, currency, from, to);
+    const incomePart = this.buildWhere('i', userId, categoryId, search, currency, from, to);
 
     const expensePart = Prisma.sql`
       SELECT
@@ -89,6 +89,7 @@ export class TransactionsService {
     userId: string,
     categoryId?: string,
     search?: string,
+    currency?: string,
     from?: string,
     to?: string,
   ): Prisma.Sql {
@@ -101,6 +102,10 @@ export class TransactionsService {
 
     if (search) {
       conditions.push(Prisma.sql`${a}.description ILIKE ${`%${search}%`}`);
+    }
+
+    if (currency) {
+      conditions.push(Prisma.sql`${a}.currency = ${currency}`);
     }
 
     if (from) {

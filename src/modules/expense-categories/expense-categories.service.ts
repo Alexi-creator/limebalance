@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CurrencyService } from '../currency/currency.service';
 import { CreateExpenseCategoryDto } from './dto/create-expense-category.dto';
 import { UpdateExpenseCategoryDto } from './dto/update-expense-category.dto';
 
 @Injectable()
 export class ExpenseCategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly currency: CurrencyService,
+  ) {}
 
   create(userId: string, dto: CreateExpenseCategoryDto) {
     return this.prisma.expenseCategory.create({ data: { ...dto, userId } });
@@ -17,27 +21,51 @@ export class ExpenseCategoriesService {
 
   async statsByCategory(userId: string, from?: Date, to?: Date) {
     const grouped = await this.prisma.expense.groupBy({
-      by: ['categoryId'],
+      by: ['categoryId', 'currency'],
       where: { userId, ...(from || to ? { date: { gte: from, lte: to } } : {}) },
-      _sum: { amount: true },
+      _sum: { amount: true, amountUsd: true },
       _count: { _all: true },
     });
 
-    const categories = await this.prisma.expenseCategory.findMany({
-      where: { userId },
-      select: { id: true, name: true, emoji: true },
-    });
+    const [categories, user, rates] = await Promise.all([
+      this.prisma.expenseCategory.findMany({
+        where: { userId },
+        select: { id: true, name: true, emoji: true },
+      }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),
+      this.currency.getRates(),
+    ]);
 
-    const statsMap = new Map(grouped.map((g) => [g.categoryId, g]));
+    const baseCurrency = user?.currency ?? 'USD';
+
+    // categoryId -> разбивка по валютам: реальная сумма + USD-снапшот (для approx)
+    const groupsByCategory = new Map<
+      string,
+      { currency: string; amount: number; count: number; amountUsd: number | null }[]
+    >();
+    for (const g of grouped) {
+      const list = groupsByCategory.get(g.categoryId) ?? [];
+      list.push({
+        currency: g.currency,
+        amount: Number(g._sum.amount ?? 0),
+        count: g._count._all,
+        amountUsd: g._sum.amountUsd != null ? Number(g._sum.amountUsd) : null,
+      });
+      groupsByCategory.set(g.categoryId, list);
+    }
 
     return categories.map((c) => {
-      const stat = statsMap.get(c.id);
+      const groups = groupsByCategory.get(c.id) ?? [];
       return {
         id: c.id,
         name: c.name,
         emoji: c.emoji,
-        total: Number(stat?._sum.amount ?? 0),
-        count: stat?._count._all ?? 0,
+        count: groups.reduce((sum, g) => sum + g.count, 0),
+        // Точная разбивка по валютам (разные валюты не складываем).
+        totals: groups.map((g) => ({ currency: g.currency, total: g.amount, count: g.count })),
+        baseCurrency,
+        // Приблизительная сумма в базовой валюте через USD-снапшот.
+        approxTotal: this.currency.approxTotalInBase(groups, baseCurrency, rates),
       };
     });
   }

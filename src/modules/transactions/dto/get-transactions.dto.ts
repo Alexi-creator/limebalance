@@ -1,6 +1,15 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsISO8601, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsISO8601,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+  Min,
+} from 'class-validator';
 
 export enum TransactionType {
   INCOME = 'income',
@@ -22,6 +31,12 @@ export class GetTransactionsDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional({ example: 'THB', description: 'Фильтр по валюте (ISO 4217)' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO 4217 code' })
+  currency?: string;
 
   @ApiPropertyOptional({ example: '2026-01-01' })
   @IsOptional()

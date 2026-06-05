@@ -6,6 +6,7 @@ import { BotModule } from './bot/bot.module';
 import { envSchema } from './config/env.schema';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { CurrencyModule } from './modules/currency/currency.module';
 import { ExpenseCategoriesModule } from './modules/expense-categories/expense-categories.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { IncomeCategoriesModule } from './modules/income-categories/income-categories.module';
@@ -22,6 +23,7 @@ import { PrismaModule } from './prisma/prisma.module';
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     PrismaModule,
+    CurrencyModule,
     UsersModule,
     ExpenseCategoriesModule,
     IncomeCategoriesModule,
