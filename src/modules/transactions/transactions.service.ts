@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CurrencyService } from '../currency/currency.service';
 import { GetTransactionsDto, TransactionType } from './dto/get-transactions.dto';
+
+/** Сумма по одной валюте для пересчёта в базовую (см. CurrencyService.approxTotalInBase). */
+interface CurrencyGroup {
+  currency: string;
+  amount: number;
+  amountUsd: number | null;
+}
 
 export interface TransactionRow {
   id: string;
@@ -11,12 +19,16 @@ export interface TransactionRow {
   currency: string;
   description: string;
   date: Date;
+  createdAt: Date;
   type: 'income' | 'expense';
 }
 
 @Injectable()
 export class TransactionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly currency: CurrencyService,
+  ) {}
 
   async findAll(userId: string, dto: GetTransactionsDto) {
     const { type, categoryId, search, currency, from, to } = dto;
@@ -36,6 +48,7 @@ export class TransactionsService {
         e.currency,
         e.description,
         e.date,
+        e.created_at AS "createdAt",
         'expense'::text AS type
       FROM expenses e
       LEFT JOIN expense_categories ec ON ec.id = e.category_id
@@ -51,6 +64,7 @@ export class TransactionsService {
         i.currency,
         i.description,
         i.date,
+        i.created_at AS "createdAt",
         'income'::text AS type
       FROM incomes i
       LEFT JOIN income_categories ic ON ic.id = i.category_id
@@ -64,16 +78,41 @@ export class TransactionsService {
           ? incomePartQuery
           : Prisma.sql`${expensePart} UNION ALL ${incomePartQuery}`;
 
-    const [items, countResult] = await Promise.all([
+    // Денежный итог считаем по всей выборке (с учётом фильтров), а не по странице.
+    const wantExpense = type !== TransactionType.INCOME;
+    const wantIncome = type !== TransactionType.EXPENSE;
+
+    const [items, countResult, expenseGroups, incomeGroups, user, rates] = await Promise.all([
       this.prisma.$queryRaw<TransactionRow[]>`
         ${union}
-        ORDER BY date DESC
+        ORDER BY date DESC, "createdAt" DESC
         LIMIT ${limit} OFFSET ${offset}
       `,
       this.prisma.$queryRaw<[{ count: bigint }]>`
         SELECT COUNT(*) AS count FROM (${union}) AS combined
       `,
+      wantExpense
+        ? this.prisma.$queryRaw<CurrencyGroup[]>`
+            SELECT e.currency, SUM(e.amount)::float8 AS amount, SUM(e.amount_usd)::float8 AS "amountUsd"
+            FROM expenses e WHERE ${expenseWhere} GROUP BY e.currency
+          `
+        : Promise.resolve<CurrencyGroup[]>([]),
+      wantIncome
+        ? this.prisma.$queryRaw<CurrencyGroup[]>`
+            SELECT i.currency, SUM(i.amount)::float8 AS amount, SUM(i.amount_usd)::float8 AS "amountUsd"
+            FROM incomes i WHERE ${incomePart} GROUP BY i.currency
+          `
+        : Promise.resolve<CurrencyGroup[]>([]),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),
+      this.currency.getRates(),
     ]);
+
+    const baseCurrency = user?.currency ?? 'USD';
+    const income = this.currency.approxTotalInBase(incomeGroups, baseCurrency, rates);
+    const expense = this.currency.approxTotalInBase(expenseGroups, baseCurrency, rates);
+    // net известен только если обе суммы посчитаны (курсы доступны).
+    const net =
+      income === null || expense === null ? null : Math.round((income - expense) * 100) / 100;
 
     return {
       items,
@@ -81,6 +120,7 @@ export class TransactionsService {
       page,
       limit,
       totalPages: Math.ceil(Number(countResult[0].count) / limit),
+      summary: { baseCurrency, income, expense, net },
     };
   }
 
@@ -108,12 +148,13 @@ export class TransactionsService {
       conditions.push(Prisma.sql`${a}.currency = ${currency}`);
     }
 
+    // date — колонка DATE (без времени), границы сравниваем по дню (инклюзивно с обеих сторон).
     if (from) {
-      conditions.push(Prisma.sql`${a}.date >= ${new Date(from)}`);
+      conditions.push(Prisma.sql`${a}.date >= ${new Date(from)}::date`);
     }
 
     if (to) {
-      conditions.push(Prisma.sql`${a}.date <= ${new Date(to)}`);
+      conditions.push(Prisma.sql`${a}.date <= ${new Date(to)}::date`);
     }
 
     return Prisma.join(conditions, ' AND ');

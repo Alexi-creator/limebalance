@@ -7,6 +7,24 @@ import { IncomesService } from '../../modules/incomes/incomes.service';
 import { StateService } from '../state.service';
 import { MAIN_MENU } from './start.handler';
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  RUB: '₽',
+  THB: '฿',
+  GBP: '£',
+  JPY: '¥',
+};
+
+const symbol = (code: string) => CURRENCY_SYMBOLS[code] ?? code;
+
+// Точная сумма в её исходной валюте.
+const exact = (value: number, currency: string) => `${value.toFixed(2)} ${symbol(currency)}`;
+
+// Прибл. сумма в базовой валюте пользователя. null → курсы недоступны.
+const money = (value: number | null, currency: string) =>
+  value === null ? 'курс недоступен' : `≈ ${exact(value, currency)}`;
+
 @Injectable()
 export class StatHandler {
   constructor(
@@ -105,50 +123,47 @@ export class StatHandler {
     const labelEmpty = type === 'expense' ? 'трат' : 'доходов';
 
     if (isDetails) {
-      const data =
+      const { baseCurrency, total, categories } =
         type === 'expense'
           ? await this.expensesService.statDetails(userId, categoryId, period)
           : await this.incomesService.statDetails(userId, categoryId, period);
 
-      if (!data.length) {
+      if (!categories.length) {
         await ctx.reply(`За выбранный период ${labelEmpty} нет 🙂`, { reply_markup: MAIN_MENU });
         return;
       }
 
       let text = `${label} с детализацией:\n\n`;
-      let grandTotal = 0;
-      for (const cat of data) {
-        text += `📌 ${cat.category} — ${cat.total.toFixed(2)} ₽\n`;
+      for (const cat of categories) {
+        text += `📌 ${cat.category} — ${money(cat.total, baseCurrency)}\n`;
         for (const item of cat.items) {
           const date = item.date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
-          text += `  • ${date}: ${item.amount.toFixed(2)} ₽`;
+          // Позиция — в её исходной валюте.
+          text += `  • ${date}: ${exact(item.amount, item.currency)}`;
           if (item.description) text += ` — ${item.description}`;
           text += '\n';
         }
         text += '\n';
-        grandTotal += cat.total;
       }
-      if (data.length > 1) text += `Итого: ${grandTotal.toFixed(2)} ₽`;
+      if (categories.length > 1) text += `Итого: ${money(total, baseCurrency)}`;
 
       await ctx.reply(text, { reply_markup: MAIN_MENU });
     } else {
-      const data =
+      const { baseCurrency, total, items } =
         type === 'expense'
           ? await this.expensesService.statSummary(userId, categoryId, period)
           : await this.incomesService.statSummary(userId, categoryId, period);
 
-      if (!data.length) {
+      if (!items.length) {
         await ctx.reply(`За выбранный период ${labelEmpty} нет 🙂`, { reply_markup: MAIN_MENU });
         return;
       }
 
       let text = `${label}:\n\n`;
-      let total = 0;
-      for (const row of data) {
-        text += `• ${row.category} — ${row.total.toFixed(2)} ₽\n`;
-        total += row.total;
+      for (const row of items) {
+        text += `• ${row.category} — ${money(row.total, baseCurrency)}\n`;
       }
-      if (data.length > 1) text += `\nИтого: ${total.toFixed(2)} ₽`;
+      if (items.length > 1) text += `\nИтого: ${money(total, baseCurrency)}`;
 
       await ctx.reply(text, { reply_markup: MAIN_MENU });
     }

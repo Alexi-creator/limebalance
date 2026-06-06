@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MonthTotalDto } from '../../expenses/dto/expense-response.dto';
+import { MonthSummaryDto } from '../../expenses/dto/expense-response.dto';
 import { IncomeCategoryResponseDto } from '../../income-categories/dto/income-category-response.dto';
 
 export class IncomeResponseDto {
@@ -44,9 +44,16 @@ export class IncomeResponseDto {
 }
 
 export class IncomeSummaryResponseDto {
-  @ApiProperty({ example: '50000.00', description: 'Итог за период, строкой с 2 знаками' })
-  total: string;
+  @ApiProperty({ example: 'RUB', description: 'Базовая валюта пользователя для total/approxTotal' })
+  baseCurrency: string;
 
-  @ApiProperty({ type: [MonthTotalDto], description: 'Помесячная разбивка' })
-  byMonth: MonthTotalDto[];
+  @ApiProperty({
+    example: 90480,
+    nullable: true,
+    description: 'Прибл. итог за весь период в базовой валюте. null, если курсы недоступны.',
+  })
+  total: number | null;
+
+  @ApiProperty({ type: [MonthSummaryDto], description: 'Помесячная разбивка' })
+  byMonth: MonthSummaryDto[];
 }

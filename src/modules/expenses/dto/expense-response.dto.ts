@@ -42,18 +42,46 @@ export class ExpenseResponseDto {
   category?: ExpenseCategoryResponseDto;
 }
 
-export class MonthTotalDto {
+export class SummaryCurrencyTotalDto {
+  @ApiProperty({ example: 'THB', description: 'Код валюты' })
+  currency: string;
+
+  @ApiProperty({ example: 5000, description: 'Сумма в этой валюте за период (разные валюты не складываются)' })
+  total: number;
+
+  @ApiProperty({ example: 10, description: 'Количество операций в этой валюте' })
+  count: number;
+}
+
+export class MonthSummaryDto {
   @ApiProperty({ example: '2026-06', description: 'Месяц в формате YYYY-MM' })
   month: string;
 
-  @ApiProperty({ example: '1234.50', description: 'Сумма за месяц, строкой с 2 знаками' })
-  total: string;
+  @ApiProperty({
+    type: [SummaryCurrencyTotalDto],
+    description: 'Разбивка за месяц по каждой валюте отдельно',
+  })
+  totals: SummaryCurrencyTotalDto[];
+
+  @ApiProperty({
+    example: 12345.5,
+    nullable: true,
+    description: 'Прибл. сумма за месяц в базовой валюте по текущему курсу. null, если курсы недоступны.',
+  })
+  approxTotal: number | null;
 }
 
 export class ExpenseSummaryResponseDto {
-  @ApiProperty({ example: '5678.90', description: 'Итог за период, строкой с 2 знаками' })
-  total: string;
+  @ApiProperty({ example: 'RUB', description: 'Базовая валюта пользователя для total/approxTotal' })
+  baseCurrency: string;
 
-  @ApiProperty({ type: [MonthTotalDto], description: 'Помесячная разбивка' })
-  byMonth: MonthTotalDto[];
+  @ApiProperty({
+    example: 49102,
+    nullable: true,
+    description: 'Прибл. итог за весь период в базовой валюте. null, если курсы недоступны.',
+  })
+  total: number | null;
+
+  @ApiProperty({ type: [MonthSummaryDto], description: 'Помесячная разбивка' })
+  byMonth: MonthSummaryDto[];
 }

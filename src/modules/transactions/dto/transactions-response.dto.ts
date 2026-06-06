@@ -20,16 +20,63 @@ export class TransactionRowDto {
   @ApiProperty({ example: 'Продукты в супермаркете' })
   description: string;
 
-  @ApiProperty({ type: String, format: 'date-time', example: '2026-06-01T00:30:00.000Z' })
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    example: '2026-06-01',
+    description: 'Дата операции (без времени)',
+  })
   date: Date;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    example: '2026-06-01T08:00:00.000Z',
+    description: 'Момент создания (UTC) — вторичная сортировка внутри дня',
+  })
+  createdAt: Date;
 
   @ApiProperty({ enum: TransactionType, example: TransactionType.EXPENSE })
   type: 'income' | 'expense';
 }
 
+export class TransactionsSummaryDto {
+  @ApiProperty({ example: 'THB', description: 'Базовая валюта пользователя для сумм ниже' })
+  baseCurrency: string;
+
+  @ApiProperty({
+    example: 90480,
+    nullable: true,
+    description:
+      'Прибл. сумма доходов по всей выборке (не только странице) в базовой валюте. null, если курсы недоступны.',
+  })
+  income: number | null;
+
+  @ApiProperty({
+    example: 49102,
+    nullable: true,
+    description:
+      'Прибл. сумма расходов по всей выборке в базовой валюте. null, если курсы недоступны.',
+  })
+  expense: number | null;
+
+  @ApiProperty({
+    example: 41378,
+    nullable: true,
+    description: 'Чистый итог (доходы − расходы) в базовой валюте. null, если курсы недоступны.',
+  })
+  net: number | null;
+}
+
 export class PaginatedTransactionsDto {
   @ApiProperty({ type: [TransactionRowDto] })
   items: TransactionRowDto[];
+
+  @ApiProperty({
+    type: TransactionsSummaryDto,
+    description: 'Денежный итог по всей выборке (с учётом фильтров), приведённый к базовой валюте',
+  })
+  summary: TransactionsSummaryDto;
 
   @ApiProperty({ example: 137, description: 'Всего записей по фильтру' })
   total: number;

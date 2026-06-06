@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { localWallClockNow } from '../../common/timezone.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
+import { aggregateSummary, buildMonthKeys } from '../currency/summary.util';
 import { CreateIncomeDto } from './dto/create-income.dto';
 import { UpdateIncomeDto } from './dto/update-income.dto';
 
@@ -42,28 +44,18 @@ export class IncomesService {
     const from = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
     const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const incomes = await this.prisma.income.findMany({
-      where: { userId, date: { gte: from, lte: to } },
-      select: { amount: true, date: true },
-    });
+    const [rows, user, rates] = await Promise.all([
+      this.prisma.income.findMany({
+        where: { userId, date: { gte: from, lte: to } },
+        select: { amount: true, amountUsd: true, currency: true, date: true },
+      }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),
+      this.currency.getRates(),
+    ]);
 
-    const byMonthMap = new Map<string, number>();
-    let total = 0;
-
-    for (const e of incomes) {
-      const key = `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, '0')}`;
-      byMonthMap.set(key, (byMonthMap.get(key) ?? 0) + Number(e.amount));
-      total += Number(e.amount);
-    }
-
-    const byMonth: { month: string; total: string }[] = [];
-    for (let i = months - 1; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      byMonth.push({ month: key, total: (byMonthMap.get(key) ?? 0).toFixed(2) });
-    }
-
-    return { total: total.toFixed(2), byMonth };
+    const baseCurrency = user?.currency ?? 'USD';
+    const monthKeys = buildMonthKeys(now, months);
+    return aggregateSummary(rows, monthKeys, baseCurrency, rates, this.currency);
   }
 
   async findOne(id: string, userId: string) {
@@ -117,65 +109,142 @@ export class IncomesService {
   }
 
   async statSummary(userId: string, categoryId: string | null, period: string) {
-    const { from, to } = this.getPeriodDates(period);
-
-    const grouped = await this.prisma.income.groupBy({
-      by: ['categoryId'],
-      where: { userId, ...(categoryId ? { categoryId } : {}), createdAt: { gte: from, lte: to } },
-      _sum: { amount: true },
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { currency: true, timezone: true },
     });
+    const baseCurrency = user?.currency ?? 'USD';
+    const { from, to } = this.getPeriodDates(period, user?.timezone ?? 'UTC');
+
+    const [grouped, rates] = await Promise.all([
+      this.prisma.income.groupBy({
+        by: ['categoryId', 'currency'],
+        where: { userId, ...(categoryId ? { categoryId } : {}), date: { gte: from, lte: to } },
+        _sum: { amount: true, amountUsd: true },
+      }),
+      this.currency.getRates(),
+    ]);
+
+    // categoryId -> разбивка по валютам (для пересчёта в базовую валюту)
+    const groupsByCategory = new Map<
+      string,
+      { currency: string; amount: number; amountUsd: number | null }[]
+    >();
+    const allGroups: { currency: string; amount: number; amountUsd: number | null }[] = [];
+    for (const g of grouped) {
+      const row = {
+        currency: g.currency,
+        amount: Number(g._sum.amount ?? 0),
+        amountUsd: g._sum.amountUsd != null ? Number(g._sum.amountUsd) : null,
+      };
+      const list = groupsByCategory.get(g.categoryId) ?? [];
+      list.push(row);
+      groupsByCategory.set(g.categoryId, list);
+      allGroups.push(row);
+    }
 
     const categories = await this.prisma.incomeCategory.findMany({
-      where: { id: { in: grouped.map((g) => g.categoryId) } },
+      where: { id: { in: [...groupsByCategory.keys()] } },
       select: { id: true, name: true },
     });
-
     const nameMap = new Map(categories.map((c) => [c.id, c.name]));
 
-    return grouped.map((g) => ({
-      category: nameMap.get(g.categoryId) ?? '—',
-      total: Number(g._sum.amount ?? 0),
+    const items = [...groupsByCategory.entries()].map(([catId, groups]) => ({
+      category: nameMap.get(catId) ?? '—',
+      // Итог по категории в базовой валюте (прибл. по курсу). null, если курсы недоступны.
+      total: this.currency.approxTotalInBase(groups, baseCurrency, rates),
     }));
+
+    return {
+      baseCurrency,
+      // Общий итог — одной конвертацией по всем строкам (совпадает с ЛК).
+      total: this.currency.approxTotalInBase(allGroups, baseCurrency, rates),
+      items,
+    };
   }
 
   async statDetails(userId: string, categoryId: string | null, period: string) {
-    const { from, to } = this.getPeriodDates(period);
-    const incomes = await this.prisma.income.findMany({
-      where: { userId, ...(categoryId ? { categoryId } : {}), createdAt: { gte: from, lte: to } },
-      select: {
-        amount: true,
-        description: true,
-        createdAt: true,
-        category: { select: { name: true } },
-      },
-      orderBy: { createdAt: 'asc' },
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { currency: true, timezone: true },
     });
+    const baseCurrency = user?.currency ?? 'USD';
+    const { from, to } = this.getPeriodDates(period, user?.timezone ?? 'UTC');
 
+    const [incomes, rates] = await Promise.all([
+      this.prisma.income.findMany({
+        where: { userId, ...(categoryId ? { categoryId } : {}), date: { gte: from, lte: to } },
+        select: {
+          amount: true,
+          amountUsd: true,
+          currency: true,
+          description: true,
+          date: true,
+          category: { select: { name: true } },
+        },
+        // Внутри одного дня (date без времени) сохраняем порядок добавления по createdAt.
+        orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+      }),
+      this.currency.getRates(),
+    ]);
+
+    // По категории храним исходные строки (для пересчёта итога) и позиции (для вывода).
     const map = new Map<
       string,
-      { total: number; items: { date: Date; amount: number; description?: string }[] }
+      {
+        rows: { currency: string; amount: number; amountUsd: number | null }[];
+        items: { date: Date; amount: number; currency: string; description?: string }[];
+      }
     >();
+    const allRows: { currency: string; amount: number; amountUsd: number | null }[] = [];
     for (const e of incomes) {
       const name = e.category?.name ?? '—';
-      if (!map.has(name)) map.set(name, { total: 0, items: [] });
-      const group = map.get(name);
-      if (!group) continue;
-      group.total += Number(e.amount);
-      group.items.push({ date: e.createdAt, amount: Number(e.amount), description: e.description });
+      let group = map.get(name);
+      if (!group) {
+        group = { rows: [], items: [] };
+        map.set(name, group);
+      }
+      const amount = Number(e.amount);
+      const row = {
+        currency: e.currency,
+        amount,
+        amountUsd: e.amountUsd != null ? Number(e.amountUsd) : null,
+      };
+      group.rows.push(row);
+      allRows.push(row);
+      // Позицию показываем в ИСХОДНОЙ валюте операции.
+      group.items.push({ date: e.date, amount, currency: e.currency, description: e.description });
     }
-    return Array.from(map.entries()).map(([category, data]) => ({ category, ...data }));
+
+    const categories = [...map.entries()].map(([category, group]) => ({
+      category,
+      // Итог по категории — пересчёт в базовую валюту одной операцией (как в ЛК).
+      total: this.currency.approxTotalInBase(group.rows, baseCurrency, rates),
+      items: group.items,
+    }));
+
+    return {
+      baseCurrency,
+      total: this.currency.approxTotalInBase(allRows, baseCurrency, rates),
+      categories,
+    };
   }
 
-  private getPeriodDates(period: string): { from: Date; to: Date } {
-    const now = new Date();
+  // Границы периода в «настенном» времени пользователя (UTC-компоненты совпадают с тем,
+  // как хранится поле date), иначе сегодняшние записи с локальным временем «впереди» UTC
+  // отсекаются по границе to.
+  private getPeriodDates(period: string, timezone: string): { from: Date; to: Date } {
+    const now = localWallClockNow(timezone);
     if (period === 'day') {
-      return { from: new Date(now.getFullYear(), now.getMonth(), now.getDate()), to: now };
+      const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      return { from, to: now };
     }
     if (period === 'week') {
       const from = new Date(now);
-      from.setDate(from.getDate() - 7);
+      from.setUTCDate(from.getUTCDate() - 7);
       return { from, to: now };
     }
-    return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: now };
+    const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    return { from, to: now };
   }
 }

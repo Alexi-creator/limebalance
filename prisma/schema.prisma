@@ -12,12 +12,12 @@ enum Role {
 }
 
 model Plan {
-  id            String   @id @default(uuid())
-  name          String   @unique
+  id            String  @id @default(uuid())
+  name          String  @unique
   maxCategories Int?
   maxExpenses   Int?
   maxIncomes    Int?
-  price         Decimal  @db.Decimal(10, 2)
+  price         Decimal @db.Decimal(10, 2)
 
   subscriptions UserSubscription[]
 
@@ -38,20 +38,20 @@ model UserSubscription {
 }
 
 model User {
-  id         String    @id @default(uuid())
-  telegramId BigInt?   @unique @map("telegram_id")
-  email      String?   @unique
+  id         String   @id @default(uuid())
+  telegramId BigInt?  @unique @map("telegram_id")
+  email      String?  @unique
   password   String?
   name       String?
-  role       Role      @default(USER)
-  currency   String    @default("USD")
-  timezone   String    @default("UTC")
-  createdAt  DateTime  @default(now()) @map("created_at")
+  role       Role     @default(USER)
+  currency   String   @default("USD")
+  timezone   String   @default("UTC")
+  createdAt  DateTime @default(now()) @map("created_at")
 
-  expenseCategories  ExpenseCategory[]
-  expenses           Expense[]
-  incomeCategories   IncomeCategory[]
-  incomes            Income[]
+  expenseCategories   ExpenseCategory[]
+  expenses            Expense[]
+  incomeCategories    IncomeCategory[]
+  incomes             Income[]
   state               UserState?
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
@@ -75,20 +75,20 @@ model ExpenseCategory {
 }
 
 model Expense {
-  id          String          @id @default(uuid())
-  userId      String          @map("user_id")
-  categoryId  String          @map("category_id")
-  amount      Decimal         @db.Decimal(12, 2)
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  categoryId  String   @map("category_id")
+  amount      Decimal  @db.Decimal(12, 2)
   currency    String
-  amountUsd   Decimal?        @map("amount_usd") @db.Decimal(14, 2)
+  amountUsd   Decimal? @map("amount_usd") @db.Decimal(14, 2)
   description String
-  date        DateTime
-  createdAt   DateTime        @default(now()) @map("created_at")
+  date        DateTime @db.Date
+  createdAt   DateTime @default(now()) @map("created_at")
 
   user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   category ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  @@index([userId, date])
+  @@index([userId, date, createdAt])
   @@index([categoryId])
   @@map("expenses")
 }
@@ -108,20 +108,20 @@ model IncomeCategory {
 }
 
 model Income {
-  id          String         @id @default(uuid())
-  userId      String         @map("user_id")
-  categoryId  String         @map("category_id")
-  amount      Decimal        @db.Decimal(12, 2)
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  categoryId  String   @map("category_id")
+  amount      Decimal  @db.Decimal(12, 2)
   currency    String
-  amountUsd   Decimal?       @map("amount_usd") @db.Decimal(14, 2)
+  amountUsd   Decimal? @map("amount_usd") @db.Decimal(14, 2)
   description String
-  date        DateTime
-  createdAt   DateTime       @default(now()) @map("created_at")
+  date        DateTime @db.Date
+  createdAt   DateTime @default(now()) @map("created_at")
 
   user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   category IncomeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  @@index([userId, date])
+  @@index([userId, date, createdAt])
   @@index([categoryId])
   @@map("incomes")
 }
