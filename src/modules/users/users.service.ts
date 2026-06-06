@@ -98,6 +98,7 @@ export class UsersService {
         email: true,
         name: true,
         telegramId: true,
+        password: true,
         currency: true,
         timezone: true,
         subscription: {
@@ -109,9 +110,11 @@ export class UsersService {
       },
     });
     if (!user) throw new NotFoundException(`User ${id} not found`);
+    const { password, ...rest } = user;
     return {
-      ...user,
+      ...rest,
       telegramId: user.telegramId?.toString() ?? null,
+      hasPassword: !!password,
     };
   }
 }

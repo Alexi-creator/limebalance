@@ -60,6 +60,12 @@ export class ProfileResponseDto {
   @ApiProperty({ example: 'Asia/Bangkok', description: 'IANA таймзона пользователя' })
   timezone: string;
 
+  @ApiProperty({
+    example: true,
+    description: 'Задан ли пароль (false для входа только через Google/Telegram)',
+  })
+  hasPassword: boolean;
+
   @ApiPropertyOptional({
     type: SubscriptionResponseDto,
     nullable: true,
