@@ -73,6 +73,32 @@ export class UsersService {
     return this.prisma.user.update({ where: { id: userId }, data: { email } });
   }
 
+  findByGoogleId(googleId: string) {
+    return this.prisma.user.findUnique({ where: { googleId } });
+  }
+
+  async findOrCreateByGoogle(googleId: string, email: string) {
+    const byGoogleId = await this.prisma.user.findUnique({ where: { googleId } });
+    if (byGoogleId) return { user: byGoogleId, isNew: false };
+
+    // Аккаунт с такой почтой уже есть (например, регистрировался паролем) — привязываем Google.
+    const byEmail = await this.prisma.user.findUnique({ where: { email } });
+    if (byEmail) {
+      const user = await this.prisma.user.update({
+        where: { id: byEmail.id },
+        data: { googleId },
+      });
+      return { user, isNew: false };
+    }
+
+    const user = await this.prisma.user.create({ data: { email, googleId } });
+    return { user, isNew: true };
+  }
+
+  setGoogleId(userId: string, googleId: string) {
+    return this.prisma.user.update({ where: { id: userId }, data: { googleId } });
+  }
+
   setTelegramId(userId: string, telegramId: bigint) {
     return this.prisma.user.update({ where: { id: userId }, data: { telegramId } });
   }

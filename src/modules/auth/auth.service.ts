@@ -73,8 +73,8 @@ export class AuthService {
   }
 
   async loginWithGoogle(dto: GoogleAuthDto) {
-    const email = await this.verifyGoogleToken(dto.credential);
-    const { user } = await this.usersService.findOrCreateByEmail(email);
+    const { email, googleId } = await this.verifyGoogleToken(dto.credential);
+    const { user } = await this.usersService.findOrCreateByGoogle(googleId, email);
     return this.issueTokens(user.id);
   }
 
@@ -85,12 +85,20 @@ export class AuthService {
   }
 
   async linkGoogle(userId: string, dto: GoogleAuthDto) {
-    const email = await this.verifyGoogleToken(dto.credential);
-    const existing = await this.usersService.findByEmail(email);
-    if (existing && existing.id !== userId) {
+    const { email, googleId } = await this.verifyGoogleToken(dto.credential);
+
+    const byGoogleId = await this.usersService.findByGoogleId(googleId);
+    if (byGoogleId && byGoogleId.id !== userId) {
+      throw new ConflictException('Google account already linked to another account');
+    }
+
+    const byEmail = await this.usersService.findByEmail(email);
+    if (byEmail && byEmail.id !== userId) {
       throw new ConflictException('Email already linked to another account');
     }
+
     await this.usersService.setEmail(userId, email);
+    await this.usersService.setGoogleId(userId, googleId);
     return { success: true };
   }
 
@@ -205,7 +213,9 @@ export class AuthService {
     return { accessToken, refreshToken: token };
   }
 
-  private async verifyGoogleToken(credential: string): Promise<string> {
+  private async verifyGoogleToken(
+    credential: string,
+  ): Promise<{ email: string; googleId: string }> {
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
     if (!clientId) throw new UnauthorizedException('Google OAuth not configured');
 
@@ -214,16 +224,18 @@ export class AuthService {
 
     const data = (await response.json()) as {
       aud?: string;
+      sub?: string;
       email?: string;
       email_verified?: string;
     };
 
     if (data.aud !== clientId) throw new UnauthorizedException('Token audience mismatch');
+    if (!data.sub) throw new UnauthorizedException('Invalid Google token');
     if (!data.email || data.email_verified !== 'true') {
       throw new UnauthorizedException('Email not verified');
     }
 
-    return data.email;
+    return { email: data.email, googleId: data.sub };
   }
 
   private verifyTelegramHash(dto: TelegramAuthDto) {
