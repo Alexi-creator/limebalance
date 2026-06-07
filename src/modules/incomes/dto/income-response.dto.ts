@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MonthSummaryDto } from '../../expenses/dto/expense-response.dto';
+import { BucketSummaryDto } from '../../expenses/dto/expense-response.dto';
 import { IncomeCategoryResponseDto } from '../../income-categories/dto/income-category-response.dto';
 
 export class IncomeResponseDto {
@@ -48,12 +48,19 @@ export class IncomeSummaryResponseDto {
   baseCurrency: string;
 
   @ApiProperty({
+    enum: ['day', 'week', 'month'],
+    example: 'month',
+    description: 'Гранулярность бакетов',
+  })
+  granularity: 'day' | 'week' | 'month';
+
+  @ApiProperty({
     example: 90480,
     nullable: true,
     description: 'Прибл. итог за весь период в базовой валюте. null, если курсы недоступны.',
   })
   total: number | null;
 
-  @ApiProperty({ type: [MonthSummaryDto], description: 'Помесячная разбивка' })
-  byMonth: MonthSummaryDto[];
+  @ApiProperty({ type: [BucketSummaryDto], description: 'Разбивка по бакетам (день/неделя/месяц)' })
+  buckets: BucketSummaryDto[];
 }

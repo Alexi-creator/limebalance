@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ExpenseCategoryResponseDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440001' })
@@ -60,4 +60,20 @@ export class ExpenseCategoryStatDto {
       'Приблизительная сумма в базовой валюте по текущему курсу. null, если курсы недоступны.',
   })
   approxTotal: number | null;
+
+  @ApiPropertyOptional({
+    example: 210.0,
+    nullable: true,
+    description:
+      'Итог за предыдущий период в базовой валюте. Присутствует только при compareFrom/compareTo.',
+  })
+  previousApproxTotal?: number | null;
+
+  @ApiPropertyOptional({
+    example: 50.5,
+    nullable: true,
+    description:
+      'Разница с предыдущим периодом (approxTotal − previousApproxTotal). Присутствует только при сравнении.',
+  })
+  deltaApproxTotal?: number | null;
 }

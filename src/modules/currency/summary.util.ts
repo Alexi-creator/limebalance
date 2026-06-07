@@ -2,6 +2,8 @@ import type { CurrencyService } from './currency.service';
 
 type Rates = Record<string, number>;
 
+export type Granularity = 'day' | 'week' | 'month';
+
 // Строка операции, достаточная для агрегации сводки.
 export type SummaryRow = {
   amount: unknown; // Prisma Decimal
@@ -12,36 +14,82 @@ export type SummaryRow = {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+const pad = (n: number) => String(n).padStart(2, '0');
 
-// Ключи месяцев от (months-1) назад до текущего включительно, по возрастанию.
-export function buildMonthKeys(now: Date, months: number): string[] {
+const dayKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const monthKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+
+// Понедельник недели, в которую попадает дата (начало бакета week).
+const weekStart = (d: Date) => {
+  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dow = (r.getDay() + 6) % 7; // 0 = понедельник
+  r.setDate(r.getDate() - dow);
+  return r;
+};
+
+// Ключ бакета: день — YYYY-MM-DD, неделя — YYYY-MM-DD её понедельника, месяц — YYYY-MM.
+export function bucketKey(d: Date, granularity: Granularity): string {
+  if (granularity === 'day') return dayKey(d);
+  if (granularity === 'week') return dayKey(weekStart(d));
+  return monthKey(d);
+}
+
+// Ключи всех бакетов в диапазоне [from, to] включительно, по возрастанию.
+export function buildBuckets(from: Date, to: Date, granularity: Granularity): string[] {
+  const cursor =
+    granularity === 'month'
+      ? new Date(from.getFullYear(), from.getMonth(), 1)
+      : granularity === 'week'
+        ? weekStart(from)
+        : new Date(from.getFullYear(), from.getMonth(), from.getDate());
+
   const keys: string[] = [];
-  for (let i = months - 1; i >= 0; i--) {
-    keys.push(monthKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+  while (cursor <= to) {
+    keys.push(bucketKey(cursor, granularity));
+    if (granularity === 'month') cursor.setMonth(cursor.getMonth() + 1);
+    else if (granularity === 'week') cursor.setDate(cursor.getDate() + 7);
+    else cursor.setDate(cursor.getDate() + 1);
   }
   return keys;
 }
 
-// Помесячная сводка с разбивкой по валютам (валюты не складываются) + прибл. итог
+// Разбор параметров /summary: диапазон from/to + granularity.
+// По умолчанию — текущий месяц с помесячными бакетами.
+export function resolveSummaryRange(params: { from?: string; to?: string; granularity?: string }): {
+  from: Date;
+  to: Date;
+  granularity: Granularity;
+} {
+  const granularity = normalizeGranularity(params.granularity) ?? 'month';
+  const to = params.to ? new Date(params.to) : new Date();
+  const from = params.from ? new Date(params.from) : new Date(to.getFullYear(), to.getMonth(), 1);
+  return { from, to, granularity };
+}
+
+function normalizeGranularity(value?: string): Granularity | undefined {
+  return value === 'day' || value === 'week' || value === 'month' ? value : undefined;
+}
+
+// Сводка по бакетам с разбивкой по валютам (валюты не складываются) + прибл. итог
 // в базовой валюте через USD-снапшот. Та же логика для трат и доходов.
 export function aggregateSummary(
   rows: SummaryRow[],
-  monthKeys: string[],
+  bucketKeys: string[],
+  granularity: Granularity,
   baseCurrency: string,
   rates: Rates | null,
   currency: CurrencyService,
 ) {
   type Acc = { amount: number; count: number; usdSum: number; hasUsd: boolean };
-  // month -> currency -> накопитель
-  const byMonth = new Map<string, Map<string, Acc>>();
+  // bucket -> currency -> накопитель
+  const byBucket = new Map<string, Map<string, Acc>>();
 
   for (const r of rows) {
-    const key = monthKey(r.date);
-    let curMap = byMonth.get(key);
+    const key = bucketKey(r.date, granularity);
+    let curMap = byBucket.get(key);
     if (!curMap) {
       curMap = new Map();
-      byMonth.set(key, curMap);
+      byBucket.set(key, curMap);
     }
     let acc = curMap.get(r.currency);
     if (!acc) {
@@ -60,8 +108,8 @@ export function aggregateSummary(
   // Все группы за период — для прибл. итога одной конвертацией.
   const allGroups: { currency: string; amount: number; amountUsd: number | null }[] = [];
 
-  const byMonthOut = monthKeys.map((month) => {
-    const curMap = byMonth.get(month);
+  const buckets = bucketKeys.map((bucket) => {
+    const curMap = byBucket.get(bucket);
     const groups = curMap
       ? [...curMap.entries()].map(([cur, a]) => ({
           currency: cur,
@@ -72,7 +120,7 @@ export function aggregateSummary(
       : [];
     allGroups.push(...groups);
     return {
-      month,
+      bucket,
       totals: groups.map((g) => ({ currency: g.currency, total: g.amount, count: g.count })),
       approxTotal: currency.approxTotalInBase(groups, baseCurrency, rates),
     };
@@ -80,7 +128,8 @@ export function aggregateSummary(
 
   return {
     baseCurrency,
+    granularity,
     total: currency.approxTotalInBase(allGroups, baseCurrency, rates),
-    byMonth: byMonthOut,
+    buckets,
   };
 }

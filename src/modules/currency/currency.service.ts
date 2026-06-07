@@ -59,12 +59,10 @@ export class CurrencyService {
     return this.convertWithRates(rates, amount, from, to);
   }
 
-  // Сводит набор сумм в базовую валюту через USD-снапшот (amountUsd).
-  // Для строк без снапшота (amountUsd === null) — фолбэк по текущему курсу.
-  // Возвращает null, если курсы недоступны или встретилась неизвестная валюта.
-  approxTotalInBase(
+  // Сумма строк в USD через снапшот (amountUsd) с фолбэком по текущему курсу для строк
+  // без снапшота. null, если курсы недоступны или встретилась неизвестная валюта.
+  sumUsd(
     rows: { amount: number; currency: string; amountUsd: number | null }[],
-    baseCurrency: string,
     rates: Rates | null,
   ): number | null {
     if (rows.length === 0) return 0;
@@ -79,10 +77,27 @@ export class CurrencyService {
       if (usd === null) return null;
       usdSum += usd;
     }
+    return usdSum;
+  }
 
-    const inBase = this.convertWithRates(rates, usdSum, BASE, baseCurrency);
+  // Перевод USD-суммы в базовую валюту по текущему курсу. Округляет до 2 знаков (оценка).
+  usdToBase(usd: number, baseCurrency: string, rates: Rates | null): number | null {
+    if (!rates) return null;
+    const inBase = this.convertWithRates(rates, usd, BASE, baseCurrency);
     if (inBase === null) return null;
-    // Округляем до 2 знаков — это всё равно оценка.
     return Math.round(inBase * 100) / 100;
+  }
+
+  // Сводит набор сумм в базовую валюту через USD-снапшот (amountUsd).
+  // Для строк без снапшота (amountUsd === null) — фолбэк по текущему курсу.
+  // Возвращает null, если курсы недоступны или встретилась неизвестная валюта.
+  approxTotalInBase(
+    rows: { amount: number; currency: string; amountUsd: number | null }[],
+    baseCurrency: string,
+    rates: Rates | null,
+  ): number | null {
+    const usdSum = this.sumUsd(rows, rates);
+    if (usdSum === null) return null;
+    return this.usdToBase(usdSum, baseCurrency, rates);
   }
 }

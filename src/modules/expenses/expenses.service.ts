@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { localWallClockNow } from '../../common/timezone.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
-import { aggregateSummary, buildMonthKeys } from '../currency/summary.util';
+import { aggregateSummary, buildBuckets, type Granularity } from '../currency/summary.util';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 
@@ -39,10 +39,8 @@ export class ExpensesService {
     });
   }
 
-  async getSummary(userId: string, months: number) {
-    const now = new Date();
-    const from = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
-    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  async getSummary(userId: string, range: { from: Date; to: Date; granularity: Granularity }) {
+    const { from, to, granularity } = range;
 
     const [rows, user, rates] = await Promise.all([
       this.prisma.expense.findMany({
@@ -54,8 +52,8 @@ export class ExpensesService {
     ]);
 
     const baseCurrency = user?.currency ?? 'USD';
-    const monthKeys = buildMonthKeys(now, months);
-    return aggregateSummary(rows, monthKeys, baseCurrency, rates, this.currency);
+    const bucketKeys = buildBuckets(from, to, granularity);
+    return aggregateSummary(rows, bucketKeys, granularity, baseCurrency, rates, this.currency);
   }
 
   async findOne(id: string, userId: string) {

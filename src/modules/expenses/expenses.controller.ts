@@ -7,6 +7,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { resolveSummaryRange } from '../currency/summary.util';
 import { BulkDeleteExpensesDto } from './dto/bulk-delete-expenses.dto';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { ExpenseResponseDto, ExpenseSummaryResponseDto } from './dto/expense-response.dto';
@@ -43,11 +44,21 @@ export class ExpensesController {
   }
 
   @Get('summary')
-  @ApiOperation({ summary: 'Итог трат за период' })
-  @ApiQuery({ name: 'months', required: false, enum: [1, 6, 12], example: 1 })
+  @ApiOperation({
+    summary: 'Итог трат за период (бакеты по дню/неделе/месяцу)',
+    description: 'Диапазон from/to + granularity (day|week|month). По умолчанию — текущий месяц.',
+  })
+  @ApiQuery({ name: 'from', required: false, example: '2026-06-01' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-06-30' })
+  @ApiQuery({ name: 'granularity', required: false, enum: ['day', 'week', 'month'] })
   @ApiOkResponse({ type: ExpenseSummaryResponseDto })
-  summary(@CurrentUser() user: { id: string }, @Query('months') months?: string) {
-    return this.expensesService.getSummary(user.id, Number(months) || 1);
+  summary(
+    @CurrentUser() user: { id: string },
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('granularity') granularity?: string,
+  ) {
+    return this.expensesService.getSummary(user.id, resolveSummaryRange({ from, to, granularity }));
   }
 
   @Get(':id')
@@ -70,7 +81,10 @@ export class ExpensesController {
 
   @Delete()
   @ApiOperation({ summary: 'Массовое удаление трат' })
-  @ApiOkResponse({ schema: { example: { deleted: 2 } }, description: 'Количество удалённых записей' })
+  @ApiOkResponse({
+    schema: { example: { deleted: 2 } },
+    description: 'Количество удалённых записей',
+  })
   removeMany(@CurrentUser() user: { id: string }, @Body() dto: BulkDeleteExpensesDto) {
     return this.expensesService.removeMany(user.id, dto.ids);
   }

@@ -124,6 +124,46 @@ export class TransactionsService {
     };
   }
 
+  // Общий баланс за всё время: доходы − расходы. Считаем через USD-снапшот (amountUsd)
+  // и отдаём как в USD, так и в базовой валюте пользователя.
+  async getBalance(userId: string) {
+    const [incomeGroups, expenseGroups, user, rates] = await Promise.all([
+      this.prisma.income.groupBy({
+        by: ['currency'],
+        where: { userId },
+        _sum: { amount: true, amountUsd: true },
+      }),
+      this.prisma.expense.groupBy({
+        by: ['currency'],
+        where: { userId },
+        _sum: { amount: true, amountUsd: true },
+      }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),
+      this.currency.getRates(),
+    ]);
+
+    const toRows = (groups: typeof incomeGroups): CurrencyGroup[] =>
+      groups.map((g) => ({
+        currency: g.currency,
+        amount: Number(g._sum.amount ?? 0),
+        amountUsd: g._sum.amountUsd != null ? Number(g._sum.amountUsd) : null,
+      }));
+
+    const baseCurrency = user?.currency ?? 'USD';
+    const incomeUsd = this.currency.sumUsd(toRows(incomeGroups), rates);
+    const expenseUsd = this.currency.sumUsd(toRows(expenseGroups), rates);
+
+    // balanceUsd известен только если обе суммы посчитаны (курсы доступны).
+    const balanceUsd =
+      incomeUsd === null || expenseUsd === null
+        ? null
+        : Math.round((incomeUsd - expenseUsd) * 100) / 100;
+    const balance =
+      balanceUsd === null ? null : this.currency.usdToBase(balanceUsd, baseCurrency, rates);
+
+    return { baseCurrency, balanceUsd, balance };
+  }
+
   private buildWhere(
     alias: string,
     userId: string,

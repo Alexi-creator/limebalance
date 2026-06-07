@@ -35,20 +35,29 @@ export class IncomeCategoriesController {
   }
 
   @Get('stats')
-  @ApiOperation({ summary: 'Суммы и количество доходов по категориям' })
+  @ApiOperation({
+    summary: 'Суммы и количество доходов по категориям',
+    description:
+      'compareFrom/compareTo — опц. предыдущий период; тогда в ответе previousApproxTotal и deltaApproxTotal.',
+  })
   @ApiQuery({ name: 'from', required: false, example: '2026-01-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-12-31' })
+  @ApiQuery({ name: 'compareFrom', required: false, example: '2025-01-01' })
+  @ApiQuery({ name: 'compareTo', required: false, example: '2025-12-31' })
   @ApiOkResponse({ type: [IncomeCategoryStatDto], description: 'Все категории, включая пустые' })
   statsByCategory(
     @CurrentUser() user: { id: string },
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('compareFrom') compareFrom?: string,
+    @Query('compareTo') compareTo?: string,
   ) {
-    return this.incomeCategoriesService.statsByCategory(
-      user.id,
-      from ? new Date(from) : undefined,
-      to ? new Date(to) : undefined,
-    );
+    return this.incomeCategoriesService.statsByCategory(user.id, {
+      from: from ? new Date(from) : undefined,
+      to: to ? new Date(to) : undefined,
+      compareFrom: compareFrom ? new Date(compareFrom) : undefined,
+      compareTo: compareTo ? new Date(compareTo) : undefined,
+    });
   }
 
   @Get(':id')

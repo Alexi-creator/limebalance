@@ -1,6 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { BalanceResponseDto } from './dto/balance-response.dto';
 import { GetTransactionsDto } from './dto/get-transactions.dto';
 import { PaginatedTransactionsDto } from './dto/transactions-response.dto';
 import { TransactionsService } from './transactions.service';
@@ -15,5 +16,12 @@ export class TransactionsController {
   @ApiOkResponse({ type: PaginatedTransactionsDto })
   findAll(@CurrentUser() user: { id: string }, @Query() dto: GetTransactionsDto) {
     return this.transactionsService.findAll(user.id, dto);
+  }
+
+  @Get('balance')
+  @ApiOperation({ summary: 'Общий баланс (доходы − расходы) за всё время, в USD и базовой валюте' })
+  @ApiOkResponse({ type: BalanceResponseDto })
+  balance(@CurrentUser() user: { id: string }) {
+    return this.transactionsService.getBalance(user.id);
   }
 }

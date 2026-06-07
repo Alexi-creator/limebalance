@@ -7,6 +7,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { resolveSummaryRange } from '../currency/summary.util';
 import { BulkDeleteIncomesDto } from './dto/bulk-delete-incomes.dto';
 import { CreateIncomeDto } from './dto/create-income.dto';
 import { IncomeResponseDto, IncomeSummaryResponseDto } from './dto/income-response.dto';
@@ -43,11 +44,21 @@ export class IncomesController {
   }
 
   @Get('summary')
-  @ApiOperation({ summary: 'Итог доходов за период' })
-  @ApiQuery({ name: 'months', required: false, enum: [1, 6, 12], example: 1 })
+  @ApiOperation({
+    summary: 'Итог доходов за период (бакеты по дню/неделе/месяцу)',
+    description: 'Диапазон from/to + granularity (day|week|month). По умолчанию — текущий месяц.',
+  })
+  @ApiQuery({ name: 'from', required: false, example: '2026-06-01' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-06-30' })
+  @ApiQuery({ name: 'granularity', required: false, enum: ['day', 'week', 'month'] })
   @ApiOkResponse({ type: IncomeSummaryResponseDto })
-  summary(@CurrentUser() user: { id: string }, @Query('months') months?: string) {
-    return this.incomesService.getSummary(user.id, Number(months) || 1);
+  summary(
+    @CurrentUser() user: { id: string },
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('granularity') granularity?: string,
+  ) {
+    return this.incomesService.getSummary(user.id, resolveSummaryRange({ from, to, granularity }));
   }
 
   @Get(':id')
@@ -70,7 +81,10 @@ export class IncomesController {
 
   @Delete()
   @ApiOperation({ summary: 'Массовое удаление доходов' })
-  @ApiOkResponse({ schema: { example: { deleted: 2 } }, description: 'Количество удалённых записей' })
+  @ApiOkResponse({
+    schema: { example: { deleted: 2 } },
+    description: 'Количество удалённых записей',
+  })
   removeMany(@CurrentUser() user: { id: string }, @Body() dto: BulkDeleteIncomesDto) {
     return this.incomesService.removeMany(user.id, dto.ids);
   }

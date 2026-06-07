@@ -46,27 +46,34 @@ export class SummaryCurrencyTotalDto {
   @ApiProperty({ example: 'THB', description: 'Код валюты' })
   currency: string;
 
-  @ApiProperty({ example: 5000, description: 'Сумма в этой валюте за период (разные валюты не складываются)' })
+  @ApiProperty({
+    example: 5000,
+    description: 'Сумма в этой валюте за период (разные валюты не складываются)',
+  })
   total: number;
 
   @ApiProperty({ example: 10, description: 'Количество операций в этой валюте' })
   count: number;
 }
 
-export class MonthSummaryDto {
-  @ApiProperty({ example: '2026-06', description: 'Месяц в формате YYYY-MM' })
-  month: string;
+export class BucketSummaryDto {
+  @ApiProperty({
+    example: '2026-06-15',
+    description: 'Ключ бакета: день/неделя — YYYY-MM-DD (неделя = её понедельник), месяц — YYYY-MM',
+  })
+  bucket: string;
 
   @ApiProperty({
     type: [SummaryCurrencyTotalDto],
-    description: 'Разбивка за месяц по каждой валюте отдельно',
+    description: 'Разбивка за бакет по каждой валюте отдельно',
   })
   totals: SummaryCurrencyTotalDto[];
 
   @ApiProperty({
     example: 12345.5,
     nullable: true,
-    description: 'Прибл. сумма за месяц в базовой валюте по текущему курсу. null, если курсы недоступны.',
+    description:
+      'Прибл. сумма за бакет в базовой валюте по текущему курсу. null, если курсы недоступны.',
   })
   approxTotal: number | null;
 }
@@ -76,12 +83,19 @@ export class ExpenseSummaryResponseDto {
   baseCurrency: string;
 
   @ApiProperty({
+    enum: ['day', 'week', 'month'],
+    example: 'month',
+    description: 'Гранулярность бакетов',
+  })
+  granularity: 'day' | 'week' | 'month';
+
+  @ApiProperty({
     example: 49102,
     nullable: true,
     description: 'Прибл. итог за весь период в базовой валюте. null, если курсы недоступны.',
   })
   total: number | null;
 
-  @ApiProperty({ type: [MonthSummaryDto], description: 'Помесячная разбивка' })
-  byMonth: MonthSummaryDto[];
+  @ApiProperty({ type: [BucketSummaryDto], description: 'Разбивка по бакетам (день/неделя/месяц)' })
+  buckets: BucketSummaryDto[];
 }
