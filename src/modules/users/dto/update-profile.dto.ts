@@ -1,11 +1,10 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { IsOptional, IsString, Matches } from 'class-validator';
 
 export class UpdateProfileDto {
   @ApiPropertyOptional({ example: 'Ilia' })
   @IsOptional()
   @IsString()
-  @MinLength(1)
   name?: string;
 
   @ApiPropertyOptional({ example: 'THB', description: 'ISO 4217 код валюты' })

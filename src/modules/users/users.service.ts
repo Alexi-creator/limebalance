@@ -16,6 +16,17 @@ const PUBLIC_USER_SELECT = {
   createdAt: true,
 } satisfies Prisma.UserSelect;
 
+// Дефолты, проставляемые ТОЛЬКО при создании нового юзера (соц-вход / регистрация).
+export type UserDefaults = { currency?: string; timezone?: string };
+
+// Оставляет только заданные поля, чтобы пустые не перетирали схемные @default.
+function pickDefaults(defaults?: UserDefaults): UserDefaults {
+  return {
+    ...(defaults?.currency ? { currency: defaults.currency } : {}),
+    ...(defaults?.timezone ? { timezone: defaults.timezone } : {}),
+  };
+}
+
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -51,10 +62,12 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { telegramId } });
   }
 
-  async findOrCreateByTelegramId(telegramId: bigint) {
+  async findOrCreateByTelegramId(telegramId: bigint, defaults?: UserDefaults) {
     const existing = await this.prisma.user.findUnique({ where: { telegramId } });
     if (existing) return { user: existing, isNew: false };
-    const user = await this.prisma.user.create({ data: { telegramId } });
+    const user = await this.prisma.user.create({
+      data: { telegramId, ...pickDefaults(defaults) },
+    });
     return { user, isNew: true };
   }
 
@@ -77,7 +90,7 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { googleId } });
   }
 
-  async findOrCreateByGoogle(googleId: string, email: string) {
+  async findOrCreateByGoogle(googleId: string, email: string, defaults?: UserDefaults) {
     const byGoogleId = await this.prisma.user.findUnique({ where: { googleId } });
     if (byGoogleId) return { user: byGoogleId, isNew: false };
 
@@ -91,7 +104,9 @@ export class UsersService {
       return { user, isNew: false };
     }
 
-    const user = await this.prisma.user.create({ data: { email, googleId } });
+    const user = await this.prisma.user.create({
+      data: { email, googleId, ...pickDefaults(defaults) },
+    });
     return { user, isNew: true };
   }
 

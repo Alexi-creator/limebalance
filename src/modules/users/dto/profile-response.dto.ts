@@ -43,8 +43,8 @@ export class ProfileResponseDto {
   @ApiProperty({ example: 'user@example.com', nullable: true })
   email: string | null;
 
-  @ApiProperty({ example: 'Ilia', nullable: true })
-  name: string | null;
+  @ApiProperty({ example: 'Ilia' })
+  name: string;
 
   @ApiProperty({
     type: String,
@@ -81,8 +81,8 @@ export class UserResponseDto {
   @ApiProperty({ example: 'user@example.com', nullable: true })
   email: string | null;
 
-  @ApiProperty({ example: 'Ilia', nullable: true })
-  name: string | null;
+  @ApiProperty({ example: 'Ilia' })
+  name: string;
 
   @ApiProperty({ enum: Role, example: Role.USER })
   role: Role;

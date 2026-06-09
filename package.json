@@ -37,6 +37,7 @@
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "countries-and-timezones": "^3.9.0",
     "dotenv": "^17.4.2",
     "grammy": "^1.42.0",
     "passport": "^0.7.0",

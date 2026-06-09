@@ -9,6 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
+import { currencyFromTimezone } from '../../common/currency-from-timezone';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { REFRESH_TOKEN_TTL_DAYS } from './auth.constants';
@@ -32,11 +33,13 @@ export class AuthService {
     if (existing) throw new ConflictException('Email already registered');
 
     const passwordHash = await hash(dto.password, 10);
+    // Валюта: явная из DTO в приоритете, иначе выводим из таймзоны, иначе схемный USD.
+    const currency = dto.currency ?? currencyFromTimezone(dto.timezone);
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
         password: passwordHash,
-        ...(dto.currency ? { currency: dto.currency } : {}),
+        currency,
         ...(dto.timezone ? { timezone: dto.timezone } : {}),
       },
     });
@@ -74,13 +77,17 @@ export class AuthService {
 
   async loginWithGoogle(dto: GoogleAuthDto) {
     const { email, googleId } = await this.verifyGoogleToken(dto.credential);
-    const { user } = await this.usersService.findOrCreateByGoogle(googleId, email);
+    // timezone — подсказка от браузера; применяется только при создании нового юзера.
+    const defaults = { currency: currencyFromTimezone(dto.timezone), timezone: dto.timezone };
+    const { user } = await this.usersService.findOrCreateByGoogle(googleId, email, defaults);
     return this.issueTokens(user.id);
   }
 
   async loginWithTelegram(dto: TelegramAuthDto) {
     this.verifyTelegramHash(dto);
-    const { user } = await this.usersService.findOrCreateByTelegramId(BigInt(dto.id));
+    // timezone — неподписанная подсказка от браузера; применяется только при создании.
+    const defaults = { currency: currencyFromTimezone(dto.timezone), timezone: dto.timezone };
+    const { user } = await this.usersService.findOrCreateByTelegramId(BigInt(dto.id), defaults);
     return this.issueTokens(user.id);
   }
 
@@ -239,7 +246,8 @@ export class AuthService {
   }
 
   private verifyTelegramHash(dto: TelegramAuthDto) {
-    const { hash: telegramHash, ...fields } = dto;
+    // timezone — наша добавка от браузера, её нет в подписанных Telegram данных: исключаем из проверки.
+    const { hash: telegramHash, timezone: _tz, ...fields } = dto;
     const botToken = this.config.get<string>('BOT_TOKEN') ?? '';
 
     const secretKey = createHash('sha256').update(botToken).digest();

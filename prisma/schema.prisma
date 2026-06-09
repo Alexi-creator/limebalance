@@ -43,7 +43,7 @@ model User {
   googleId   String?  @unique @map("google_id")
   email      String?  @unique
   password   String?
-  name       String?
+  name       String   @default("")
   role       Role     @default(USER)
   currency   String   @default("USD")
   timezone   String   @default("UTC")
