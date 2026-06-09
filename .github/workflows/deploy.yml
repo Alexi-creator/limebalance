@@ -63,26 +63,26 @@ jobs:
 
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin
 
-            cd /opt/expense-accounting
+            cd /opt/limebalance
 
             echo "::group::Pull new image"
             docker pull "$GHCR_IMAGE"
             echo "::endgroup::"
 
             echo "::group::Run migrations"
-            docker run --rm --env-file /opt/expense-accounting/.env --network host "$GHCR_IMAGE" npm run migration:run
+            docker run --rm --env-file /opt/limebalance/.env --network host "$GHCR_IMAGE" npm run migration:run
             echo "::endgroup::"
 
             echo "::group::Seed database"
-            docker run --rm --env-file /opt/expense-accounting/.env --network host "$GHCR_IMAGE" npx prisma db seed
+            docker run --rm --env-file /opt/limebalance/.env --network host "$GHCR_IMAGE" npx prisma db seed
             echo "::endgroup::"
 
             echo "::group::Restart app"
-            docker stop expense-accounting 2>/dev/null || true
-            docker rm expense-accounting 2>/dev/null || true
+            docker stop limebalance 2>/dev/null || true
+            docker rm limebalance 2>/dev/null || true
             docker run -d \
-              --name expense-accounting \
-              --env-file /opt/expense-accounting/.env \
+              --name limebalance \
+              --env-file /opt/limebalance/.env \
               --restart unless-stopped \
               --network host \
               "$GHCR_IMAGE"

@@ -31,7 +31,7 @@ async function bootstrap() {
 
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('Expense Accounting API')
+      .setTitle('LimeBalance API')
       .setDescription('REST API for expense tracking')
       .setVersion('1.0')
       .addBearerAuth()
