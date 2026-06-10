@@ -25,6 +25,36 @@ const exact = (value: number, currency: string) => `${value.toFixed(2)} ${symbol
 const money = (value: number | null, currency: string) =>
   value === null ? 'курс недоступен' : `≈ ${exact(value, currency)}`;
 
+// Telegram ограничивает сообщение 4096 символами. Длинный ответ (детализация с сотнями
+// позиций) режем на части по границам строк; клавиатуру вешаем только на последнюю часть.
+const TG_TEXT_LIMIT = 4000; // запас от 4096
+async function replyLong(ctx: Context, text: string, replyMarkup: typeof MAIN_MENU) {
+  const chunks: string[] = [];
+  let cur = '';
+  for (const line of text.split('\n')) {
+    if (line.length > TG_TEXT_LIMIT) {
+      if (cur) {
+        chunks.push(cur);
+        cur = '';
+      }
+      for (let i = 0; i < line.length; i += TG_TEXT_LIMIT) chunks.push(line.slice(i, i + TG_TEXT_LIMIT));
+      continue;
+    }
+    if (cur.length + line.length + 1 > TG_TEXT_LIMIT) {
+      chunks.push(cur);
+      cur = line;
+    } else {
+      cur = cur ? `${cur}\n${line}` : line;
+    }
+  }
+  if (cur) chunks.push(cur);
+
+  for (let i = 0; i < chunks.length; i++) {
+    const isLast = i === chunks.length - 1;
+    await ctx.reply(chunks[i], isLast ? { reply_markup: replyMarkup } : {});
+  }
+}
+
 @Injectable()
 export class StatHandler {
   constructor(
@@ -147,7 +177,7 @@ export class StatHandler {
       }
       if (categories.length > 1) text += `Итого: ${money(total, baseCurrency)}`;
 
-      await ctx.reply(text, { reply_markup: MAIN_MENU });
+      await replyLong(ctx, text, MAIN_MENU);
     } else {
       const { baseCurrency, total, items } =
         type === 'expense'
@@ -165,7 +195,7 @@ export class StatHandler {
       }
       if (items.length > 1) text += `\nИтого: ${money(total, baseCurrency)}`;
 
-      await ctx.reply(text, { reply_markup: MAIN_MENU });
+      await replyLong(ctx, text, MAIN_MENU);
     }
   }
 }
