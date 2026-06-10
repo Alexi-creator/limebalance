@@ -88,16 +88,38 @@ export class CurrencyService {
     return Math.round(inBase * 100) / 100;
   }
 
-  // Сводит набор сумм в базовую валюту через USD-снапшот (amountUsd).
-  // Для строк без снапшота (amountUsd === null) — фолбэк по текущему курсу.
-  // Возвращает null, если курсы недоступны или встретилась неизвестная валюта.
+  // Сводит набор сумм в базовую валюту, конвертируя ПОКАЖДУЮ строку.
+  // Строки уже в базовой валюте берём напрямую (без конвертации): иначе round-trip
+  // base → USD (снапшот) → base (текущий курс) по разным курсам даёт расхождение с
+  // суммой самих позиций. Остальные валюты переводим через USD (снапшот amountUsd,
+  // иначе текущий курс), затем USD → базовая по текущему курсу.
+  // Возвращает null, если для конвертации нужны курсы, а они недоступны/валюта неизвестна.
   approxTotalInBase(
     rows: { amount: number; currency: string; amountUsd: number | null }[],
     baseCurrency: string,
     rates: Rates | null,
   ): number | null {
-    const usdSum = this.sumUsd(rows, rates);
-    if (usdSum === null) return null;
-    return this.usdToBase(usdSum, baseCurrency, rates);
+    let sum = 0;
+    for (const r of rows) {
+      if (r.currency === baseCurrency) {
+        sum += r.amount;
+        continue;
+      }
+      // Значение строки в USD: снапшот на момент создания, иначе пересчёт по текущему курсу.
+      const usd = r.amountUsd != null ? r.amountUsd : this.convert_(rates, r.amount, r.currency, BASE);
+      if (usd === null) return null;
+      // USD → базовая валюта по текущему курсу.
+      const inBase = baseCurrency === BASE ? usd : this.convert_(rates, usd, BASE, baseCurrency);
+      if (inBase === null) return null;
+      sum += inBase;
+    }
+    return Math.round(sum * 100) / 100;
+  }
+
+  // convertWithRates с защитой от null-курсов (нужны только для кросс-валютных строк).
+  private convert_(rates: Rates | null, amount: number, from: string, to: string): number | null {
+    if (from === to) return amount;
+    if (!rates) return null;
+    return this.convertWithRates(rates, amount, from, to);
   }
 }
