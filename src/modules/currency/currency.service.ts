@@ -3,6 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 // Курсы относительно USD: rates[X] = сколько единиц X за 1 USD.
 type Rates = Record<string, number>;
 
+// Направление потока для поправки на реальную конвертацию (см. approxTotalInBase).
+export type FlowKind = 'expense' | 'income' | 'none';
+
 const BASE = 'USD';
 const TTL_MS = 12 * 60 * 60 * 1000; // 12 часов
 const ENDPOINT = `https://open.er-api.com/v6/latest/${BASE}`;
@@ -12,6 +15,15 @@ export class CurrencyService {
   private readonly logger = new Logger(CurrencyService.name);
   private cache: { rates: Rates; fetchedAt: number } | null = null;
   private inflight: Promise<Rates | null> | null = null;
+
+  // Поправка на реальную стоимость конвертации валют (спред обменника + комиссии): mid-market
+  // курс в жизни недостижим. Доля, настраивается через env FX_SPREAD; по умолчанию 2%.
+  private readonly fxSpread = CurrencyService.parseSpread(process.env.FX_SPREAD);
+
+  private static parseSpread(raw: string | undefined): number {
+    const v = Number(raw);
+    return Number.isFinite(v) && v >= 0 && v < 1 ? v : 0.02;
+  }
 
   // Актуальные курсы с кэшем в памяти. null, если получить не удалось и кэша нет.
   async getRates(): Promise<Rates | null> {
@@ -98,7 +110,13 @@ export class CurrencyService {
     rows: { amount: number; currency: string; amountUsd: number | null }[],
     baseCurrency: string,
     rates: Rates | null,
+    direction: FlowKind = 'none',
   ): number | null {
+    // Поправка на реальную конвертацию применяется ТОЛЬКО к кросс-валютным строкам и
+    // направленно: расход реально стоил дороже (×1+спред), доход реально получен меньше
+    // (×1−спред). Строки в базовой валюте берём как есть.
+    const factor =
+      direction === 'expense' ? 1 + this.fxSpread : direction === 'income' ? 1 - this.fxSpread : 1;
     let sum = 0;
     for (const r of rows) {
       if (r.currency === baseCurrency) {
@@ -108,10 +126,10 @@ export class CurrencyService {
       // Значение строки в USD: снапшот на момент создания, иначе пересчёт по текущему курсу.
       const usd = r.amountUsd != null ? r.amountUsd : this.convert_(rates, r.amount, r.currency, BASE);
       if (usd === null) return null;
-      // USD → базовая валюта по текущему курсу.
+      // USD → базовая валюта по текущему курсу, с поправкой на спред.
       const inBase = baseCurrency === BASE ? usd : this.convert_(rates, usd, BASE, baseCurrency);
       if (inBase === null) return null;
-      sum += inBase;
+      sum += inBase * factor;
     }
     return Math.round(sum * 100) / 100;
   }

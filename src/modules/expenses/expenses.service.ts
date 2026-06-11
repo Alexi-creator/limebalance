@@ -53,7 +53,7 @@ export class ExpensesService {
 
     const baseCurrency = user?.currency ?? 'USD';
     const bucketKeys = buildBuckets(from, to, granularity);
-    return aggregateSummary(rows, bucketKeys, granularity, baseCurrency, rates, this.currency);
+    return aggregateSummary(rows, bucketKeys, granularity, baseCurrency, rates, this.currency, 'expense');
   }
 
   async findOne(id: string, userId: string) {
@@ -150,13 +150,13 @@ export class ExpensesService {
     const items = [...groupsByCategory.entries()].map(([catId, groups]) => ({
       category: nameMap.get(catId) ?? '—',
       // Итог по категории в базовой валюте (прибл. по курсу). null, если курсы недоступны.
-      total: this.currency.approxTotalInBase(groups, baseCurrency, rates),
+      total: this.currency.approxTotalInBase(groups, baseCurrency, rates, 'expense'),
     }));
 
     return {
       baseCurrency,
       // Общий итог — одной конвертацией по всем строкам (совпадает с ЛК).
-      total: this.currency.approxTotalInBase(allGroups, baseCurrency, rates),
+      total: this.currency.approxTotalInBase(allGroups, baseCurrency, rates, 'expense'),
       items,
     };
   }
@@ -217,13 +217,13 @@ export class ExpensesService {
     const categories = [...map.entries()].map(([category, group]) => ({
       category,
       // Итог по категории — пересчёт в базовую валюту одной операцией (как в ЛК).
-      total: this.currency.approxTotalInBase(group.rows, baseCurrency, rates),
+      total: this.currency.approxTotalInBase(group.rows, baseCurrency, rates, 'expense'),
       items: group.items,
     }));
 
     return {
       baseCurrency,
-      total: this.currency.approxTotalInBase(allRows, baseCurrency, rates),
+      total: this.currency.approxTotalInBase(allRows, baseCurrency, rates, 'expense'),
       categories,
     };
   }

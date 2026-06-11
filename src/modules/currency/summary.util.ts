@@ -1,4 +1,4 @@
-import type { CurrencyService } from './currency.service';
+import type { CurrencyService, FlowKind } from './currency.service';
 
 type Rates = Record<string, number>;
 
@@ -79,6 +79,7 @@ export function aggregateSummary(
   baseCurrency: string,
   rates: Rates | null,
   currency: CurrencyService,
+  direction: FlowKind = 'none',
 ) {
   type Acc = { amount: number; count: number; usdSum: number; hasUsd: boolean };
   // bucket -> currency -> накопитель
@@ -122,14 +123,14 @@ export function aggregateSummary(
     return {
       bucket,
       totals: groups.map((g) => ({ currency: g.currency, total: g.amount, count: g.count })),
-      approxTotal: currency.approxTotalInBase(groups, baseCurrency, rates),
+      approxTotal: currency.approxTotalInBase(groups, baseCurrency, rates, direction),
     };
   });
 
   return {
     baseCurrency,
     granularity,
-    total: currency.approxTotalInBase(allGroups, baseCurrency, rates),
+    total: currency.approxTotalInBase(allGroups, baseCurrency, rates, direction),
     buckets,
   };
 }

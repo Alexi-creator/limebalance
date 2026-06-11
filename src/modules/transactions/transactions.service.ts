@@ -108,8 +108,8 @@ export class TransactionsService {
     ]);
 
     const baseCurrency = user?.currency ?? 'USD';
-    const income = this.currency.approxTotalInBase(incomeGroups, baseCurrency, rates);
-    const expense = this.currency.approxTotalInBase(expenseGroups, baseCurrency, rates);
+    const income = this.currency.approxTotalInBase(incomeGroups, baseCurrency, rates, 'income');
+    const expense = this.currency.approxTotalInBase(expenseGroups, baseCurrency, rates, 'expense');
     // net известен только если обе суммы посчитаны (курсы доступны).
     const net =
       income === null || expense === null ? null : Math.round((income - expense) * 100) / 100;
@@ -150,16 +150,24 @@ export class TransactionsService {
       }));
 
     const baseCurrency = user?.currency ?? 'USD';
-    const incomeUsd = this.currency.sumUsd(toRows(incomeGroups), rates);
-    const expenseUsd = this.currency.sumUsd(toRows(expenseGroups), rates);
+    const incomeRows = toRows(incomeGroups);
+    const expenseRows = toRows(expenseGroups);
 
-    // balanceUsd известен только если обе суммы посчитаны (курсы доступны).
+    // В USD и в базовой валюте — с поправкой на спред для кросс-валютных строк
+    // (доход ×1−спред, расход ×1+спред); одновалютные берём как есть.
+    const incomeUsd = this.currency.approxTotalInBase(incomeRows, 'USD', rates, 'income');
+    const expenseUsd = this.currency.approxTotalInBase(expenseRows, 'USD', rates, 'expense');
     const balanceUsd =
       incomeUsd === null || expenseUsd === null
         ? null
         : Math.round((incomeUsd - expenseUsd) * 100) / 100;
+
+    const incomeBase = this.currency.approxTotalInBase(incomeRows, baseCurrency, rates, 'income');
+    const expenseBase = this.currency.approxTotalInBase(expenseRows, baseCurrency, rates, 'expense');
     const balance =
-      balanceUsd === null ? null : this.currency.usdToBase(balanceUsd, baseCurrency, rates);
+      incomeBase === null || expenseBase === null
+        ? null
+        : Math.round((incomeBase - expenseBase) * 100) / 100;
 
     return { baseCurrency, balanceUsd, balance };
   }
