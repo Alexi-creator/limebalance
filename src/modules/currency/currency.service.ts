@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-// Курсы относительно USD: rates[X] = сколько единиц X за 1 USD.
+// Rates relative to USD: rates[X] = how many units of X per 1 USD.
 type Rates = Record<string, number>;
 
-// Направление потока для поправки на реальную конвертацию (см. approxTotalInBase).
+// Flow direction for the real-conversion adjustment (see approxTotalInBase).
 export type FlowKind = 'expense' | 'income' | 'none';
 
 const BASE = 'USD';
-const TTL_MS = 12 * 60 * 60 * 1000; // 12 часов
+const TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 const ENDPOINT = `https://open.er-api.com/v6/latest/${BASE}`;
 
 @Injectable()
@@ -16,8 +16,8 @@ export class CurrencyService {
   private cache: { rates: Rates; fetchedAt: number } | null = null;
   private inflight: Promise<Rates | null> | null = null;
 
-  // Поправка на реальную стоимость конвертации валют (спред обменника + комиссии): mid-market
-  // курс в жизни недостижим. Доля, настраивается через env FX_SPREAD; по умолчанию 2%.
+  // Adjustment for the real cost of converting currencies (exchange spread + fees): the
+  // mid-market rate is unreachable in practice. A fraction, configurable via env FX_SPREAD; defaults to 2%.
   private readonly fxSpread = CurrencyService.parseSpread(process.env.FX_SPREAD);
 
   private static parseSpread(raw: string | undefined): number {
@@ -25,12 +25,12 @@ export class CurrencyService {
     return Number.isFinite(v) && v >= 0 && v < 1 ? v : 0.02;
   }
 
-  // Актуальные курсы с кэшем в памяти. null, если получить не удалось и кэша нет.
+  // Current rates with an in-memory cache. null if the fetch failed and there is no cache.
   async getRates(): Promise<Rates | null> {
     if (this.cache && Date.now() - this.cache.fetchedAt < TTL_MS) {
       return this.cache.rates;
     }
-    // Не плодим параллельные запросы к API.
+    // Avoid spawning parallel requests to the API.
     if (this.inflight) return this.inflight;
     this.inflight = this.fetchRates().finally(() => {
       this.inflight = null;
@@ -43,18 +43,17 @@ export class CurrencyService {
       const res = await fetch(ENDPOINT);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { result?: string; rates?: Rates };
-      if (data.result !== 'success' || !data.rates)
-        throw new Error('Некорректный ответ API курсов');
+      if (data.result !== 'success' || !data.rates) throw new Error('Invalid rates API response');
       this.cache = { rates: data.rates, fetchedAt: Date.now() };
       return data.rates;
     } catch (err) {
-      this.logger.warn(`Не удалось получить курсы валют: ${err}`);
-      // Отдаём устаревший кэш, если он есть, иначе null.
+      this.logger.warn(`Failed to fetch currency rates: ${err}`);
+      // Return the stale cache if present, otherwise null.
       return this.cache?.rates ?? null;
     }
   }
 
-  // Чистая конвертация по уже полученным курсам. null, если валюта неизвестна.
+  // Pure conversion using already-fetched rates. null if the currency is unknown.
   convertWithRates(rates: Rates, amount: number, from: string, to: string): number | null {
     if (from === to) return amount;
     const fromRate = from === BASE ? 1 : rates[from];
@@ -63,7 +62,7 @@ export class CurrencyService {
     return (amount / fromRate) * toRate;
   }
 
-  // Разовая конвертация одной суммы. null, если курсы недоступны или валюта неизвестна.
+  // One-off conversion of a single amount. null if rates are unavailable or the currency is unknown.
   async convert(amount: number, from: string, to: string): Promise<number | null> {
     if (from === to) return amount;
     const rates = await this.getRates();
@@ -71,8 +70,8 @@ export class CurrencyService {
     return this.convertWithRates(rates, amount, from, to);
   }
 
-  // Сумма строк в USD через снапшот (amountUsd) с фолбэком по текущему курсу для строк
-  // без снапшота. null, если курсы недоступны или встретилась неизвестная валюта.
+  // Sum of rows in USD via the snapshot (amountUsd), falling back to the current rate for rows
+  // without a snapshot. null if rates are unavailable or an unknown currency was encountered.
   sumUsd(
     rows: { amount: number; currency: string; amountUsd: number | null }[],
     rates: Rates | null,
@@ -92,7 +91,7 @@ export class CurrencyService {
     return usdSum;
   }
 
-  // Перевод USD-суммы в базовую валюту по текущему курсу. Округляет до 2 знаков (оценка).
+  // Convert a USD amount into the base currency at the current rate. Rounds to 2 decimals (an estimate).
   usdToBase(usd: number, baseCurrency: string, rates: Rates | null): number | null {
     if (!rates) return null;
     const inBase = this.convertWithRates(rates, usd, BASE, baseCurrency);
@@ -100,21 +99,21 @@ export class CurrencyService {
     return Math.round(inBase * 100) / 100;
   }
 
-  // Сводит набор сумм в базовую валюту, конвертируя ПОКАЖДУЮ строку.
-  // Строки уже в базовой валюте берём напрямую (без конвертации): иначе round-trip
-  // base → USD (снапшот) → base (текущий курс) по разным курсам даёт расхождение с
-  // суммой самих позиций. Остальные валюты переводим через USD (снапшот amountUsd,
-  // иначе текущий курс), затем USD → базовая по текущему курсу.
-  // Возвращает null, если для конвертации нужны курсы, а они недоступны/валюта неизвестна.
+  // Aggregates a set of amounts into the base currency, converting EACH row individually.
+  // Rows already in the base currency are taken directly (no conversion): otherwise the round-trip
+  // base → USD (snapshot) → base (current rate) at different rates diverges from the sum of the
+  // items themselves. Other currencies are converted via USD (amountUsd snapshot, otherwise the
+  // current rate), then USD → base at the current rate.
+  // Returns null if conversion needs rates and they are unavailable / the currency is unknown.
   approxTotalInBase(
     rows: { amount: number; currency: string; amountUsd: number | null }[],
     baseCurrency: string,
     rates: Rates | null,
     direction: FlowKind = 'none',
   ): number | null {
-    // Поправка на реальную конвертацию применяется ТОЛЬКО к кросс-валютным строкам и
-    // направленно: расход реально стоил дороже (×1+спред), доход реально получен меньше
-    // (×1−спред). Строки в базовой валюте берём как есть.
+    // The real-conversion adjustment is applied ONLY to cross-currency rows and
+    // directionally: an expense really cost more (×1+spread), income was really received less
+    // (×1−spread). Rows in the base currency are taken as-is.
     const factor =
       direction === 'expense' ? 1 + this.fxSpread : direction === 'income' ? 1 - this.fxSpread : 1;
     let sum = 0;
@@ -123,10 +122,11 @@ export class CurrencyService {
         sum += r.amount;
         continue;
       }
-      // Значение строки в USD: снапшот на момент создания, иначе пересчёт по текущему курсу.
-      const usd = r.amountUsd != null ? r.amountUsd : this.convert_(rates, r.amount, r.currency, BASE);
+      // Row value in USD: the snapshot at creation time, otherwise recomputed at the current rate.
+      const usd =
+        r.amountUsd != null ? r.amountUsd : this.convert_(rates, r.amount, r.currency, BASE);
       if (usd === null) return null;
-      // USD → базовая валюта по текущему курсу, с поправкой на спред.
+      // USD → base currency at the current rate, with the spread adjustment.
       const inBase = baseCurrency === BASE ? usd : this.convert_(rates, usd, BASE, baseCurrency);
       if (inBase === null) return null;
       sum += inBase * factor;
@@ -134,7 +134,7 @@ export class CurrencyService {
     return Math.round(sum * 100) / 100;
   }
 
-  // convertWithRates с защитой от null-курсов (нужны только для кросс-валютных строк).
+  // convertWithRates guarded against null rates (needed only for cross-currency rows).
   private convert_(rates: Rates | null, amount: number, from: string, to: string): number | null {
     if (from === to) return amount;
     if (!rates) return null;

@@ -17,10 +17,10 @@ export class UsersController {
 
   @Post()
   @ApiOperation({
-    summary: 'Создать пользователя (ADMIN)',
+    summary: 'Create a user (ADMIN)',
     description:
-      'Административный CRUD по пользователям — весь контроллер доступен только роли ADMIN. ' +
-      'Создаёт пользователя напрямую, в обход обычной регистрации. Для своего профиля пользователи используют /auth/* .',
+      'Administrative CRUD over users — the whole controller is available only to the ADMIN role. ' +
+      'Creates a user directly, bypassing normal registration. For their own profile, users use /auth/* .',
   })
   @ApiCreatedResponse({ type: UserResponseDto })
   create(@Body() dto: CreateUserDto) {
@@ -29,8 +29,8 @@ export class UsersController {
 
   @Get()
   @ApiOperation({
-    summary: 'Список всех пользователей (ADMIN)',
-    description: 'Возвращает всех пользователей системы. Только для роли ADMIN.',
+    summary: 'List all users (ADMIN)',
+    description: 'Returns all users in the system. ADMIN role only.',
   })
   @ApiOkResponse({ type: [UserResponseDto] })
   findAll() {
@@ -39,9 +39,8 @@ export class UsersController {
 
   @Get(':id')
   @ApiOperation({
-    summary: 'Получить пользователя по id (ADMIN)',
-    description:
-      'Возвращает любого пользователя по id. Только для роли ADMIN. Несуществующий id → 404.',
+    summary: 'Get a user by id (ADMIN)',
+    description: 'Returns any user by id. ADMIN role only. A non-existent id → 404.',
   })
   @ApiOkResponse({ type: UserResponseDto })
   findOne(@Param('id') id: string) {
@@ -50,9 +49,9 @@ export class UsersController {
 
   @Patch(':id')
   @ApiOperation({
-    summary: 'Обновить пользователя (ADMIN)',
+    summary: 'Update a user (ADMIN)',
     description:
-      'Частично обновляет любого пользователя по id, включая поля, недоступные через /auth/me (например role). Только для ADMIN.',
+      'Partially updates any user by id, including fields not available via /auth/me (e.g. role). ADMIN only.',
   })
   @ApiOkResponse({ type: UserResponseDto })
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
@@ -61,11 +60,11 @@ export class UsersController {
 
   @Delete(':id')
   @ApiOperation({
-    summary: 'Удалить пользователя (ADMIN)',
+    summary: 'Delete a user (ADMIN)',
     description:
-      'Удаляет пользователя по id. Внимание: каскадно удаляются все его данные — траты, доходы, категории, токены и т.д. Только для ADMIN.',
+      'Deletes a user by id. Warning: all their data is cascade-deleted — expenses, income, categories, tokens, etc. ADMIN only.',
   })
-  @ApiOkResponse({ type: UserResponseDto, description: 'Удалённый пользователь' })
+  @ApiOkResponse({ type: UserResponseDto, description: 'The deleted user' })
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }

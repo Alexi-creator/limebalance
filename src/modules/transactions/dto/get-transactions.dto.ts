@@ -32,7 +32,7 @@ export class GetTransactionsDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ example: 'THB', description: 'Фильтр по валюте (ISO 4217)' })
+  @ApiPropertyOptional({ example: 'THB', description: 'Filter by currency (ISO 4217)' })
   @IsOptional()
   @IsString()
   @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO 4217 code' })

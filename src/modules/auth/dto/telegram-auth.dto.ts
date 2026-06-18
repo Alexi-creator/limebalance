@@ -26,18 +26,18 @@ export class TelegramAuthDto {
   @IsOptional()
   photo_url?: string;
 
-  @ApiProperty({ description: 'Unix timestamp выдачи токена' })
+  @ApiProperty({ description: 'Unix timestamp when the token was issued' })
   @IsNumber()
   auth_date: number;
 
-  @ApiProperty({ description: 'HMAC-SHA256 подпись данных' })
+  @ApiProperty({ description: 'HMAC-SHA256 signature of the data' })
   @IsString()
   hash: string;
 
   @ApiPropertyOptional({
     example: 'Asia/Bangkok',
     description:
-      'IANA таймзона браузера — для дефолта валюты при первой регистрации. НЕ входит в подпись Telegram.',
+      'Browser IANA timezone — for the default currency on first registration. NOT part of the Telegram signature.',
   })
   @IsOptional()
   @IsString()

@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
 import { GetTransactionsDto, TransactionType } from './dto/get-transactions.dto';
 
-/** Сумма по одной валюте для пересчёта в базовую (см. CurrencyService.approxTotalInBase). */
+/** Amount for a single currency, for converting to the base (see CurrencyService.approxTotalInBase). */
 interface CurrencyGroup {
   currency: string;
   amount: number;
@@ -78,7 +78,7 @@ export class TransactionsService {
           ? incomePartQuery
           : Prisma.sql`${expensePart} UNION ALL ${incomePartQuery}`;
 
-    // Денежный итог считаем по всей выборке (с учётом фильтров), а не по странице.
+    // The monetary total is computed over the whole result set (with filters), not the page.
     const wantExpense = type !== TransactionType.INCOME;
     const wantIncome = type !== TransactionType.EXPENSE;
 
@@ -110,7 +110,7 @@ export class TransactionsService {
     const baseCurrency = user?.currency ?? 'USD';
     const income = this.currency.approxTotalInBase(incomeGroups, baseCurrency, rates, 'income');
     const expense = this.currency.approxTotalInBase(expenseGroups, baseCurrency, rates, 'expense');
-    // net известен только если обе суммы посчитаны (курсы доступны).
+    // net is known only if both totals were computed (rates available).
     const net =
       income === null || expense === null ? null : Math.round((income - expense) * 100) / 100;
 
@@ -124,8 +124,8 @@ export class TransactionsService {
     };
   }
 
-  // Общий баланс за всё время: доходы − расходы. Считаем через USD-снапшот (amountUsd)
-  // и отдаём как в USD, так и в базовой валюте пользователя.
+  // Overall all-time balance: income − expenses. Computed via the USD snapshot (amountUsd)
+  // and returned both in USD and in the user's base currency.
   async getBalance(userId: string) {
     const [incomeGroups, expenseGroups, user, rates] = await Promise.all([
       this.prisma.income.groupBy({
@@ -153,8 +153,8 @@ export class TransactionsService {
     const incomeRows = toRows(incomeGroups);
     const expenseRows = toRows(expenseGroups);
 
-    // В USD и в базовой валюте — с поправкой на спред для кросс-валютных строк
-    // (доход ×1−спред, расход ×1+спред); одновалютные берём как есть.
+    // In USD and in the base currency — with a spread adjustment for cross-currency rows
+    // (income ×1−spread, expense ×1+spread); single-currency rows are taken as-is.
     const incomeUsd = this.currency.approxTotalInBase(incomeRows, 'USD', rates, 'income');
     const expenseUsd = this.currency.approxTotalInBase(expenseRows, 'USD', rates, 'expense');
     const balanceUsd =
@@ -163,7 +163,12 @@ export class TransactionsService {
         : Math.round((incomeUsd - expenseUsd) * 100) / 100;
 
     const incomeBase = this.currency.approxTotalInBase(incomeRows, baseCurrency, rates, 'income');
-    const expenseBase = this.currency.approxTotalInBase(expenseRows, baseCurrency, rates, 'expense');
+    const expenseBase = this.currency.approxTotalInBase(
+      expenseRows,
+      baseCurrency,
+      rates,
+      'expense',
+    );
     const balance =
       incomeBase === null || expenseBase === null
         ? null
@@ -196,7 +201,7 @@ export class TransactionsService {
       conditions.push(Prisma.sql`${a}.currency = ${currency}`);
     }
 
-    // date — колонка DATE (без времени), границы сравниваем по дню (инклюзивно с обеих сторон).
+    // date — a DATE column (no time), compare bounds by day (inclusive on both sides).
     if (from) {
       conditions.push(Prisma.sql`${a}.date >= ${new Date(from)}::date`);
     }

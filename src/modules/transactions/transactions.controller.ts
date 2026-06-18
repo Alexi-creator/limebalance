@@ -13,13 +13,13 @@ export class TransactionsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Лента транзакций (доходы + расходы) с пагинацией',
+    summary: 'Transactions feed (income + expenses) with pagination',
     description:
-      'Единый постраничный список и доходов, и расходов пользователя в одной ленте, отсортированный по дате. ' +
-      'Это основной эндпоинт для экрана истории операций. Фильтры (все опциональны): ' +
-      'type (income|expense) — оставить только один вид; categoryId — по категории; ' +
-      'search — поиск по комментарию; currency — по валюте; from/to — по диапазону дат. ' +
-      'Пагинация: page (с 1) и limit (по умолчанию 20). В ответе — записи текущей страницы плюс мета (total и т.п.).',
+      "A unified paginated list of both the user's income and expenses in a single feed, sorted by date. " +
+      'This is the main endpoint for the operation history screen. Filters (all optional): ' +
+      'type (income|expense) — keep only one kind; categoryId — by category; ' +
+      'search — search in the comment; currency — by currency; from/to — by date range. ' +
+      'Pagination: page (from 1) and limit (default 20). The response is the current page records plus meta (total, etc.).',
   })
   @ApiOkResponse({ type: PaginatedTransactionsDto })
   findAll(@CurrentUser() user: { id: string }, @Query() dto: GetTransactionsDto) {
@@ -28,11 +28,11 @@ export class TransactionsController {
 
   @Get('balance')
   @ApiOperation({
-    summary: 'Общий баланс за всё время',
+    summary: 'Overall all-time balance',
     description:
-      'Считает суммарный баланс пользователя (все доходы минус все расходы) за всю историю. ' +
-      'Поскольку операции могут быть в разных валютах, суммы приводятся к общей: возвращается значение в USD ' +
-      'и в базовой валюте пользователя (из профиля). Удобно для виджета «текущий баланс» на дашборде.',
+      "Computes the user's total balance (all income minus all expenses) over the entire history. " +
+      'Since operations can be in different currencies, the amounts are brought to a common one: the value is returned in USD ' +
+      'and in the user\'s base currency (from the profile). Handy for a "current balance" widget on the dashboard.',
   })
   @ApiOkResponse({ type: BalanceResponseDto })
   balance(@CurrentUser() user: { id: string }) {

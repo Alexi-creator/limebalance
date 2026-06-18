@@ -11,7 +11,7 @@ export class PlanResponseDto {
   @ApiProperty({
     example: 10,
     nullable: true,
-    description: 'Лимит категорий или null (без лимита)',
+    description: 'Category limit or null (no limit)',
   })
   maxCategories: number | null;
 
@@ -21,7 +21,7 @@ export class PlanResponseDto {
   @ApiProperty({ example: 100, nullable: true })
   maxIncomes: number | null;
 
-  @ApiProperty({ type: String, example: '0.00', description: 'Цена (Decimal, строкой)' })
+  @ApiProperty({ type: String, example: '0.00', description: 'Price (Decimal, as a string)' })
   price: string;
 }
 
@@ -34,7 +34,7 @@ export class SubscriptionResponseDto {
     format: 'date-time',
     nullable: true,
     example: '2027-01-01T00:00:00.000Z',
-    description: 'Дата окончания подписки или null (бессрочно)',
+    description: 'Subscription end date or null (perpetual)',
   })
   expiresAt: Date | null;
 }
@@ -50,26 +50,26 @@ export class ProfileResponseDto {
     type: String,
     nullable: true,
     example: '123456789',
-    description: 'Telegram ID строкой (BigInt) или null',
+    description: 'Telegram ID as a string (BigInt) or null',
   })
   telegramId: string | null;
 
-  @ApiProperty({ example: 'THB', description: 'ISO 4217 код валюты по умолчанию' })
+  @ApiProperty({ example: 'THB', description: 'Default ISO 4217 currency code' })
   currency: string;
 
-  @ApiProperty({ example: 'Asia/Bangkok', description: 'IANA таймзона пользователя' })
+  @ApiProperty({ example: 'Asia/Bangkok', description: "User's IANA timezone" })
   timezone: string;
 
   @ApiProperty({
     example: true,
-    description: 'Задан ли пароль (false для входа только через Google/Telegram)',
+    description: 'Whether a password is set (false for Google/Telegram-only sign-in)',
   })
   hasPassword: boolean;
 
   @ApiPropertyOptional({
     type: SubscriptionResponseDto,
     nullable: true,
-    description: 'Подписка или null, если нет',
+    description: 'Subscription, or null if none',
   })
   subscription: SubscriptionResponseDto | null;
 }

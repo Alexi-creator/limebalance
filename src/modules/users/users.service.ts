@@ -5,7 +5,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
-// Поля, безопасные для отдачи наружу: без password и без BigInt telegramId
+// Fields safe to expose externally: no password and no BigInt telegramId
 const PUBLIC_USER_SELECT = {
   id: true,
   email: true,
@@ -16,10 +16,10 @@ const PUBLIC_USER_SELECT = {
   createdAt: true,
 } satisfies Prisma.UserSelect;
 
-// Дефолты, проставляемые ТОЛЬКО при создании нового юзера (соц-вход / регистрация).
+// Defaults applied ONLY when creating a new user (social login / registration).
 export type UserDefaults = { currency?: string; timezone?: string };
 
-// Оставляет только заданные поля, чтобы пустые не перетирали схемные @default.
+// Keeps only the provided fields, so empty ones don't overwrite the schema @default.
 function pickDefaults(defaults?: UserDefaults): UserDefaults {
   return {
     ...(defaults?.currency ? { currency: defaults.currency } : {}),
@@ -94,7 +94,7 @@ export class UsersService {
     const byGoogleId = await this.prisma.user.findUnique({ where: { googleId } });
     if (byGoogleId) return { user: byGoogleId, isNew: false };
 
-    // Аккаунт с такой почтой уже есть (например, регистрировался паролем) — привязываем Google.
+    // An account with this email already exists (e.g. registered with a password) — link Google.
     const byEmail = await this.prisma.user.findUnique({ where: { email } });
     if (byEmail) {
       const user = await this.prisma.user.update({

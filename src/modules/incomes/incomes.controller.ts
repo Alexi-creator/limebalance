@@ -21,28 +21,28 @@ export class IncomesController {
 
   @Post()
   @ApiOperation({
-    summary: 'Создать доход',
+    summary: 'Create an income entry',
     description:
-      'Добавляет одну запись о доходе текущему пользователю: сумма, валюта, категория (по categoryId), ' +
-      'дата операции (civil date — день без времени) и опц. комментарий. Категория должна принадлежать этому же пользователю. ' +
-      'В ответе сам доход без вложенного объекта category (только categoryId).',
+      'Adds a single income record for the current user: amount, currency, category (by categoryId), ' +
+      'operation date (a civil date — a day without time) and an optional comment. The category must belong to the same user. ' +
+      'The response is the income itself without a nested category object (only categoryId).',
   })
-  @ApiCreatedResponse({ type: IncomeResponseDto, description: 'Без вложенной category' })
+  @ApiCreatedResponse({ type: IncomeResponseDto, description: 'Without a nested category' })
   create(@CurrentUser() user: { id: string }, @Body() dto: CreateIncomeDto) {
     return this.incomesService.create(user.id, dto);
   }
 
   @Get()
   @ApiOperation({
-    summary: 'Список доходов пользователя',
+    summary: "User's income list",
     description:
-      'Возвращает все доходы текущего пользователя, опционально отфильтрованные по диапазону дат операции. ' +
-      'from/to — границы периода (включительно), обе опциональны: можно задать только from, только to или ничего (тогда всё). ' +
-      'Каждая запись приходит с вложенным объектом category. Для постраничного вывода по доходам+расходам сразу см. GET /transactions.',
+      "Returns all of the current user's income entries, optionally filtered by an operation date range. " +
+      'from/to are the period bounds (inclusive), both optional: you can set only from, only to, or neither (then everything). ' +
+      'Each record comes with a nested category object. For a paginated income+expense feed see GET /transactions.',
   })
   @ApiQuery({ name: 'from', required: false, example: '2026-01-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-12-31' })
-  @ApiOkResponse({ type: [IncomeResponseDto], description: 'С вложенной category' })
+  @ApiOkResponse({ type: [IncomeResponseDto], description: 'With a nested category' })
   findAll(
     @CurrentUser() user: { id: string },
     @Query('from') from?: string,
@@ -57,11 +57,11 @@ export class IncomesController {
 
   @Get('summary')
   @ApiOperation({
-    summary: 'Сводка доходов за период',
+    summary: 'Income summary for a period',
     description:
-      'Агрегирует доходы за период в бакеты для графиков: суммы группируются по дню, неделе или месяцу (granularity). ' +
-      'from/to задают период, granularity — шаг разбивки (day|week|month). Если ничего не передать — берётся текущий месяц по дням. ' +
-      'Используйте для построения столбчатых/линейных диаграмм динамики доходов.',
+      'Aggregates income over a period into buckets for charts: amounts grouped by day, week or month (granularity). ' +
+      'from/to set the period, granularity is the bucket step (day|week|month). If nothing is passed — the current month by days is used. ' +
+      'Use it to build bar/line charts of income dynamics.',
   })
   @ApiQuery({ name: 'from', required: false, example: '2026-06-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-06-30' })
@@ -78,22 +78,22 @@ export class IncomesController {
 
   @Get(':id')
   @ApiOperation({
-    summary: 'Получить доход по id',
+    summary: 'Get an income entry by id',
     description:
-      'Возвращает один доход по его id с вложенной category. Доступны только свои записи: ' +
-      'чужой или несуществующий id → 404.',
+      'Returns one income entry by its id with a nested category. Only your own records are accessible: ' +
+      'a foreign or non-existent id → 404.',
   })
-  @ApiOkResponse({ type: IncomeResponseDto, description: 'С вложенной category' })
+  @ApiOkResponse({ type: IncomeResponseDto, description: 'With a nested category' })
   findOne(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.incomesService.findOne(id, user.id);
   }
 
   @Patch(':id')
   @ApiOperation({
-    summary: 'Обновить доход',
+    summary: 'Update an income entry',
     description:
-      'Частично обновляет свой доход по id: можно менять сумму, валюту, категорию, дату или комментарий — ' +
-      'присылайте только изменяемые поля. Новый categoryId должен принадлежать пользователю. Чужой id → 404.',
+      'Partially updates your income entry by id: you can change amount, currency, category, date or comment — ' +
+      'send only the fields being changed. A new categoryId must belong to the user. A foreign id → 404.',
   })
   @ApiOkResponse({ type: IncomeResponseDto })
   update(
@@ -106,15 +106,15 @@ export class IncomesController {
 
   @Delete()
   @ApiOperation({
-    summary: 'Массовое удаление доходов',
+    summary: 'Bulk delete income entries',
     description:
-      'Удаляет сразу несколько своих доходов — в теле передаётся массив ids. Удаляются только записи, ' +
-      'принадлежащие пользователю (чужие id просто игнорируются). В ответе — количество фактически удалённых записей. ' +
-      'Для удаления одного дохода есть DELETE /incomes/:id.',
+      'Deletes several of your income entries at once — the body carries an array of ids. Only records ' +
+      'belonging to the user are deleted (foreign ids are simply ignored). The response is the number of records actually deleted. ' +
+      'To delete a single income entry use DELETE /incomes/:id.',
   })
   @ApiOkResponse({
     schema: { example: { deleted: 2 } },
-    description: 'Количество удалённых записей',
+    description: 'Number of deleted records',
   })
   removeMany(@CurrentUser() user: { id: string }, @Body() dto: BulkDeleteIncomesDto) {
     return this.incomesService.removeMany(user.id, dto.ids);
@@ -122,12 +122,12 @@ export class IncomesController {
 
   @Delete(':id')
   @ApiOperation({
-    summary: 'Удалить доход',
+    summary: 'Delete an income entry',
     description:
-      'Удаляет один свой доход по id. Чужой или несуществующий id → 404. ' +
-      'В ответе — удалённая запись (без вложенной category).',
+      'Deletes one of your income entries by id. A foreign or non-existent id → 404. ' +
+      'The response is the deleted record (without a nested category).',
   })
-  @ApiOkResponse({ type: IncomeResponseDto, description: 'Удалённая запись, без category' })
+  @ApiOkResponse({ type: IncomeResponseDto, description: 'The deleted record, without a category' })
   remove(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.incomesService.remove(id, user.id);
   }

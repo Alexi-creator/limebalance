@@ -2,13 +2,13 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, Matches } from 'class-validator';
 
 export class GoogleAuthDto {
-  @ApiProperty({ description: 'Google ID token из Sign In With Google' })
+  @ApiProperty({ description: 'Google ID token from Sign In With Google' })
   @IsString()
   credential: string;
 
   @ApiPropertyOptional({
     example: 'Asia/Bangkok',
-    description: 'IANA таймзона браузера — для дефолта валюты при первой регистрации',
+    description: 'Browser IANA timezone — for the default currency on first registration',
   })
   @IsOptional()
   @IsString()

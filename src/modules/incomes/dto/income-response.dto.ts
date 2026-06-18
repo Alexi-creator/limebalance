@@ -6,7 +6,7 @@ export class IncomeResponseDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440020' })
   id: string;
 
-  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'ID владельца' })
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'Owner ID' })
   userId: string;
 
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440001' })
@@ -15,21 +15,21 @@ export class IncomeResponseDto {
   @ApiProperty({
     type: String,
     example: '50000.00',
-    description: 'Сумма (Decimal, в JSON приходит строкой)',
+    description: 'Amount (Decimal, comes as a string in JSON)',
   })
   amount: string;
 
-  @ApiProperty({ example: 'THB', description: 'ISO 4217 код валюты записи' })
+  @ApiProperty({ example: 'THB', description: "Record's ISO 4217 currency code" })
   currency: string;
 
-  @ApiProperty({ example: 'Зарплата за май' })
+  @ApiProperty({ example: 'May salary' })
   description: string;
 
   @ApiProperty({
     type: String,
     format: 'date-time',
     example: '2026-06-01T00:30:00.000Z',
-    description: 'Локальное время операции (стенные часы пользователя; Z — артефакт, не UTC)',
+    description: "Operation local time (the user's wall clock; Z is an artifact, not UTC)",
   })
   date: Date;
 
@@ -38,29 +38,30 @@ export class IncomeResponseDto {
 
   @ApiPropertyOptional({
     type: IncomeCategoryResponseDto,
-    description: 'Категория (присутствует в GET-ответах; отсутствует в ответах POST/DELETE)',
+    description: 'Category (present in GET responses; absent in POST/DELETE responses)',
   })
   category?: IncomeCategoryResponseDto;
 }
 
 export class IncomeSummaryResponseDto {
-  @ApiProperty({ example: 'RUB', description: 'Базовая валюта пользователя для total/approxTotal' })
+  @ApiProperty({ example: 'RUB', description: "User's base currency for total/approxTotal" })
   baseCurrency: string;
 
   @ApiProperty({
     enum: ['day', 'week', 'month'],
     example: 'month',
-    description: 'Гранулярность бакетов',
+    description: 'Bucket granularity',
   })
   granularity: 'day' | 'week' | 'month';
 
   @ApiProperty({
     example: 90480,
     nullable: true,
-    description: 'Прибл. итог за весь период в базовой валюте. null, если курсы недоступны.',
+    description:
+      'Approx. total for the whole period in the base currency. null if rates are unavailable.',
   })
   total: number | null;
 
-  @ApiProperty({ type: [BucketSummaryDto], description: 'Разбивка по бакетам (день/неделя/месяц)' })
+  @ApiProperty({ type: [BucketSummaryDto], description: 'Breakdown by buckets (day/week/month)' })
   buckets: BucketSummaryDto[];
 }

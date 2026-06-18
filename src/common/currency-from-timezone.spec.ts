@@ -1,7 +1,7 @@
 import { currencyFromTimezone } from './currency-from-timezone';
 
 describe('currencyFromTimezone', () => {
-  it('выводит валюту страны таймзоны', () => {
+  it('derives the currency of the timezone country', () => {
     expect(currencyFromTimezone('Asia/Bangkok')).toBe('THB');
     expect(currencyFromTimezone('Europe/Moscow')).toBe('RUB');
     expect(currencyFromTimezone('America/New_York')).toBe('USD');
@@ -9,7 +9,7 @@ describe('currencyFromTimezone', () => {
     expect(currencyFromTimezone('Asia/Tokyo')).toBe('JPY');
   });
 
-  it('USD-фолбэк для пустой/неизвестной таймзоны', () => {
+  it('falls back to USD for an empty/unknown timezone', () => {
     expect(currencyFromTimezone()).toBe('USD');
     expect(currencyFromTimezone(undefined)).toBe('USD');
     expect(currencyFromTimezone(null)).toBe('USD');

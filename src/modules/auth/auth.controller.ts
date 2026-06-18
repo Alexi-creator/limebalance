@@ -47,17 +47,17 @@ export class AuthController {
   @Post('register')
   @Public()
   @ApiOperation({
-    summary: 'Регистрация по email и паролю',
+    summary: 'Register with email and password',
     description:
-      'Создаёт нового пользователя по email + паролю и сразу логинит его. ' +
-      'Access- и refresh-токены возвращаются не в теле, а ставятся в httpOnly cookie — ' +
-      'фронту достаточно сделать запрос с credentials: "include", вручную токены хранить не нужно. ' +
-      'Имя не запрашивается (по умолчанию пустая строка), валюта выводится из timezone или USD. ' +
-      'Если email уже занят — 409.',
+      'Creates a new user from email + password and logs them in immediately. ' +
+      'Access and refresh tokens are not returned in the body but set as httpOnly cookies — ' +
+      'the frontend only needs to send requests with credentials: "include", no manual token storage. ' +
+      'The name is not requested (defaults to an empty string), the currency is derived from the timezone or USD. ' +
+      'If the email is already taken — 409.',
   })
   @ApiCreatedResponse({
     type: SuccessResponseDto,
-    description: 'Токены ставятся в httpOnly cookie',
+    description: 'Tokens are set as httpOnly cookies',
   })
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: FastifyReply) {
     const tokens = await this.authService.register(dto);
@@ -69,13 +69,13 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Вход по email и паролю',
+    summary: 'Log in with email and password',
     description:
-      'Проверяет пару email + пароль и при успехе ставит access/refresh-токены в httpOnly cookie. ' +
-      'Неверные данные или вход в аккаунт без пароля (зарегистрированный только через Google/Telegram) → 401. ' +
-      'Эндпоинт под rate-limit (10 запросов/мин на IP).',
+      'Verifies the email + password pair and, on success, sets access/refresh tokens as httpOnly cookies. ' +
+      'Invalid credentials or logging into an account without a password (registered only via Google/Telegram) → 401. ' +
+      'The endpoint is rate-limited (10 requests/min per IP).',
   })
-  @ApiOkResponse({ type: SuccessResponseDto, description: 'Токены ставятся в httpOnly cookie' })
+  @ApiOkResponse({ type: SuccessResponseDto, description: 'Tokens are set as httpOnly cookies' })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: FastifyReply) {
     const tokens = await this.authService.login(dto);
     this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
@@ -86,12 +86,12 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Вход через Google',
+    summary: 'Log in with Google',
     description:
-      'Принимает Google ID token (credential), полученный на фронте от Google Identity Services. ' +
-      'Бэкенд верифицирует токен в Google, затем: если пользователь с таким googleId есть — логинит; ' +
-      'если есть аккаунт с тем же email — привязывает к нему Google; иначе создаёт нового пользователя. ' +
-      'Токены ставятся в httpOnly cookie. Поле timezone — подсказка браузера, применяется только при создании нового аккаунта.',
+      'Accepts a Google ID token (credential) obtained on the frontend from Google Identity Services. ' +
+      'The backend verifies the token with Google, then: if a user with that googleId exists — logs them in; ' +
+      'if an account with the same email exists — links Google to it; otherwise creates a new user. ' +
+      'Tokens are set as httpOnly cookies. The timezone field is a browser hint, applied only when creating a new account.',
   })
   @ApiOkResponse({ type: SuccessResponseDto })
   async loginGoogle(@Body() dto: GoogleAuthDto, @Res({ passthrough: true }) res: FastifyReply) {
@@ -104,12 +104,12 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Вход через Telegram Login Widget',
+    summary: 'Log in via the Telegram Login Widget',
     description:
-      'Принимает данные от Telegram Login Widget (id, hash и пр.). Бэкенд проверяет подпись (hash) ботовым токеном — ' +
-      'так подтверждается, что данные действительно от Telegram. Дальше логика как у Google: найти по telegramId, ' +
-      'привязать или создать пользователя. Токены ставятся в httpOnly cookie. ' +
-      'timezone здесь — неподписанная подсказка браузера, применяется только при создании аккаунта.',
+      'Accepts data from the Telegram Login Widget (id, hash, etc.). The backend verifies the signature (hash) with the bot token — ' +
+      'this confirms the data really came from Telegram. From there the logic mirrors Google: look up by telegramId, ' +
+      'link or create the user. Tokens are set as httpOnly cookies. ' +
+      'timezone here is an unsigned browser hint, applied only when creating an account.',
   })
   @ApiOkResponse({ type: SuccessResponseDto })
   async loginTelegram(@Body() dto: TelegramAuthDto, @Res({ passthrough: true }) res: FastifyReply) {
@@ -122,11 +122,11 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Обновить access-токен по refresh-токену',
+    summary: 'Refresh the access token using the refresh token',
     description:
-      'Когда access-токен протух, фронт дёргает этот эндпоинт. Refresh-токен берётся из httpOnly cookie (тело не нужно). ' +
-      'Старый refresh-токен инвалидируется, выдаётся новая пара (ротация токенов) и заново ставится в cookie. ' +
-      'Если refresh-токена нет, он истёк или невалиден — 401 (нужен повторный логин).',
+      'When the access token expires, the frontend calls this endpoint. The refresh token is read from the httpOnly cookie (no body needed). ' +
+      'The old refresh token is invalidated, a new pair is issued (token rotation) and set as cookies again. ' +
+      'If the refresh token is missing, expired or invalid — 401 (re-login required).',
   })
   @ApiOkResponse({ type: SuccessResponseDto })
   async refresh(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
@@ -142,10 +142,10 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Выход',
+    summary: 'Log out',
     description:
-      'Удаляет refresh-токен из БД (чтобы им больше нельзя было воспользоваться) и чистит обе cookie — ' +
-      'access и refresh. Всегда возвращает success, даже если cookie уже не было.',
+      'Deletes the refresh token from the DB (so it can no longer be used) and clears both cookies — ' +
+      'access and refresh. Always returns success, even if the cookies were already absent.',
   })
   @ApiOkResponse({ type: SuccessResponseDto })
   async logout(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
@@ -159,11 +159,11 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
-    summary: 'Профиль текущего пользователя',
+    summary: "Current user's profile",
     description:
-      'Возвращает данные залогиненного пользователя: email, name, telegramId, валюту, таймзону, ' +
-      'флаг hasPassword (задан ли пароль) и подписку. Пользователь определяется по access-токену из cookie. ' +
-      'Удобно дёргать на старте приложения, чтобы понять, кто залогинен и что показывать в UI.',
+      'Returns the logged-in user data: email, name, telegramId, currency, timezone, ' +
+      'the hasPassword flag (whether a password is set) and the subscription. The user is identified by the access token from the cookie. ' +
+      'Handy to call on app startup to know who is logged in and what to show in the UI.',
   })
   @ApiOkResponse({ type: ProfileResponseDto })
   me(@CurrentUser() user: { id: string }) {
@@ -173,11 +173,11 @@ export class AuthController {
   @Patch('me')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
-    summary: 'Обновить свой профиль',
+    summary: 'Update your profile',
     description:
-      'Частичное обновление профиля: name, currency, timezone. Все поля опциональны — ' +
-      'присылайте только то, что меняете (PATCH-семантика). name может быть пустой строкой. ' +
-      'currency — 3-буквенный ISO 4217 код, timezone — валидное IANA-имя. Возвращает обновлённый профиль.',
+      'Partial profile update: name, currency, timezone. All fields are optional — ' +
+      'send only what you change (PATCH semantics). name may be an empty string. ' +
+      'currency is a 3-letter ISO 4217 code, timezone is a valid IANA name. Returns the updated profile.',
   })
   @ApiOkResponse({ type: ProfileResponseDto })
   updateMe(@CurrentUser() user: { id: string }, @Body() dto: UpdateProfileDto) {
@@ -188,13 +188,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Задать или сменить пароль',
+    summary: 'Set or change the password',
     description:
-      'Двойное назначение в зависимости от состояния аккаунта. ' +
-      'Если у пользователя ещё нет email (зашёл через Telegram) — нужно прислать email + password, оба обязательны: ' +
-      'так аккаунту впервые задаются почта и пароль. ' +
-      'Если email уже есть — это смена пароля: меняется только password, поменять email через этот эндпоинт нельзя. ' +
-      'После этого в профиле hasPassword станет true.',
+      'Dual purpose depending on the account state. ' +
+      'If the user has no email yet (signed in via Telegram) — send email + password, both required: ' +
+      'this sets the email and password for the account for the first time. ' +
+      'If an email already exists — this is a password change: only password changes, the email cannot be changed via this endpoint. ' +
+      'After this, hasPassword in the profile becomes true.',
   })
   @ApiOkResponse({ type: SuccessResponseDto })
   setCredentials(@CurrentUser() user: { id: string }, @Body() dto: SetCredentialsDto) {
@@ -205,16 +205,16 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Запросить сброс пароля',
+    summary: 'Request a password reset',
     description:
-      'Принимает email и, если такой пользователь есть, генерирует токен сброса и отправляет письмо со ссылкой. ' +
-      'В ответ всегда отдаётся success независимо от того, существует email или нет — ' +
-      'это специально, чтобы нельзя было перебором узнать, какие почты зарегистрированы. ' +
-      'Дальше пользователь переходит по ссылке и вызывает POST /auth/reset-password.',
+      'Accepts an email and, if such a user exists, generates a reset token and sends an email with a link. ' +
+      'The response is always success regardless of whether the email exists — ' +
+      'this is intentional, so registered emails cannot be discovered by enumeration. ' +
+      'The user then follows the link and calls POST /auth/reset-password.',
   })
   @ApiOkResponse({
     type: SuccessResponseDto,
-    description: 'Всегда success (не раскрываем наличие email)',
+    description: "Always success (don't reveal whether the email exists)",
   })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);
@@ -224,10 +224,10 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Сбросить пароль по токену',
+    summary: 'Reset the password using a token',
     description:
-      'Завершает сценарий сброса: принимает token из письма (см. /auth/forgot-password) и новый password. ' +
-      'Если токен валиден и не истёк — пароль меняется, токен гасится (одноразовый). Иначе — ошибка.',
+      'Completes the reset flow: accepts the token from the email (see /auth/forgot-password) and a new password. ' +
+      'If the token is valid and not expired — the password is changed and the token is consumed (one-time). Otherwise — an error.',
   })
   @ApiOkResponse({ type: SuccessResponseDto })
   resetPassword(@Body() dto: ResetPasswordDto) {
@@ -238,11 +238,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiOkResponse({ type: SuccessResponseDto })
   @ApiOperation({
-    summary: 'Привязать Google к текущему аккаунту',
+    summary: 'Link Google to the current account',
     description:
-      'Для уже залогиненного пользователя: привязывает Google (по ID token) к его аккаунту, ' +
-      'чтобы дальше можно было входить и через Google. В отличие от POST /auth/google, не создаёт нового пользователя — ' +
-      'добавляет googleId к текущему. Если этот Google уже привязан к другому аккаунту — ошибка.',
+      'For an already logged-in user: links Google (by ID token) to their account, ' +
+      'so they can also sign in via Google. Unlike POST /auth/google, it does not create a new user — ' +
+      'it adds googleId to the current one. If this Google is already linked to another account — an error.',
   })
   linkGoogle(@CurrentUser() user: { id: string }, @Body() dto: GoogleAuthDto) {
     return this.authService.linkGoogle(user.id, dto);
@@ -252,11 +252,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiOkResponse({ type: SuccessResponseDto })
   @ApiOperation({
-    summary: 'Привязать Telegram к текущему аккаунту',
+    summary: 'Link Telegram to the current account',
     description:
-      'Для уже залогиненного пользователя: проверяет подпись данных Telegram Login Widget и привязывает telegramId ' +
-      'к его аккаунту, чтобы можно было входить и через Telegram. Нового пользователя не создаёт. ' +
-      'Если этот Telegram уже привязан к другому аккаунту — ошибка.',
+      'For an already logged-in user: verifies the Telegram Login Widget data signature and links telegramId ' +
+      'to their account, so they can also sign in via Telegram. Does not create a new user. ' +
+      'If this Telegram is already linked to another account — an error.',
   })
   linkTelegram(@CurrentUser() user: { id: string }, @Body() dto: TelegramAuthDto) {
     return this.authService.linkTelegram(user.id, dto);

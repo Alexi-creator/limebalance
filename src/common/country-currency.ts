@@ -1,6 +1,6 @@
-// ISO 3166-1 alpha-2 страна -> ISO 4217 валюта.
-// Прагматичная карта для дефолта валюты по стране (выводимой из таймзоны).
-// Не претендует на абсолютную полноту по спорным территориям — что не легло, уйдёт в USD-фолбэк.
+// ISO 3166-1 alpha-2 country -> ISO 4217 currency.
+// A pragmatic map for defaulting the currency by country (derived from the timezone).
+// Not meant to be exhaustive for disputed territories — anything missing falls back to USD.
 export const COUNTRY_CURRENCY: Record<string, string> = {
   AD: 'EUR',
   AE: 'AED',

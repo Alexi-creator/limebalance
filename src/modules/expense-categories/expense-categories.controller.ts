@@ -22,10 +22,10 @@ export class ExpenseCategoriesController {
 
   @Post()
   @ApiOperation({
-    summary: 'Создать категорию расходов',
+    summary: 'Create an expense category',
     description:
-      'Создаёт пользовательскую категорию для группировки трат (например «Еда», «Транспорт»): имя и опц. оформление (иконка/цвет). ' +
-      'Категории у каждого пользователя свои. На категорию потом ссылаются траты через categoryId.',
+      'Creates a user-defined category for grouping expenses (e.g. "Food", "Transport"): a name and optional styling (icon/color). ' +
+      'Categories are per-user. Expenses later reference a category via categoryId.',
   })
   @ApiCreatedResponse({ type: ExpenseCategoryResponseDto })
   create(@CurrentUser() user: { id: string }, @Body() dto: CreateExpenseCategoryDto) {
@@ -34,10 +34,10 @@ export class ExpenseCategoriesController {
 
   @Get()
   @ApiOperation({
-    summary: 'Список категорий расходов',
+    summary: 'List expense categories',
     description:
-      'Возвращает все категории расходов текущего пользователя. Используйте, чтобы заполнить выпадающий список ' +
-      'при создании/редактировании траты. Для сумм и количества по категориям см. GET /expense-categories/stats.',
+      "Returns all of the current user's expense categories. Use it to populate a dropdown " +
+      'when creating/editing an expense. For per-category sums and counts see GET /expense-categories/stats.',
   })
   @ApiOkResponse({ type: [ExpenseCategoryResponseDto] })
   findAll(@CurrentUser() user: { id: string }) {
@@ -46,18 +46,21 @@ export class ExpenseCategoriesController {
 
   @Get('stats')
   @ApiOperation({
-    summary: 'Статистика расходов по категориям',
+    summary: 'Expense statistics by category',
     description:
-      'Для каждой категории считает сумму и количество трат за период from/to (включая категории без трат — с нулями). ' +
-      'Удобно для разбивки «куда уходят деньги» (pie/bar chart). ' +
-      'Можно передать второй период compareFrom/compareTo для сравнения — тогда в ответе добавляются ' +
-      'previousApproxTotal (итог за прошлый период) и deltaApproxTotal (изменение), чтобы показать рост/падение.',
+      'For each category, computes the sum and count of expenses over the from/to period (including categories with no expenses — as zeros). ' +
+      'Handy for a "where the money goes" breakdown (pie/bar chart). ' +
+      'You can pass a second period compareFrom/compareTo for comparison — then the response adds ' +
+      "previousApproxTotal (the previous period's total) and deltaApproxTotal (the change) to show growth/decline.",
   })
   @ApiQuery({ name: 'from', required: false, example: '2026-01-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-12-31' })
   @ApiQuery({ name: 'compareFrom', required: false, example: '2025-01-01' })
   @ApiQuery({ name: 'compareTo', required: false, example: '2025-12-31' })
-  @ApiOkResponse({ type: [ExpenseCategoryStatDto], description: 'Все категории, включая пустые' })
+  @ApiOkResponse({
+    type: [ExpenseCategoryStatDto],
+    description: 'All categories, including empty ones',
+  })
   statsByCategory(
     @CurrentUser() user: { id: string },
     @Query('from') from?: string,
@@ -75,9 +78,9 @@ export class ExpenseCategoriesController {
 
   @Get(':id')
   @ApiOperation({
-    summary: 'Получить категорию расходов по id',
+    summary: 'Get an expense category by id',
     description:
-      'Возвращает одну свою категорию расходов по id. Чужой или несуществующий id → 404.',
+      'Returns one of your own expense categories by id. A foreign or non-existent id → 404.',
   })
   @ApiOkResponse({ type: ExpenseCategoryResponseDto })
   findOne(@CurrentUser() user: { id: string }, @Param('id') id: string) {
@@ -86,9 +89,9 @@ export class ExpenseCategoriesController {
 
   @Patch(':id')
   @ApiOperation({
-    summary: 'Обновить категорию расходов',
+    summary: 'Update an expense category',
     description:
-      'Частично обновляет свою категорию (имя/оформление). Связанные траты остаются привязанными к ней. Чужой id → 404.',
+      'Partially updates your category (name/styling). Linked expenses stay attached to it. A foreign id → 404.',
   })
   @ApiOkResponse({ type: ExpenseCategoryResponseDto })
   update(
@@ -101,11 +104,11 @@ export class ExpenseCategoriesController {
 
   @Delete(':id')
   @ApiOperation({
-    summary: 'Удалить категорию расходов',
+    summary: 'Delete an expense category',
     description:
-      'Удаляет свою категорию по id. Внимание: вместе с ней каскадно удаляются все траты этой категории. Чужой id → 404.',
+      'Deletes your category by id. Warning: all expenses in this category are cascade-deleted with it. A foreign id → 404.',
   })
-  @ApiOkResponse({ type: ExpenseCategoryResponseDto, description: 'Удалённая категория' })
+  @ApiOkResponse({ type: ExpenseCategoryResponseDto, description: 'The deleted category' })
   remove(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.expenseCategoriesService.remove(id, user.id);
   }

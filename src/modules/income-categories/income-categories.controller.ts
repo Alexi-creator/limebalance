@@ -22,10 +22,10 @@ export class IncomeCategoriesController {
 
   @Post()
   @ApiOperation({
-    summary: 'Создать категорию доходов',
+    summary: 'Create an income category',
     description:
-      'Создаёт пользовательскую категорию для группировки доходов (например «Зарплата», «Фриланс»): имя и опц. оформление (иконка/цвет). ' +
-      'Категории у каждого пользователя свои. На категорию потом ссылаются доходы через categoryId.',
+      'Creates a user-defined category for grouping income (e.g. "Salary", "Freelance"): a name and optional styling (icon/color). ' +
+      'Categories are per-user. Income entries later reference a category via categoryId.',
   })
   @ApiCreatedResponse({ type: IncomeCategoryResponseDto })
   create(@CurrentUser() user: { id: string }, @Body() dto: CreateIncomeCategoryDto) {
@@ -34,10 +34,10 @@ export class IncomeCategoriesController {
 
   @Get()
   @ApiOperation({
-    summary: 'Список категорий доходов',
+    summary: 'List income categories',
     description:
-      'Возвращает все категории доходов текущего пользователя. Используйте, чтобы заполнить выпадающий список ' +
-      'при создании/редактировании дохода. Для сумм и количества по категориям см. GET /income-categories/stats.',
+      "Returns all of the current user's income categories. Use it to populate a dropdown " +
+      'when creating/editing an income entry. For per-category sums and counts see GET /income-categories/stats.',
   })
   @ApiOkResponse({ type: [IncomeCategoryResponseDto] })
   findAll(@CurrentUser() user: { id: string }) {
@@ -46,18 +46,21 @@ export class IncomeCategoriesController {
 
   @Get('stats')
   @ApiOperation({
-    summary: 'Статистика доходов по категориям',
+    summary: 'Income statistics by category',
     description:
-      'Для каждой категории считает сумму и количество доходов за период from/to (включая категории без доходов — с нулями). ' +
-      'Удобно для разбивки «откуда приходят деньги» (pie/bar chart). ' +
-      'Можно передать второй период compareFrom/compareTo для сравнения — тогда в ответе добавляются ' +
-      'previousApproxTotal (итог за прошлый период) и deltaApproxTotal (изменение), чтобы показать рост/падение.',
+      'For each category, computes the sum and count of income over the from/to period (including categories with no income — as zeros). ' +
+      'Handy for a "where the money comes from" breakdown (pie/bar chart). ' +
+      'You can pass a second period compareFrom/compareTo for comparison — then the response adds ' +
+      "previousApproxTotal (the previous period's total) and deltaApproxTotal (the change) to show growth/decline.",
   })
   @ApiQuery({ name: 'from', required: false, example: '2026-01-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-12-31' })
   @ApiQuery({ name: 'compareFrom', required: false, example: '2025-01-01' })
   @ApiQuery({ name: 'compareTo', required: false, example: '2025-12-31' })
-  @ApiOkResponse({ type: [IncomeCategoryStatDto], description: 'Все категории, включая пустые' })
+  @ApiOkResponse({
+    type: [IncomeCategoryStatDto],
+    description: 'All categories, including empty ones',
+  })
   statsByCategory(
     @CurrentUser() user: { id: string },
     @Query('from') from?: string,
@@ -75,8 +78,9 @@ export class IncomeCategoriesController {
 
   @Get(':id')
   @ApiOperation({
-    summary: 'Получить категорию доходов по id',
-    description: 'Возвращает одну свою категорию доходов по id. Чужой или несуществующий id → 404.',
+    summary: 'Get an income category by id',
+    description:
+      'Returns one of your own income categories by id. A foreign or non-existent id → 404.',
   })
   @ApiOkResponse({ type: IncomeCategoryResponseDto })
   findOne(@CurrentUser() user: { id: string }, @Param('id') id: string) {
@@ -85,9 +89,9 @@ export class IncomeCategoriesController {
 
   @Patch(':id')
   @ApiOperation({
-    summary: 'Обновить категорию доходов',
+    summary: 'Update an income category',
     description:
-      'Частично обновляет свою категорию (имя/оформление). Связанные доходы остаются привязанными к ней. Чужой id → 404.',
+      'Partially updates your category (name/styling). Linked income entries stay attached to it. A foreign id → 404.',
   })
   @ApiOkResponse({ type: IncomeCategoryResponseDto })
   update(
@@ -100,11 +104,11 @@ export class IncomeCategoriesController {
 
   @Delete(':id')
   @ApiOperation({
-    summary: 'Удалить категорию доходов',
+    summary: 'Delete an income category',
     description:
-      'Удаляет свою категорию по id. Внимание: вместе с ней каскадно удаляются все доходы этой категории. Чужой id → 404.',
+      'Deletes your category by id. Warning: all income entries in this category are cascade-deleted with it. A foreign id → 404.',
   })
-  @ApiOkResponse({ type: IncomeCategoryResponseDto, description: 'Удалённая категория' })
+  @ApiOkResponse({ type: IncomeCategoryResponseDto, description: 'The deleted category' })
   remove(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.incomeCategoriesService.remove(id, user.id);
   }

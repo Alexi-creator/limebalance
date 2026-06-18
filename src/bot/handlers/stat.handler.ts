@@ -18,16 +18,16 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 
 const symbol = (code: string) => CURRENCY_SYMBOLS[code] ?? code;
 
-// Точная сумма в её исходной валюте.
+// Exact amount in its original currency.
 const exact = (value: number, currency: string) => `${value.toFixed(2)} ${symbol(currency)}`;
 
-// Прибл. сумма в базовой валюте пользователя. null → курсы недоступны.
+// Approx. amount in the user's base currency. null → rates unavailable.
 const money = (value: number | null, currency: string) =>
   value === null ? 'курс недоступен' : `≈ ${exact(value, currency)}`;
 
-// Telegram ограничивает сообщение 4096 символами. Длинный ответ (детализация с сотнями
-// позиций) режем на части по границам строк; клавиатуру вешаем только на последнюю часть.
-const TG_TEXT_LIMIT = 4000; // запас от 4096
+// Telegram caps a message at 4096 characters. A long reply (a breakdown with hundreds
+// of items) is split into parts on line boundaries; the keyboard is attached only to the last part.
+const TG_TEXT_LIMIT = 4000; // headroom below 4096
 async function replyLong(ctx: Context, text: string, replyMarkup: typeof MAIN_MENU) {
   const chunks: string[] = [];
   let cur = '';
@@ -37,7 +37,8 @@ async function replyLong(ctx: Context, text: string, replyMarkup: typeof MAIN_ME
         chunks.push(cur);
         cur = '';
       }
-      for (let i = 0; i < line.length; i += TG_TEXT_LIMIT) chunks.push(line.slice(i, i + TG_TEXT_LIMIT));
+      for (let i = 0; i < line.length; i += TG_TEXT_LIMIT)
+        chunks.push(line.slice(i, i + TG_TEXT_LIMIT));
       continue;
     }
     if (cur.length + line.length + 1 > TG_TEXT_LIMIT) {
@@ -168,7 +169,7 @@ export class StatHandler {
         text += `📌 ${cat.category} — ${money(cat.total, baseCurrency)}\n`;
         for (const item of cat.items) {
           const date = item.date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
-          // Позиция — в её исходной валюте.
+          // Item — in its original currency.
           text += `  • ${date}: ${exact(item.amount, item.currency)}`;
           if (item.description) text += ` — ${item.description}`;
           text += '\n';

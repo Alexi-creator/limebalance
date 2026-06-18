@@ -5,7 +5,7 @@ export class ExpenseResponseDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440010' })
   id: string;
 
-  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'ID владельца' })
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'Owner ID' })
   userId: string;
 
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440001' })
@@ -14,21 +14,21 @@ export class ExpenseResponseDto {
   @ApiProperty({
     type: String,
     example: '1500.50',
-    description: 'Сумма (Decimal, в JSON приходит строкой)',
+    description: 'Amount (Decimal, comes as a string in JSON)',
   })
   amount: string;
 
-  @ApiProperty({ example: 'THB', description: 'ISO 4217 код валюты записи' })
+  @ApiProperty({ example: 'THB', description: "Record's ISO 4217 currency code" })
   currency: string;
 
-  @ApiProperty({ example: 'Продукты в супермаркете' })
+  @ApiProperty({ example: 'Groceries at the supermarket' })
   description: string;
 
   @ApiProperty({
     type: String,
     format: 'date-time',
     example: '2026-06-01T00:30:00.000Z',
-    description: 'Локальное время операции (стенные часы пользователя; Z — артефакт, не UTC)',
+    description: "Operation local time (the user's wall clock; Z is an artifact, not UTC)",
   })
   date: Date;
 
@@ -37,35 +37,35 @@ export class ExpenseResponseDto {
 
   @ApiPropertyOptional({
     type: ExpenseCategoryResponseDto,
-    description: 'Категория (присутствует в GET-ответах; отсутствует в ответах POST/DELETE)',
+    description: 'Category (present in GET responses; absent in POST/DELETE responses)',
   })
   category?: ExpenseCategoryResponseDto;
 }
 
 export class SummaryCurrencyTotalDto {
-  @ApiProperty({ example: 'THB', description: 'Код валюты' })
+  @ApiProperty({ example: 'THB', description: 'Currency code' })
   currency: string;
 
   @ApiProperty({
     example: 5000,
-    description: 'Сумма в этой валюте за период (разные валюты не складываются)',
+    description: 'Amount in this currency for the period (different currencies are not summed)',
   })
   total: number;
 
-  @ApiProperty({ example: 10, description: 'Количество операций в этой валюте' })
+  @ApiProperty({ example: 10, description: 'Number of operations in this currency' })
   count: number;
 }
 
 export class BucketSummaryDto {
   @ApiProperty({
     example: '2026-06-15',
-    description: 'Ключ бакета: день/неделя — YYYY-MM-DD (неделя = её понедельник), месяц — YYYY-MM',
+    description: 'Bucket key: day/week — YYYY-MM-DD (week = its Monday), month — YYYY-MM',
   })
   bucket: string;
 
   @ApiProperty({
     type: [SummaryCurrencyTotalDto],
-    description: 'Разбивка за бакет по каждой валюте отдельно',
+    description: 'Per-currency breakdown for the bucket',
   })
   totals: SummaryCurrencyTotalDto[];
 
@@ -73,29 +73,30 @@ export class BucketSummaryDto {
     example: 12345.5,
     nullable: true,
     description:
-      'Прибл. сумма за бакет в базовой валюте по текущему курсу. null, если курсы недоступны.',
+      'Approx. amount for the bucket in the base currency at the current rate. null if rates are unavailable.',
   })
   approxTotal: number | null;
 }
 
 export class ExpenseSummaryResponseDto {
-  @ApiProperty({ example: 'RUB', description: 'Базовая валюта пользователя для total/approxTotal' })
+  @ApiProperty({ example: 'RUB', description: "User's base currency for total/approxTotal" })
   baseCurrency: string;
 
   @ApiProperty({
     enum: ['day', 'week', 'month'],
     example: 'month',
-    description: 'Гранулярность бакетов',
+    description: 'Bucket granularity',
   })
   granularity: 'day' | 'week' | 'month';
 
   @ApiProperty({
     example: 49102,
     nullable: true,
-    description: 'Прибл. итог за весь период в базовой валюте. null, если курсы недоступны.',
+    description:
+      'Approx. total for the whole period in the base currency. null if rates are unavailable.',
   })
   total: number | null;
 
-  @ApiProperty({ type: [BucketSummaryDto], description: 'Разбивка по бакетам (день/неделя/месяц)' })
+  @ApiProperty({ type: [BucketSummaryDto], description: 'Breakdown by buckets (day/week/month)' })
   buckets: BucketSummaryDto[];
 }

@@ -47,18 +47,23 @@ export class ExpenseCategoriesService {
         name: c.name,
         emoji: c.emoji,
         count: groups.reduce((sum, g) => sum + g.count, 0),
-        // Точная разбивка по валютам (разные валюты не складываем).
+        // Exact per-currency breakdown (different currencies are not summed).
         totals: groups.map((g) => ({ currency: g.currency, total: g.amount, count: g.count })),
         baseCurrency,
-        // Приблизительная сумма в базовой валюте через USD-снапшот.
+        // Approximate amount in the base currency via the USD snapshot.
         approxTotal,
       };
 
       if (!previous) return base;
 
-      // Сравнение с предыдущим периодом: итог прошлого периода и дельта в базовой валюте.
+      // Comparison with the previous period: the previous period's total and the delta in the base currency.
       const prevGroups = previous.get(c.id) ?? [];
-      const previousApproxTotal = this.currency.approxTotalInBase(prevGroups, baseCurrency, rates, 'expense');
+      const previousApproxTotal = this.currency.approxTotalInBase(
+        prevGroups,
+        baseCurrency,
+        rates,
+        'expense',
+      );
       const deltaApproxTotal =
         approxTotal === null || previousApproxTotal === null
           ? null
@@ -67,7 +72,7 @@ export class ExpenseCategoriesService {
     });
   }
 
-  // categoryId -> разбивка по валютам за период: сумма + кол-во + USD-снапшот (для approx).
+  // categoryId -> per-currency breakdown for the period: amount + count + USD snapshot (for approx).
   private async groupByCategory(userId: string, from?: Date, to?: Date) {
     const grouped = await this.prisma.expense.groupBy({
       by: ['categoryId', 'currency'],

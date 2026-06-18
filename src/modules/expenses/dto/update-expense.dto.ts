@@ -22,7 +22,7 @@ export class UpdateExpenseDto {
   @IsOptional()
   categoryId?: string;
 
-  @ApiPropertyOptional({ example: 'Обновлённое описание' })
+  @ApiPropertyOptional({ example: 'Updated description' })
   @IsString()
   @IsOptional()
   description?: string;
@@ -33,7 +33,7 @@ export class UpdateExpenseDto {
   @Type(() => Date)
   date?: Date;
 
-  @ApiPropertyOptional({ example: 'THB', description: 'ISO 4217 код валюты' })
+  @ApiPropertyOptional({ example: 'THB', description: 'ISO 4217 currency code' })
   @IsOptional()
   @IsString()
   @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO 4217 code' })

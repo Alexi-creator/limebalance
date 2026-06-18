@@ -8,23 +8,23 @@ export class TransactionRowDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440001' })
   categoryId: string;
 
-  @ApiProperty({ example: 'Продукты', nullable: true, description: 'Название категории или null' })
+  @ApiProperty({ example: 'Groceries', nullable: true, description: 'Category name or null' })
   categoryName: string | null;
 
-  @ApiProperty({ example: 1500.5, description: 'Сумма (число, float)' })
+  @ApiProperty({ example: 1500.5, description: 'Amount (number, float)' })
   amount: number;
 
-  @ApiProperty({ example: 'USD', description: 'Валюта' })
+  @ApiProperty({ example: 'USD', description: 'Currency' })
   currency: string;
 
-  @ApiProperty({ example: 'Продукты в супермаркете' })
+  @ApiProperty({ example: 'Groceries at the supermarket' })
   description: string;
 
   @ApiProperty({
     type: String,
     format: 'date',
     example: '2026-06-01',
-    description: 'Дата операции (без времени)',
+    description: 'Operation date (without time)',
   })
   date: Date;
 
@@ -32,7 +32,7 @@ export class TransactionRowDto {
     type: String,
     format: 'date-time',
     example: '2026-06-01T08:00:00.000Z',
-    description: 'Момент создания (UTC) — вторичная сортировка внутри дня',
+    description: 'Creation moment (UTC) — secondary sort within a day',
   })
   createdAt: Date;
 
@@ -41,14 +41,14 @@ export class TransactionRowDto {
 }
 
 export class TransactionsSummaryDto {
-  @ApiProperty({ example: 'THB', description: 'Базовая валюта пользователя для сумм ниже' })
+  @ApiProperty({ example: 'THB', description: "User's base currency for the totals below" })
   baseCurrency: string;
 
   @ApiProperty({
     example: 90480,
     nullable: true,
     description:
-      'Прибл. сумма доходов по всей выборке (не только странице) в базовой валюте. null, если курсы недоступны.',
+      'Approx. income total over the whole result set (not just the page) in the base currency. null if rates are unavailable.',
   })
   income: number | null;
 
@@ -56,14 +56,15 @@ export class TransactionsSummaryDto {
     example: 49102,
     nullable: true,
     description:
-      'Прибл. сумма расходов по всей выборке в базовой валюте. null, если курсы недоступны.',
+      'Approx. expense total over the whole result set in the base currency. null if rates are unavailable.',
   })
   expense: number | null;
 
   @ApiProperty({
     example: 41378,
     nullable: true,
-    description: 'Чистый итог (доходы − расходы) в базовой валюте. null, если курсы недоступны.',
+    description:
+      'Net total (income − expenses) in the base currency. null if rates are unavailable.',
   })
   net: number | null;
 }
@@ -74,19 +75,20 @@ export class PaginatedTransactionsDto {
 
   @ApiProperty({
     type: TransactionsSummaryDto,
-    description: 'Денежный итог по всей выборке (с учётом фильтров), приведённый к базовой валюте',
+    description:
+      'Monetary total over the whole result set (with filters), converted to the base currency',
   })
   summary: TransactionsSummaryDto;
 
-  @ApiProperty({ example: 137, description: 'Всего записей по фильтру' })
+  @ApiProperty({ example: 137, description: 'Total records matching the filter' })
   total: number;
 
-  @ApiProperty({ example: 1, description: 'Текущая страница' })
+  @ApiProperty({ example: 1, description: 'Current page' })
   page: number;
 
-  @ApiProperty({ example: 20, description: 'Размер страницы' })
+  @ApiProperty({ example: 20, description: 'Page size' })
   limit: number;
 
-  @ApiProperty({ example: 7, description: 'Всего страниц' })
+  @ApiProperty({ example: 7, description: 'Total pages' })
   totalPages: number;
 }

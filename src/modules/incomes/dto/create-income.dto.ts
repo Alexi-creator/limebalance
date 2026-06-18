@@ -20,13 +20,13 @@ export class CreateIncomeDto {
   @IsPositive()
   amount: number;
 
-  @ApiProperty({ example: 'Зарплата за май' })
+  @ApiProperty({ example: 'May salary' })
   @IsString()
   description: string;
 
   @ApiProperty({
     example: '2026-06-01T00:30:00',
-    description: 'Локальное время операции, без таймзоны',
+    description: 'Operation local time, without a timezone',
   })
   @IsDate()
   @Type(() => Date)
@@ -34,7 +34,7 @@ export class CreateIncomeDto {
 
   @ApiPropertyOptional({
     example: 'THB',
-    description: 'ISO 4217 код валюты, по умолчанию валюта пользователя',
+    description: "ISO 4217 currency code, defaults to the user's currency",
   })
   @IsOptional()
   @IsString()

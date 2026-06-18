@@ -105,7 +105,7 @@ export class BotService implements OnModuleInit {
       const userId = existing.id;
       const step = await this.stateService.getStep(userId);
 
-      // роутинг по тексту кнопок меню
+      // route by menu button text
       if (text === 'Добавить категорию') return this.categoryHandler.handleAdd(ctx);
       if (text === 'Посмотреть все категории')
         return this.categoryHandler.handleViewAll(ctx, userId);
@@ -113,7 +113,7 @@ export class BotService implements OnModuleInit {
       if (text === 'Добавить доход') return this.incomeHandler.handleAdd(ctx, userId);
       if (text === 'Статистика') return this.statHandler.handleStat(ctx);
 
-      // роутинг по текущему шагу FSM
+      // route by current FSM step
       if (
         step === 'addcategory:expense:waiting_name' ||
         step === 'addcategory:income:waiting_name'

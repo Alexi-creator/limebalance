@@ -33,7 +33,7 @@ export class AuthService {
     if (existing) throw new ConflictException('Email already registered');
 
     const passwordHash = await hash(dto.password, 10);
-    // Валюта: явная из DTO в приоритете, иначе выводим из таймзоны, иначе схемный USD.
+    // Currency: an explicit one from the DTO takes priority, otherwise derive from the timezone, otherwise the schema default USD.
     const currency = dto.currency ?? currencyFromTimezone(dto.timezone);
     const user = await this.prisma.user.create({
       data: {
@@ -77,7 +77,7 @@ export class AuthService {
 
   async loginWithGoogle(dto: GoogleAuthDto) {
     const { email, googleId } = await this.verifyGoogleToken(dto.credential);
-    // timezone — подсказка от браузера; применяется только при создании нового юзера.
+    // timezone — a hint from the browser; applied only when creating a new user.
     const defaults = { currency: currencyFromTimezone(dto.timezone), timezone: dto.timezone };
     const { user } = await this.usersService.findOrCreateByGoogle(googleId, email, defaults);
     return this.issueTokens(user.id);
@@ -85,7 +85,7 @@ export class AuthService {
 
   async loginWithTelegram(dto: TelegramAuthDto) {
     this.verifyTelegramHash(dto);
-    // timezone — неподписанная подсказка от браузера; применяется только при создании.
+    // timezone — an unsigned hint from the browser; applied only on creation.
     const defaults = { currency: currencyFromTimezone(dto.timezone), timezone: dto.timezone };
     const { user } = await this.usersService.findOrCreateByTelegramId(BigInt(dto.id), defaults);
     return this.issueTokens(user.id);
@@ -119,29 +119,29 @@ export class AuthService {
     return { success: true };
   }
 
-  // Почта и пароль в одном роуте:
-  // - почты нет (например, регистрация через Telegram) → email и пароль обязательны вместе;
-  // - почта уже есть → менять её нельзя, пароль можно сменить (необязательно).
+  // Email and password in a single route:
+  // - no email yet (e.g. registered via Telegram) → email and password are required together;
+  // - email already set → it cannot be changed, the password can be changed (optional).
   async setCredentials(userId: string, dto: SetCredentialsDto) {
     const user = await this.usersService.findOne(userId);
 
     if (user.email) {
       if (dto.email && dto.email !== user.email) {
-        throw new ForbiddenException('Email уже задан и не может быть изменён');
+        throw new ForbiddenException('Email is already set and cannot be changed');
       }
       if (dto.password) {
         const record = await this.prisma.user.findUnique({
           where: { id: userId },
           select: { password: true },
         });
-        // Если пароль уже задан — требуем текущий и проверяем его.
+        // If a password is already set — require the current one and verify it.
         if (record?.password) {
           if (!dto.currentPassword) {
-            throw new BadRequestException('Нужно указать текущий пароль');
+            throw new BadRequestException('The current password is required');
           }
           const valid = await compare(dto.currentPassword, record.password);
           if (!valid) {
-            throw new UnauthorizedException('Неверный текущий пароль');
+            throw new UnauthorizedException('Incorrect current password');
           }
         }
         const passwordHash = await hash(dto.password, 10);
@@ -153,14 +153,14 @@ export class AuthService {
       return { success: true };
     }
 
-    // Почты нет — задаём email и пароль вместе, оба обязательны.
+    // No email yet — set email and password together, both required.
     if (!dto.email || !dto.password) {
-      throw new BadRequestException('Нужно задать и email, и пароль');
+      throw new BadRequestException('Both email and password are required');
     }
 
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) {
-      throw new ConflictException('Email уже используется');
+      throw new ConflictException('Email is already in use');
     }
 
     const passwordHash = await hash(dto.password, 10);
@@ -174,15 +174,15 @@ export class AuthService {
 
   async forgotPassword(email: string) {
     const user = await this.usersService.findByEmail(email);
-    if (!user) return { success: true }; // не раскрываем что email не существует
+    if (!user) return { success: true }; // don't reveal that the email doesn't exist
 
     await this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
 
     const token = randomUUID();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 минут
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
     await this.prisma.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } });
 
-    // TODO: отправить письмо с токеном
+    // TODO: send an email with the token
     return { success: true };
   }
 
@@ -246,7 +246,7 @@ export class AuthService {
   }
 
   private verifyTelegramHash(dto: TelegramAuthDto) {
-    // timezone — наша добавка от браузера, её нет в подписанных Telegram данных: исключаем из проверки.
+    // timezone — our browser-added field, not part of the signed Telegram data: exclude it from the check.
     const { hash: telegramHash, timezone: _tz, ...fields } = dto;
     const botToken = this.config.get<string>('BOT_TOKEN') ?? '';
 

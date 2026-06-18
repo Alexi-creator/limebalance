@@ -4,7 +4,8 @@ import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 export class SetCredentialsDto {
   @ApiPropertyOptional({
     example: 'ilia@example.com',
-    description: 'Обязателен, если у аккаунта ещё нет почты. Если почта уже есть — менять нельзя.',
+    description:
+      "Required if the account has no email yet. If an email already exists — it can't be changed.",
   })
   @IsOptional()
   @IsEmail()
@@ -14,7 +15,7 @@ export class SetCredentialsDto {
     example: 'password123',
     minLength: 8,
     description:
-      'Если почты нет — обязателен (задаётся вместе с email). Если почта есть — необязателен, передаётся только для смены пароля.',
+      'If there is no email — required (set together with email). If an email exists — optional, sent only to change the password.',
   })
   @IsOptional()
   @IsString()
@@ -23,7 +24,8 @@ export class SetCredentialsDto {
 
   @ApiPropertyOptional({
     example: 'oldpassword123',
-    description: 'Текущий пароль. Обязателен при смене пароля, если у аккаунта пароль уже задан.',
+    description:
+      'The current password. Required when changing the password if the account already has one set.',
   })
   @IsOptional()
   @IsString()

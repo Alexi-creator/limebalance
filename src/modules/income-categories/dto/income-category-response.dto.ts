@@ -4,13 +4,13 @@ export class IncomeCategoryResponseDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440001' })
   id: string;
 
-  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'ID владельца' })
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'Owner ID' })
   userId: string;
 
-  @ApiProperty({ example: 'Зарплата' })
+  @ApiProperty({ example: 'Salary' })
   name: string;
 
-  @ApiProperty({ example: '💰', nullable: true, description: 'Эмодзи категории или null' })
+  @ApiProperty({ example: '💰', nullable: true, description: 'Category emoji or null' })
   emoji: string | null;
 
   @ApiProperty({ example: '2026-06-01T08:00:00.000Z', format: 'date-time' })
@@ -18,13 +18,13 @@ export class IncomeCategoryResponseDto {
 }
 
 export class IncomeCurrencyTotalDto {
-  @ApiProperty({ example: 'THB', description: 'Код валюты' })
+  @ApiProperty({ example: 'THB', description: 'Currency code' })
   currency: string;
 
-  @ApiProperty({ example: 50000, description: 'Сумма доходов в этой валюте за период' })
+  @ApiProperty({ example: 50000, description: 'Total income in this currency for the period' })
   total: number;
 
-  @ApiProperty({ example: 3, description: 'Количество операций в этой валюте за период' })
+  @ApiProperty({ example: 3, description: 'Number of operations in this currency for the period' })
   count: number;
 }
 
@@ -32,7 +32,7 @@ export class IncomeCategoryStatDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440001' })
   id: string;
 
-  @ApiProperty({ example: 'Зарплата' })
+  @ApiProperty({ example: 'Salary' })
   name: string;
 
   @ApiProperty({ example: '💰', nullable: true })
@@ -40,24 +40,24 @@ export class IncomeCategoryStatDto {
 
   @ApiProperty({
     example: 3,
-    description: 'Всего операций по категории за период (по всем валютам)',
+    description: 'Total operations for the category over the period (across all currencies)',
   })
   count: number;
 
   @ApiProperty({
     type: [IncomeCurrencyTotalDto],
-    description: 'Суммы по каждой валюте отдельно (разные валюты не складываются)',
+    description: 'Totals per currency separately (different currencies are not summed)',
   })
   totals: IncomeCurrencyTotalDto[];
 
-  @ApiProperty({ example: 'USD', description: 'Базовая валюта пользователя для approxTotal' })
+  @ApiProperty({ example: 'USD', description: "User's base currency for approxTotal" })
   baseCurrency: string;
 
   @ApiProperty({
     example: 1527.7,
     nullable: true,
     description:
-      'Приблизительная сумма в базовой валюте по текущему курсу. null, если курсы недоступны.',
+      'Approximate amount in the base currency at the current rate. null if rates are unavailable.',
   })
   approxTotal: number | null;
 
@@ -65,7 +65,7 @@ export class IncomeCategoryStatDto {
     example: 1400.0,
     nullable: true,
     description:
-      'Итог за предыдущий период в базовой валюте. Присутствует только при compareFrom/compareTo.',
+      'Total for the previous period in the base currency. Present only with compareFrom/compareTo.',
   })
   previousApproxTotal?: number | null;
 
@@ -73,7 +73,7 @@ export class IncomeCategoryStatDto {
     example: 127.7,
     nullable: true,
     description:
-      'Разница с предыдущим периодом (approxTotal − previousApproxTotal). Присутствует только при сравнении.',
+      'Difference from the previous period (approxTotal − previousApproxTotal). Present only when comparing.',
   })
   deltaApproxTotal?: number | null;
 }

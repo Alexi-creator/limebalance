@@ -16,7 +16,7 @@ migrate:
 
 migrate-create:
 	@if [ -z "$(name)" ]; then \
-		echo "Ошибка: укажи имя миграции, например: make migrate-create name=add_user_settings"; \
+		echo "Error: provide a migration name, e.g.: make migrate-create name=add_user_settings"; \
 		exit 1; \
 	fi
 	docker compose run --rm app npx prisma migrate dev --name $(name)

@@ -15,7 +15,7 @@ export class ExpensesService {
 
   async create(userId: string, dto: CreateExpenseDto) {
     const currency = dto.currency ?? (await this.resolveUserCurrency(userId));
-    // Снапшот стоимости в USD по текущему курсу (фиксируется на момент создания).
+    // USD value snapshot at the current rate (fixed at creation time).
     const amountUsd = await this.currency.convert(dto.amount, currency, 'USD');
     return this.prisma.expense.create({ data: { ...dto, userId, currency, amountUsd } });
   }
@@ -53,7 +53,15 @@ export class ExpensesService {
 
     const baseCurrency = user?.currency ?? 'USD';
     const bucketKeys = buildBuckets(from, to, granularity);
-    return aggregateSummary(rows, bucketKeys, granularity, baseCurrency, rates, this.currency, 'expense');
+    return aggregateSummary(
+      rows,
+      bucketKeys,
+      granularity,
+      baseCurrency,
+      rates,
+      this.currency,
+      'expense',
+    );
   }
 
   async findOne(id: string, userId: string) {
@@ -68,7 +76,7 @@ export class ExpensesService {
   async update(id: string, userId: string, dto: UpdateExpenseDto) {
     const existing = await this.findOne(id, userId);
 
-    // Пересчитываем USD-снапшот только если изменились сумма или валюта.
+    // Recompute the USD snapshot only if the amount or currency changed.
     let amountUsd: number | null | undefined;
     if (dto.amount !== undefined || dto.currency !== undefined) {
       const amount = dto.amount ?? Number(existing.amount);
@@ -87,8 +95,8 @@ export class ExpensesService {
     return this.prisma.expense.delete({ where: { id } });
   }
 
-  // Массовое удаление: сначала проверяем, что все id принадлежат пользователю,
-  // иначе 404 и ничего не удаляем (атомарно, в транзакции).
+  // Bulk delete: first verify that all ids belong to the user,
+  // otherwise 404 and delete nothing (atomically, in a transaction).
   async removeMany(userId: string, ids: string[]) {
     return this.prisma.$transaction(async (tx) => {
       const owned = await tx.expense.findMany({
@@ -123,7 +131,7 @@ export class ExpensesService {
       this.currency.getRates(),
     ]);
 
-    // categoryId -> разбивка по валютам (для пересчёта в базовую валюту)
+    // categoryId -> per-currency breakdown (for converting to the base currency)
     const groupsByCategory = new Map<
       string,
       { currency: string; amount: number; amountUsd: number | null }[]
@@ -149,13 +157,13 @@ export class ExpensesService {
 
     const items = [...groupsByCategory.entries()].map(([catId, groups]) => ({
       category: nameMap.get(catId) ?? '—',
-      // Итог по категории в базовой валюте (прибл. по курсу). null, если курсы недоступны.
+      // Category total in the base currency (approx. by rate). null if rates are unavailable.
       total: this.currency.approxTotalInBase(groups, baseCurrency, rates, 'expense'),
     }));
 
     return {
       baseCurrency,
-      // Общий итог — одной конвертацией по всем строкам (совпадает с ЛК).
+      // Overall total — a single conversion across all rows (matches the web dashboard).
       total: this.currency.approxTotalInBase(allGroups, baseCurrency, rates, 'expense'),
       items,
     };
@@ -180,13 +188,13 @@ export class ExpensesService {
           date: true,
           category: { select: { name: true } },
         },
-        // Внутри одного дня (date без времени) сохраняем порядок добавления по createdAt.
+        // Within a single day (date without time) keep the insertion order by createdAt.
         orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
       }),
       this.currency.getRates(),
     ]);
 
-    // По категории храним исходные строки (для пересчёта итога) и позиции (для вывода).
+    // Per category keep the source rows (to recompute the total) and items (for display).
     const map = new Map<
       string,
       {
@@ -210,13 +218,13 @@ export class ExpensesService {
       };
       group.rows.push(row);
       allRows.push(row);
-      // Позицию показываем в ИСХОДНОЙ валюте операции.
+      // Show the item in the operation's ORIGINAL currency.
       group.items.push({ date: e.date, amount, currency: e.currency, description: e.description });
     }
 
     const categories = [...map.entries()].map(([category, group]) => ({
       category,
-      // Итог по категории — пересчёт в базовую валюту одной операцией (как в ЛК).
+      // Category total — converted to the base currency in a single pass (as in the web dashboard).
       total: this.currency.approxTotalInBase(group.rows, baseCurrency, rates, 'expense'),
       items: group.items,
     }));
@@ -228,9 +236,9 @@ export class ExpensesService {
     };
   }
 
-  // Границы периода в «настенном» времени пользователя (UTC-компоненты совпадают с тем,
-  // как хранится поле date), иначе сегодняшние записи с локальным временем «впереди» UTC
-  // отсекаются по границе to.
+  // Period bounds in the user's "wall-clock" time (UTC components match how the date field is
+  // stored), otherwise today's records with local time "ahead" of UTC get cut off at the `to`
+  // boundary.
   private getPeriodDates(period: string, timezone: string): { from: Date; to: Date } {
     const now = localWallClockNow(timezone);
     if (period === 'day') {
