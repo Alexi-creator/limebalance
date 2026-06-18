@@ -38,8 +38,11 @@ AGE_RECIPIENT=age1xxxxxxxx...
 ```bash
 chmod +x /opt/limebalance/scripts/backup-db.sh
 
-# crontab -e  -> daily at 03:00 server time
-0 3 * * * cd /opt/limebalance && set -a && . ./.env && set +a && ./scripts/backup-db.sh >> /var/log/limebalance-backup.log 2>&1
+# crontab -e (as the `deploy` user) -> daily at 03:00 server time
+# The script loads .env and sets PATH itself, so no `cd`/`set -a` needed.
+# Log goes to the project dir, NOT /var/log — a non-root user can't create files
+# under /var/log, which makes cron abort on the redirect before the script runs.
+0 3 * * * /opt/limebalance/scripts/backup-db.sh >> /opt/limebalance/backup.log 2>&1
 ```
 
 Run it once by hand to confirm the file lands in your Telegram chat.

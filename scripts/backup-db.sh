@@ -15,6 +15,22 @@
 #
 set -euo pipefail
 
+# cron runs with a minimal PATH (usually just /usr/bin:/bin), so binaries that
+# work in an interactive login shell (age, or pg_dump under a versioned dir) may
+# not be found. Pin an explicit PATH that covers the usual install locations.
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/17/bin:${PATH:-}"
+
+# Load .env relative to THIS script, not the current working directory, so the
+# job behaves the same whether cron does `cd` or not.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${SCRIPT_DIR}/../.env"
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  set +a
+fi
+
 : "${DATABASE_URL:?DATABASE_URL is required}"
 : "${BOT_TOKEN:?BOT_TOKEN is required}"
 : "${BACKUP_CHAT_ID:?BACKUP_CHAT_ID is required}"
