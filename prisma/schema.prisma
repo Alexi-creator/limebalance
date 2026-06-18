@@ -53,10 +53,11 @@ model User {
   expenses            Expense[]
   incomeCategories    IncomeCategory[]
   incomes             Income[]
-  state               UserState?
-  refreshTokens       RefreshToken[]
-  passwordResetTokens PasswordResetToken[]
-  subscription        UserSubscription?
+  state                   UserState?
+  refreshTokens           RefreshToken[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  subscription            UserSubscription?
 
   @@map("users")
 }
@@ -138,6 +139,23 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+// Подтверждение почты при привязке к аккаунту, созданному через Telegram.
+// Пока пользователь не перешёл по ссылке, email и пароль хранятся здесь, а не в users.
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  email     String
+  password  String
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
 }
 
 model RefreshToken {

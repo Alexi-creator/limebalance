@@ -23,6 +23,7 @@ import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from './auth.cons
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
+import { ConfirmEmailDto } from './dto/confirm-email.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
@@ -191,14 +192,32 @@ export class AuthController {
     summary: 'Задать или сменить пароль',
     description:
       'Двойное назначение в зависимости от состояния аккаунта. ' +
-      'Если у пользователя ещё нет email (зашёл через Telegram) — нужно прислать email + password, оба обязательны: ' +
-      'так аккаунту впервые задаются почта и пароль. ' +
+      'Если у пользователя ещё нет email (зашёл через Telegram) — нужно прислать email + password, оба обязательны. ' +
+      'Почта при этом НЕ привязывается сразу: на указанный email уходит письмо со ссылкой подтверждения, ' +
+      'и email с паролем появятся в аккаунте только после перехода по ней (POST /auth/confirm-email). ' +
+      'В ответе pendingConfirmation: true. ' +
       'Если email уже есть — это смена пароля: меняется только password, поменять email через этот эндпоинт нельзя. ' +
-      'После этого в профиле hasPassword станет true.',
+      'После смены пароля в профиле hasPassword станет true.',
   })
   @ApiOkResponse({ type: SuccessResponseDto })
   setCredentials(@CurrentUser() user: { id: string }, @Body() dto: SetCredentialsDto) {
     return this.authService.setCredentials(user.id, dto);
+  }
+
+  @Post('confirm-email')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Подтвердить привязку почты',
+    description:
+      'Завершает привязку email к аккаунту, созданному через Telegram: принимает token из письма ' +
+      '(см. POST /auth/me/credentials) и записывает отложенные email и пароль в аккаунт. ' +
+      'Токен одноразовый и со сроком жизни 24 часа. Если ссылка истекла, почта уже привязана ' +
+      'или email тем временем занял кто-то другой — ошибка.',
+  })
+  @ApiOkResponse({ type: SuccessResponseDto })
+  confirmEmail(@Body() dto: ConfirmEmailDto) {
+    return this.authService.confirmEmail(dto.token);
   }
 
   @Post('forgot-password')

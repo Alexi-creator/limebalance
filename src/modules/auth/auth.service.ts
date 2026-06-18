@@ -11,8 +11,9 @@ import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { currencyFromTimezone } from '../../common/currency-from-timezone';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
-import { REFRESH_TOKEN_TTL_DAYS } from './auth.constants';
+import { EMAIL_VERIFICATION_TTL_MS, REFRESH_TOKEN_TTL_DAYS } from './auth.constants';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -26,6 +27,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly mail: MailService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -120,7 +122,8 @@ export class AuthService {
   }
 
   // Почта и пароль в одном роуте:
-  // - почты нет (например, регистрация через Telegram) → email и пароль обязательны вместе;
+  // - почты нет (например, регистрация через Telegram) → email и пароль обязательны вместе,
+  //   но привязываются не сразу: на почту уходит ссылка-подтверждение (см. confirmEmail);
   // - почта уже есть → менять её нельзя, пароль можно сменить (необязательно).
   async setCredentials(userId: string, dto: SetCredentialsDto) {
     const user = await this.usersService.findOne(userId);
@@ -163,11 +166,49 @@ export class AuthService {
       throw new ConflictException('Email уже используется');
     }
 
+    // Не привязываем сразу: сохраняем email и (уже хэшированный) пароль во временном токене
+    // и шлём на почту ссылку. Email появится в аккаунте только после перехода по ней.
+    await this.prisma.emailVerificationToken.deleteMany({ where: { userId } });
+
     const passwordHash = await hash(dto.password, 10);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { email: dto.email, password: passwordHash },
+    const token = randomUUID();
+    const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
+    await this.prisma.emailVerificationToken.create({
+      data: { userId, email: dto.email, password: passwordHash, token, expiresAt },
     });
+
+    await this.mail.sendEmailConfirmation(dto.email, token);
+    return { success: true, pendingConfirmation: true };
+  }
+
+  // Переход по ссылке из письма: достаём отложенные email+пароль из токена и записываем их в аккаунт.
+  async confirmEmail(token: string) {
+    const record = await this.prisma.emailVerificationToken.findUnique({ where: { token } });
+
+    if (!record || record.expiresAt < new Date()) {
+      if (record) await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
+      throw new BadRequestException('Ссылка подтверждения недействительна или истекла');
+    }
+
+    const user = await this.usersService.findOne(record.userId);
+    if (user.email) {
+      // Почта уже привязана (например, успели подтвердить другую) — токен больше не нужен.
+      await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
+      throw new ConflictException('У аккаунта уже есть почта');
+    }
+
+    // Пока письмо ждало подтверждения, этот email мог занять кто-то другой.
+    const existing = await this.usersService.findByEmail(record.email);
+    if (existing) {
+      await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
+      throw new ConflictException('Email уже используется');
+    }
+
+    await this.prisma.user.update({
+      where: { id: record.userId },
+      data: { email: record.email, password: record.password },
+    });
+    await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
 
     return { success: true };
   }
@@ -182,7 +223,7 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 минут
     await this.prisma.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } });
 
-    // TODO: отправить письмо с токеном
+    await this.mail.sendPasswordReset(email, token);
     return { success: true };
   }
 
