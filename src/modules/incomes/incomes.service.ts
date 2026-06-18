@@ -151,12 +151,13 @@ export class IncomesService {
 
     const categories = await this.prisma.incomeCategory.findMany({
       where: { id: { in: [...groupsByCategory.keys()] } },
-      select: { id: true, name: true },
+      select: { id: true, name: true, emoji: true },
     });
-    const nameMap = new Map(categories.map((c) => [c.id, c.name]));
+    const catMap = new Map(categories.map((c) => [c.id, c]));
 
     const items = [...groupsByCategory.entries()].map(([catId, groups]) => ({
-      category: nameMap.get(catId) ?? '—',
+      category: catMap.get(catId)?.name ?? '—',
+      emoji: catMap.get(catId)?.emoji ?? null,
       // Category total in the base currency (approx. by rate). null if rates are unavailable.
       total: this.currency.approxTotalInBase(groups, baseCurrency, rates, 'income'),
     }));
@@ -186,7 +187,7 @@ export class IncomesService {
           currency: true,
           description: true,
           date: true,
-          category: { select: { name: true } },
+          category: { select: { name: true, emoji: true } },
         },
         // Within a single day (date without time) keep the insertion order by createdAt.
         orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
@@ -198,6 +199,7 @@ export class IncomesService {
     const map = new Map<
       string,
       {
+        emoji: string | null;
         rows: { currency: string; amount: number; amountUsd: number | null }[];
         items: { date: Date; amount: number; currency: string; description?: string }[];
       }
@@ -207,7 +209,7 @@ export class IncomesService {
       const name = e.category?.name ?? '—';
       let group = map.get(name);
       if (!group) {
-        group = { rows: [], items: [] };
+        group = { emoji: e.category?.emoji ?? null, rows: [], items: [] };
         map.set(name, group);
       }
       const amount = Number(e.amount);
@@ -224,6 +226,7 @@ export class IncomesService {
 
     const categories = [...map.entries()].map(([category, group]) => ({
       category,
+      emoji: group.emoji,
       // Category total — converted to the base currency in a single pass (as in the web dashboard).
       total: this.currency.approxTotalInBase(group.rows, baseCurrency, rates, 'income'),
       items: group.items,

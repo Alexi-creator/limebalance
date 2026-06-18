@@ -18,6 +18,9 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 
 const symbol = (code: string) => CURRENCY_SYMBOLS[code] ?? code;
 
+// Prefix a category label with its emoji (set via the web cabinet), when present.
+const withEmoji = (name: string, emoji?: string | null) => (emoji ? `${emoji} ${name}` : name);
+
 // Exact amount in its original currency.
 const exact = (value: number, currency: string) => `${value.toFixed(2)} ${symbol(currency)}`;
 
@@ -90,7 +93,7 @@ export class StatHandler {
     const prefix = type === 'expense' ? '/statexpense:' : '/statincome:';
     const keyboard = new InlineKeyboard();
     categories.forEach((cat, i) => {
-      keyboard.text(cat.name, `${prefix}${cat.id}`);
+      keyboard.text(withEmoji(cat.name, cat.emoji), `${prefix}${cat.id}`);
       if (i % 2 === 1) keyboard.row();
     });
     if (categories.length % 2 === 0) keyboard.row();
@@ -166,7 +169,7 @@ export class StatHandler {
 
       let text = `${label} с детализацией:\n\n`;
       for (const cat of categories) {
-        text += `📌 ${cat.category} — ${money(cat.total, baseCurrency)}\n`;
+        text += `${withEmoji(cat.category, cat.emoji ?? '📌')} — ${money(cat.total, baseCurrency)}\n`;
         for (const item of cat.items) {
           const date = item.date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
           // Item — in its original currency.
@@ -192,7 +195,7 @@ export class StatHandler {
 
       let text = `${label}:\n\n`;
       for (const row of items) {
-        text += `• ${row.category} — ${money(row.total, baseCurrency)}\n`;
+        text += `• ${withEmoji(row.category, row.emoji)} — ${money(row.total, baseCurrency)}\n`;
       }
       if (items.length > 1) text += `\nИтого: ${money(total, baseCurrency)}`;
 
