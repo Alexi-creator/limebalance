@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Добро пожаловать! Я помогу вести учёт расходов.\n\nДля начала добавьте категорию.",
+    "welcomeBack": "С возвращением! Выберите действие:"
+  },
+  "menu": {
+    "viewCategories": "Посмотреть все категории",
+    "addCategory": "Добавить категорию",
+    "addIncome": "Добавить доход",
+    "addExpense": "Добавить трату",
+    "stat": "Статистика"
+  },
+  "common": {
+    "pressStartFirst": "Для начала нажмите /start",
+    "chooseFromMenu": "Выберите действие из меню.",
+    "somethingWrong": "Что-то пошло не так. Начните заново."
+  },
+  "category": {
+    "typePrompt": "Для какого типа создать категорию?",
+    "typeExpense": "Расходы",
+    "typeIncome": "Доходы",
+    "enterName": "Введите название категории:",
+    "created": "✅ Категория успешно создана!",
+    "none": "У вас пока нет категорий.",
+    "listExpensesHeading": "Расходы:",
+    "listIncomesHeading": "Доходы:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Для начала добавьте хотя бы одну категорию.",
+    "addAtLeastOneIncomeCategory": "Для начала добавьте хотя бы одну категорию доходов.",
+    "chooseCategory": "Выберите категорию:",
+    "categoryAmountPrompt": "Категория: {{name}}\n\nВведите сумму:",
+    "enterValidExpenseAmount": "Введите корректную сумму (например: 500 или 1500.50):",
+    "enterValidIncomeAmount": "Введите корректную сумму (например: 50000 или 1500.50):",
+    "enterDescription": "Введите описание:",
+    "expenseAdded": "✅ Трата добавлена!\n\nКатегория: {{name}}\nСумма: {{amount}} \nОписание: {{description}}",
+    "incomeAdded": "✅ Доход добавлен!\n\nКатегория: {{name}}\nСумма: {{amount}}\nОписание: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Что смотрим?",
+    "addCategoryFirst": {
+      "expense": "Для начала добавьте хотя бы одну категорию расходов.",
+      "income": "Для начала добавьте хотя бы одну категорию доходов."
+    },
+    "all": "Все",
+    "month": "Текущий месяц",
+    "week": "Неделя",
+    "day": "Сегодня",
+    "choosePeriod": "Выберите период:",
+    "withDetails": "С детализацией",
+    "withoutDetails": "Без детализации",
+    "needDetails": "Нужна детализация?",
+    "rateUnavailable": "курс недоступен",
+    "nothingForPeriod": {
+      "expense": "За выбранный период трат нет 🙂",
+      "income": "За выбранный период доходов нет 🙂"
+    },
+    "heading": {
+      "expense": "Траты",
+      "income": "Доходы"
+    },
+    "withDetailsHeading": {
+      "expense": "Траты с детализацией:",
+      "income": "Доходы с детализацией:"
+    },
+    "total": "Итого"
+  }
+}

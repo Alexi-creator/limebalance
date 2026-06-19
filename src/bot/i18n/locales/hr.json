@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Dobrodošao! Pomoći ću ti pratiti troškove.\n\nZapočni dodavanjem kategorije.",
+    "welcomeBack": "Dobrodošao natrag! Odaberi radnju:"
+  },
+  "menu": {
+    "viewCategories": "Prikaži sve kategorije",
+    "addCategory": "Dodaj kategoriju",
+    "addIncome": "Dodaj prihod",
+    "addExpense": "Dodaj trošak",
+    "stat": "Statistika"
+  },
+  "common": {
+    "pressStartFirst": "Prvo pritisni /start",
+    "chooseFromMenu": "Odaberi radnju iz izbornika.",
+    "somethingWrong": "Nešto je pošlo po zlu. Počni ispočetka."
+  },
+  "category": {
+    "typePrompt": "Za koju vrstu želiš stvoriti kategoriju?",
+    "typeExpense": "Troškovi",
+    "typeIncome": "Prihodi",
+    "enterName": "Unesi naziv kategorije:",
+    "created": "✅ Kategorija je uspješno stvorena!",
+    "none": "Još nemaš kategorija.",
+    "listExpensesHeading": "Troškovi:",
+    "listIncomesHeading": "Prihodi:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Prvo dodaj barem jednu kategoriju.",
+    "addAtLeastOneIncomeCategory": "Prvo dodaj barem jednu kategoriju prihoda.",
+    "chooseCategory": "Odaberi kategoriju:",
+    "categoryAmountPrompt": "Kategorija: {{name}}\n\nUnesi iznos:",
+    "enterValidExpenseAmount": "Unesi valjani iznos (npr.: 500 ili 1500.50):",
+    "enterValidIncomeAmount": "Unesi valjani iznos (npr.: 50000 ili 1500.50):",
+    "enterDescription": "Unesi opis:",
+    "expenseAdded": "✅ Trošak dodan!\n\nKategorija: {{name}}\nIznos: {{amount}} \nOpis: {{description}}",
+    "incomeAdded": "✅ Prihod dodan!\n\nKategorija: {{name}}\nIznos: {{amount}}\nOpis: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Što želiš vidjeti?",
+    "addCategoryFirst": {
+      "expense": "Prvo dodaj barem jednu kategoriju troškova.",
+      "income": "Prvo dodaj barem jednu kategoriju prihoda."
+    },
+    "all": "Sve",
+    "month": "Tekući mjesec",
+    "week": "Tjedan",
+    "day": "Danas",
+    "choosePeriod": "Odaberi razdoblje:",
+    "withDetails": "S detaljima",
+    "withoutDetails": "Bez detalja",
+    "needDetails": "Prikazati detalje?",
+    "rateUnavailable": "tečaj nije dostupan",
+    "nothingForPeriod": {
+      "expense": "Nema troškova za odabrano razdoblje 🙂",
+      "income": "Nema prihoda za odabrano razdoblje 🙂"
+    },
+    "heading": {
+      "expense": "Troškovi",
+      "income": "Prihodi"
+    },
+    "withDetailsHeading": {
+      "expense": "Troškovi (detaljno):",
+      "income": "Prihodi (detaljno):"
+    },
+    "total": "Ukupno"
+  }
+}

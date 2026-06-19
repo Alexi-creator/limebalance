@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Welcome! I'll help you track your spending.\n\nStart by adding a category.",
+    "welcomeBack": "Welcome back! Choose an action:"
+  },
+  "menu": {
+    "viewCategories": "View all categories",
+    "addCategory": "Add category",
+    "addIncome": "Add income",
+    "addExpense": "Add expense",
+    "stat": "Statistics"
+  },
+  "common": {
+    "pressStartFirst": "Please press /start first",
+    "chooseFromMenu": "Choose an action from the menu.",
+    "somethingWrong": "Something went wrong. Please start over."
+  },
+  "category": {
+    "typePrompt": "What type of category do you want to create?",
+    "typeExpense": "Expenses",
+    "typeIncome": "Income",
+    "enterName": "Enter the category name:",
+    "created": "✅ Category created successfully!",
+    "none": "You don't have any categories yet.",
+    "listExpensesHeading": "Expenses:",
+    "listIncomesHeading": "Income:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Add at least one category first.",
+    "addAtLeastOneIncomeCategory": "Add at least one income category first.",
+    "chooseCategory": "Choose a category:",
+    "categoryAmountPrompt": "Category: {{name}}\n\nEnter the amount:",
+    "enterValidExpenseAmount": "Enter a valid amount (e.g. 500 or 1500.50):",
+    "enterValidIncomeAmount": "Enter a valid amount (e.g. 50000 or 1500.50):",
+    "enterDescription": "Enter a description:",
+    "expenseAdded": "✅ Expense added!\n\nCategory: {{name}}\nAmount: {{amount}} \nDescription: {{description}}",
+    "incomeAdded": "✅ Income added!\n\nCategory: {{name}}\nAmount: {{amount}}\nDescription: {{description}}"
+  },
+  "stat": {
+    "whatToView": "What do you want to view?",
+    "addCategoryFirst": {
+      "expense": "Add at least one expense category first.",
+      "income": "Add at least one income category first."
+    },
+    "all": "All",
+    "month": "Current month",
+    "week": "Week",
+    "day": "Today",
+    "choosePeriod": "Choose a period:",
+    "withDetails": "With details",
+    "withoutDetails": "Without details",
+    "needDetails": "Need details?",
+    "rateUnavailable": "rate unavailable",
+    "nothingForPeriod": {
+      "expense": "No expenses for the selected period 🙂",
+      "income": "No income for the selected period 🙂"
+    },
+    "heading": {
+      "expense": "Expenses",
+      "income": "Income"
+    },
+    "withDetailsHeading": {
+      "expense": "Expenses (detailed):",
+      "income": "Income (detailed):"
+    },
+    "total": "Total"
+  }
+}

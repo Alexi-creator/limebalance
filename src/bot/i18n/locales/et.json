@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Tere tulemast! Aitan sul kulusid jälgida.\n\nAlusta kategooria lisamisega.",
+    "welcomeBack": "Tere tulemast tagasi! Vali tegevus:"
+  },
+  "menu": {
+    "viewCategories": "Vaata kõiki kategooriaid",
+    "addCategory": "Lisa kategooria",
+    "addIncome": "Lisa tulu",
+    "addExpense": "Lisa kulu",
+    "stat": "Statistika"
+  },
+  "common": {
+    "pressStartFirst": "Vajuta kõigepealt /start",
+    "chooseFromMenu": "Vali menüüst tegevus.",
+    "somethingWrong": "Midagi läks valesti. Alusta uuesti."
+  },
+  "category": {
+    "typePrompt": "Mis tüübi jaoks soovid kategooria luua?",
+    "typeExpense": "Kulud",
+    "typeIncome": "Tulud",
+    "enterName": "Sisesta kategooria nimi:",
+    "created": "✅ Kategooria edukalt loodud!",
+    "none": "Sul pole veel kategooriaid.",
+    "listExpensesHeading": "Kulud:",
+    "listIncomesHeading": "Tulud:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Lisa kõigepealt vähemalt üks kategooria.",
+    "addAtLeastOneIncomeCategory": "Lisa kõigepealt vähemalt üks tulukategooria.",
+    "chooseCategory": "Vali kategooria:",
+    "categoryAmountPrompt": "Kategooria: {{name}}\n\nSisesta summa:",
+    "enterValidExpenseAmount": "Sisesta kehtiv summa (nt: 500 või 1500.50):",
+    "enterValidIncomeAmount": "Sisesta kehtiv summa (nt: 50000 või 1500.50):",
+    "enterDescription": "Sisesta kirjeldus:",
+    "expenseAdded": "✅ Kulu lisatud!\n\nKategooria: {{name}}\nSumma: {{amount}} \nKirjeldus: {{description}}",
+    "incomeAdded": "✅ Tulu lisatud!\n\nKategooria: {{name}}\nSumma: {{amount}}\nKirjeldus: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Mida soovid vaadata?",
+    "addCategoryFirst": {
+      "expense": "Lisa kõigepealt vähemalt üks kulukategooria.",
+      "income": "Lisa kõigepealt vähemalt üks tulukategooria."
+    },
+    "all": "Kõik",
+    "month": "Jooksev kuu",
+    "week": "Nädal",
+    "day": "Täna",
+    "choosePeriod": "Vali periood:",
+    "withDetails": "Üksikasjadega",
+    "withoutDetails": "Ilma üksikasjadeta",
+    "needDetails": "Kas näidata üksikasju?",
+    "rateUnavailable": "kurss pole saadaval",
+    "nothingForPeriod": {
+      "expense": "Valitud perioodil kulusid pole 🙂",
+      "income": "Valitud perioodil tulusid pole 🙂"
+    },
+    "heading": {
+      "expense": "Kulud",
+      "income": "Tulud"
+    },
+    "withDetailsHeading": {
+      "expense": "Kulud (üksikasjalik):",
+      "income": "Tulud (üksikasjalik):"
+    },
+    "total": "Kokku"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Üdvözöllek! Segítek nyomon követni a kiadásaidat.\n\nKezdd egy kategória hozzáadásával.",
+    "welcomeBack": "Üdv újra! Válassz egy műveletet:"
+  },
+  "menu": {
+    "viewCategories": "Összes kategória megtekintése",
+    "addCategory": "Kategória hozzáadása",
+    "addIncome": "Bevétel hozzáadása",
+    "addExpense": "Kiadás hozzáadása",
+    "stat": "Statisztika"
+  },
+  "common": {
+    "pressStartFirst": "Először nyomd meg a /start parancsot",
+    "chooseFromMenu": "Válassz egy műveletet a menüből.",
+    "somethingWrong": "Valami hiba történt. Kezdd elölről."
+  },
+  "category": {
+    "typePrompt": "Milyen típushoz szeretnél kategóriát létrehozni?",
+    "typeExpense": "Kiadások",
+    "typeIncome": "Bevételek",
+    "enterName": "Add meg a kategória nevét:",
+    "created": "✅ A kategória sikeresen létrejött!",
+    "none": "Még nincsenek kategóriáid.",
+    "listExpensesHeading": "Kiadások:",
+    "listIncomesHeading": "Bevételek:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Először adj hozzá legalább egy kategóriát.",
+    "addAtLeastOneIncomeCategory": "Először adj hozzá legalább egy bevételi kategóriát.",
+    "chooseCategory": "Válassz egy kategóriát:",
+    "categoryAmountPrompt": "Kategória: {{name}}\n\nAdd meg az összeget:",
+    "enterValidExpenseAmount": "Adj meg egy érvényes összeget (pl.: 500 vagy 1500.50):",
+    "enterValidIncomeAmount": "Adj meg egy érvényes összeget (pl.: 50000 vagy 1500.50):",
+    "enterDescription": "Adj meg egy leírást:",
+    "expenseAdded": "✅ Kiadás hozzáadva!\n\nKategória: {{name}}\nÖsszeg: {{amount}} \nLeírás: {{description}}",
+    "incomeAdded": "✅ Bevétel hozzáadva!\n\nKategória: {{name}}\nÖsszeg: {{amount}}\nLeírás: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Mit szeretnél megnézni?",
+    "addCategoryFirst": {
+      "expense": "Először adj hozzá legalább egy kiadási kategóriát.",
+      "income": "Először adj hozzá legalább egy bevételi kategóriát."
+    },
+    "all": "Összes",
+    "month": "Aktuális hónap",
+    "week": "Hét",
+    "day": "Ma",
+    "choosePeriod": "Válassz egy időszakot:",
+    "withDetails": "Részletekkel",
+    "withoutDetails": "Részletek nélkül",
+    "needDetails": "Megjelenítsem a részleteket?",
+    "rateUnavailable": "az árfolyam nem elérhető",
+    "nothingForPeriod": {
+      "expense": "Nincs kiadás a kiválasztott időszakban 🙂",
+      "income": "Nincs bevétel a kiválasztott időszakban 🙂"
+    },
+    "heading": {
+      "expense": "Kiadások",
+      "income": "Bevételek"
+    },
+    "withDetailsHeading": {
+      "expense": "Kiadások (részletes):",
+      "income": "Bevételek (részletes):"
+    },
+    "total": "Összesen"
+  }
+}

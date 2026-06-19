@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "ยินดีต้อนรับ! ฉันจะช่วยคุณติดตามค่าใช้จ่าย\n\nเริ่มต้นด้วยการเพิ่มหมวดหมู่",
+    "welcomeBack": "ยินดีต้อนรับกลับมา! เลือกการทำงาน:"
+  },
+  "menu": {
+    "viewCategories": "ดูหมวดหมู่ทั้งหมด",
+    "addCategory": "เพิ่มหมวดหมู่",
+    "addIncome": "เพิ่มรายรับ",
+    "addExpense": "เพิ่มรายจ่าย",
+    "stat": "สถิติ"
+  },
+  "common": {
+    "pressStartFirst": "กรุณากด /start ก่อน",
+    "chooseFromMenu": "เลือกการทำงานจากเมนู",
+    "somethingWrong": "เกิดข้อผิดพลาด กรุณาเริ่มใหม่"
+  },
+  "category": {
+    "typePrompt": "คุณต้องการสร้างหมวดหมู่สำหรับประเภทใด?",
+    "typeExpense": "รายจ่าย",
+    "typeIncome": "รายรับ",
+    "enterName": "กรอกชื่อหมวดหมู่:",
+    "created": "✅ สร้างหมวดหมู่สำเร็จ!",
+    "none": "คุณยังไม่มีหมวดหมู่",
+    "listExpensesHeading": "รายจ่าย:",
+    "listIncomesHeading": "รายรับ:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "กรุณาเพิ่มอย่างน้อยหนึ่งหมวดหมู่ก่อน",
+    "addAtLeastOneIncomeCategory": "กรุณาเพิ่มหมวดหมู่รายรับอย่างน้อยหนึ่งหมวดก่อน",
+    "chooseCategory": "เลือกหมวดหมู่:",
+    "categoryAmountPrompt": "หมวดหมู่: {{name}}\n\nกรอกจำนวนเงิน:",
+    "enterValidExpenseAmount": "กรอกจำนวนเงินที่ถูกต้อง (เช่น: 500 หรือ 1500.50):",
+    "enterValidIncomeAmount": "กรอกจำนวนเงินที่ถูกต้อง (เช่น: 50000 หรือ 1500.50):",
+    "enterDescription": "กรอกคำอธิบาย:",
+    "expenseAdded": "✅ เพิ่มรายจ่ายแล้ว!\n\nหมวดหมู่: {{name}}\nจำนวนเงิน: {{amount}} \nคำอธิบาย: {{description}}",
+    "incomeAdded": "✅ เพิ่มรายรับแล้ว!\n\nหมวดหมู่: {{name}}\nจำนวนเงิน: {{amount}}\nคำอธิบาย: {{description}}"
+  },
+  "stat": {
+    "whatToView": "คุณต้องการดูอะไร?",
+    "addCategoryFirst": {
+      "expense": "กรุณาเพิ่มหมวดหมู่รายจ่ายอย่างน้อยหนึ่งหมวดก่อน",
+      "income": "กรุณาเพิ่มหมวดหมู่รายรับอย่างน้อยหนึ่งหมวดก่อน"
+    },
+    "all": "ทั้งหมด",
+    "month": "เดือนนี้",
+    "week": "สัปดาห์",
+    "day": "วันนี้",
+    "choosePeriod": "เลือกช่วงเวลา:",
+    "withDetails": "พร้อมรายละเอียด",
+    "withoutDetails": "ไม่มีรายละเอียด",
+    "needDetails": "ต้องการรายละเอียดไหม?",
+    "rateUnavailable": "ไม่มีอัตราแลกเปลี่ยน",
+    "nothingForPeriod": {
+      "expense": "ไม่มีรายจ่ายในช่วงเวลาที่เลือก 🙂",
+      "income": "ไม่มีรายรับในช่วงเวลาที่เลือก 🙂"
+    },
+    "heading": {
+      "expense": "รายจ่าย",
+      "income": "รายรับ"
+    },
+    "withDetailsHeading": {
+      "expense": "รายจ่าย (รายละเอียด):",
+      "income": "รายรับ (รายละเอียด):"
+    },
+    "total": "รวม"
+  }
+}

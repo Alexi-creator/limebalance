@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Vítej! Pomůžu ti sledovat výdaje.\n\nZačni přidáním kategorie.",
+    "welcomeBack": "Vítej zpět! Vyber akci:"
+  },
+  "menu": {
+    "viewCategories": "Zobrazit všechny kategorie",
+    "addCategory": "Přidat kategorii",
+    "addIncome": "Přidat příjem",
+    "addExpense": "Přidat výdaj",
+    "stat": "Statistiky"
+  },
+  "common": {
+    "pressStartFirst": "Nejdřív stiskni /start",
+    "chooseFromMenu": "Vyber akci z menu.",
+    "somethingWrong": "Něco se pokazilo. Začni znovu."
+  },
+  "category": {
+    "typePrompt": "Pro jaký typ chceš vytvořit kategorii?",
+    "typeExpense": "Výdaje",
+    "typeIncome": "Příjmy",
+    "enterName": "Zadej název kategorie:",
+    "created": "✅ Kategorie byla úspěšně vytvořena!",
+    "none": "Zatím nemáš žádné kategorie.",
+    "listExpensesHeading": "Výdaje:",
+    "listIncomesHeading": "Příjmy:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Nejdřív přidej alespoň jednu kategorii.",
+    "addAtLeastOneIncomeCategory": "Nejdřív přidej alespoň jednu kategorii příjmů.",
+    "chooseCategory": "Vyber kategorii:",
+    "categoryAmountPrompt": "Kategorie: {{name}}\n\nZadej částku:",
+    "enterValidExpenseAmount": "Zadej platnou částku (např.: 500 nebo 1500.50):",
+    "enterValidIncomeAmount": "Zadej platnou částku (např.: 50000 nebo 1500.50):",
+    "enterDescription": "Zadej popis:",
+    "expenseAdded": "✅ Výdaj přidán!\n\nKategorie: {{name}}\nČástka: {{amount}} \nPopis: {{description}}",
+    "incomeAdded": "✅ Příjem přidán!\n\nKategorie: {{name}}\nČástka: {{amount}}\nPopis: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Co chceš zobrazit?",
+    "addCategoryFirst": {
+      "expense": "Nejdřív přidej alespoň jednu kategorii výdajů.",
+      "income": "Nejdřív přidej alespoň jednu kategorii příjmů."
+    },
+    "all": "Vše",
+    "month": "Aktuální měsíc",
+    "week": "Týden",
+    "day": "Dnes",
+    "choosePeriod": "Vyber období:",
+    "withDetails": "S detaily",
+    "withoutDetails": "Bez detailů",
+    "needDetails": "Zobrazit detaily?",
+    "rateUnavailable": "kurz není dostupný",
+    "nothingForPeriod": {
+      "expense": "Žádné výdaje za zvolené období 🙂",
+      "income": "Žádné příjmy za zvolené období 🙂"
+    },
+    "heading": {
+      "expense": "Výdaje",
+      "income": "Příjmy"
+    },
+    "withDetailsHeading": {
+      "expense": "Výdaje (podrobně):",
+      "income": "Příjmy (podrobně):"
+    },
+    "total": "Celkem"
+  }
+}

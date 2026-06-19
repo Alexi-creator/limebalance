@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Laipni lūdzam! Es palīdzēšu tev sekot izdevumiem.\n\nSāc, pievienojot kategoriju.",
+    "welcomeBack": "Laipni lūdzam atpakaļ! Izvēlies darbību:"
+  },
+  "menu": {
+    "viewCategories": "Skatīt visas kategorijas",
+    "addCategory": "Pievienot kategoriju",
+    "addIncome": "Pievienot ienākumus",
+    "addExpense": "Pievienot izdevumus",
+    "stat": "Statistika"
+  },
+  "common": {
+    "pressStartFirst": "Vispirms nospied /start",
+    "chooseFromMenu": "Izvēlies darbību no izvēlnes.",
+    "somethingWrong": "Kaut kas nogāja greizi. Sāc no jauna."
+  },
+  "category": {
+    "typePrompt": "Kādam tipam vēlies izveidot kategoriju?",
+    "typeExpense": "Izdevumi",
+    "typeIncome": "Ienākumi",
+    "enterName": "Ievadi kategorijas nosaukumu:",
+    "created": "✅ Kategorija veiksmīgi izveidota!",
+    "none": "Tev vēl nav kategoriju.",
+    "listExpensesHeading": "Izdevumi:",
+    "listIncomesHeading": "Ienākumi:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Vispirms pievieno vismaz vienu kategoriju.",
+    "addAtLeastOneIncomeCategory": "Vispirms pievieno vismaz vienu ienākumu kategoriju.",
+    "chooseCategory": "Izvēlies kategoriju:",
+    "categoryAmountPrompt": "Kategorija: {{name}}\n\nIevadi summu:",
+    "enterValidExpenseAmount": "Ievadi derīgu summu (piem.: 500 vai 1500.50):",
+    "enterValidIncomeAmount": "Ievadi derīgu summu (piem.: 50000 vai 1500.50):",
+    "enterDescription": "Ievadi aprakstu:",
+    "expenseAdded": "✅ Izdevums pievienots!\n\nKategorija: {{name}}\nSumma: {{amount}} \nApraksts: {{description}}",
+    "incomeAdded": "✅ Ienākumi pievienoti!\n\nKategorija: {{name}}\nSumma: {{amount}}\nApraksts: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Ko vēlies apskatīt?",
+    "addCategoryFirst": {
+      "expense": "Vispirms pievieno vismaz vienu izdevumu kategoriju.",
+      "income": "Vispirms pievieno vismaz vienu ienākumu kategoriju."
+    },
+    "all": "Visi",
+    "month": "Šis mēnesis",
+    "week": "Nedēļa",
+    "day": "Šodien",
+    "choosePeriod": "Izvēlies periodu:",
+    "withDetails": "Ar detaļām",
+    "withoutDetails": "Bez detaļām",
+    "needDetails": "Rādīt detaļas?",
+    "rateUnavailable": "kurss nav pieejams",
+    "nothingForPeriod": {
+      "expense": "Izvēlētajā periodā nav izdevumu 🙂",
+      "income": "Izvēlētajā periodā nav ienākumu 🙂"
+    },
+    "heading": {
+      "expense": "Izdevumi",
+      "income": "Ienākumi"
+    },
+    "withDetailsHeading": {
+      "expense": "Izdevumi (detalizēti):",
+      "income": "Ienākumi (detalizēti):"
+    },
+    "total": "Kopā"
+  }
+}

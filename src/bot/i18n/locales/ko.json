@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "환영합니다! 지출 관리를 도와드릴게요.\n\n먼저 카테고리를 추가해 보세요.",
+    "welcomeBack": "다시 오셨네요! 작업을 선택하세요:"
+  },
+  "menu": {
+    "viewCategories": "모든 카테고리 보기",
+    "addCategory": "카테고리 추가",
+    "addIncome": "수입 추가",
+    "addExpense": "지출 추가",
+    "stat": "통계"
+  },
+  "common": {
+    "pressStartFirst": "먼저 /start 를 눌러주세요",
+    "chooseFromMenu": "메뉴에서 작업을 선택하세요.",
+    "somethingWrong": "문제가 발생했습니다. 처음부터 다시 시작하세요."
+  },
+  "category": {
+    "typePrompt": "어떤 유형의 카테고리를 만들까요?",
+    "typeExpense": "지출",
+    "typeIncome": "수입",
+    "enterName": "카테고리 이름을 입력하세요:",
+    "created": "✅ 카테고리가 생성되었습니다!",
+    "none": "아직 카테고리가 없습니다.",
+    "listExpensesHeading": "지출:",
+    "listIncomesHeading": "수입:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "먼저 카테고리를 하나 이상 추가하세요.",
+    "addAtLeastOneIncomeCategory": "먼저 수입 카테고리를 하나 이상 추가하세요.",
+    "chooseCategory": "카테고리를 선택하세요:",
+    "categoryAmountPrompt": "카테고리: {{name}}\n\n금액을 입력하세요:",
+    "enterValidExpenseAmount": "올바른 금액을 입력하세요 (예: 500 또는 1500.50):",
+    "enterValidIncomeAmount": "올바른 금액을 입력하세요 (예: 50000 또는 1500.50):",
+    "enterDescription": "설명을 입력하세요:",
+    "expenseAdded": "✅ 지출이 추가되었습니다!\n\n카테고리: {{name}}\n금액: {{amount}} \n설명: {{description}}",
+    "incomeAdded": "✅ 수입이 추가되었습니다!\n\n카테고리: {{name}}\n금액: {{amount}}\n설명: {{description}}"
+  },
+  "stat": {
+    "whatToView": "무엇을 보시겠어요?",
+    "addCategoryFirst": {
+      "expense": "먼저 지출 카테고리를 하나 이상 추가하세요.",
+      "income": "먼저 수입 카테고리를 하나 이상 추가하세요."
+    },
+    "all": "전체",
+    "month": "이번 달",
+    "week": "주",
+    "day": "오늘",
+    "choosePeriod": "기간을 선택하세요:",
+    "withDetails": "상세 포함",
+    "withoutDetails": "상세 없음",
+    "needDetails": "상세 내역을 표시할까요?",
+    "rateUnavailable": "환율을 사용할 수 없음",
+    "nothingForPeriod": {
+      "expense": "선택한 기간에 지출이 없습니다 🙂",
+      "income": "선택한 기간에 수입이 없습니다 🙂"
+    },
+    "heading": {
+      "expense": "지출",
+      "income": "수입"
+    },
+    "withDetailsHeading": {
+      "expense": "지출 (상세):",
+      "income": "수입 (상세):"
+    },
+    "total": "합계"
+  }
+}

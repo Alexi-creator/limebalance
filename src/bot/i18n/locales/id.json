@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Selamat datang! Saya akan membantu mencatat pengeluaranmu.\n\nMulai dengan menambahkan kategori.",
+    "welcomeBack": "Selamat datang kembali! Pilih tindakan:"
+  },
+  "menu": {
+    "viewCategories": "Lihat semua kategori",
+    "addCategory": "Tambah kategori",
+    "addIncome": "Tambah pemasukan",
+    "addExpense": "Tambah pengeluaran",
+    "stat": "Statistik"
+  },
+  "common": {
+    "pressStartFirst": "Tekan /start dulu",
+    "chooseFromMenu": "Pilih tindakan dari menu.",
+    "somethingWrong": "Terjadi kesalahan. Mulai lagi."
+  },
+  "category": {
+    "typePrompt": "Untuk tipe apa kamu ingin membuat kategori?",
+    "typeExpense": "Pengeluaran",
+    "typeIncome": "Pemasukan",
+    "enterName": "Masukkan nama kategori:",
+    "created": "✅ Kategori berhasil dibuat!",
+    "none": "Kamu belum punya kategori.",
+    "listExpensesHeading": "Pengeluaran:",
+    "listIncomesHeading": "Pemasukan:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Tambahkan setidaknya satu kategori dulu.",
+    "addAtLeastOneIncomeCategory": "Tambahkan setidaknya satu kategori pemasukan dulu.",
+    "chooseCategory": "Pilih kategori:",
+    "categoryAmountPrompt": "Kategori: {{name}}\n\nMasukkan jumlah:",
+    "enterValidExpenseAmount": "Masukkan jumlah yang valid (mis.: 500 atau 1500.50):",
+    "enterValidIncomeAmount": "Masukkan jumlah yang valid (mis.: 50000 atau 1500.50):",
+    "enterDescription": "Masukkan deskripsi:",
+    "expenseAdded": "✅ Pengeluaran ditambahkan!\n\nKategori: {{name}}\nJumlah: {{amount}} \nDeskripsi: {{description}}",
+    "incomeAdded": "✅ Pemasukan ditambahkan!\n\nKategori: {{name}}\nJumlah: {{amount}}\nDeskripsi: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Apa yang ingin kamu lihat?",
+    "addCategoryFirst": {
+      "expense": "Tambahkan setidaknya satu kategori pengeluaran dulu.",
+      "income": "Tambahkan setidaknya satu kategori pemasukan dulu."
+    },
+    "all": "Semua",
+    "month": "Bulan ini",
+    "week": "Minggu",
+    "day": "Hari ini",
+    "choosePeriod": "Pilih periode:",
+    "withDetails": "Dengan rincian",
+    "withoutDetails": "Tanpa rincian",
+    "needDetails": "Tampilkan rincian?",
+    "rateUnavailable": "kurs tidak tersedia",
+    "nothingForPeriod": {
+      "expense": "Tidak ada pengeluaran untuk periode yang dipilih 🙂",
+      "income": "Tidak ada pemasukan untuk periode yang dipilih 🙂"
+    },
+    "heading": {
+      "expense": "Pengeluaran",
+      "income": "Pemasukan"
+    },
+    "withDetailsHeading": {
+      "expense": "Pengeluaran (rinci):",
+      "income": "Pemasukan (rinci):"
+    },
+    "total": "Total"
+  }
+}

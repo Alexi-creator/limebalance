@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Welkom! Ik help je je uitgaven bij te houden.\n\nVoeg eerst een categorie toe.",
+    "welcomeBack": "Welkom terug! Kies een actie:"
+  },
+  "menu": {
+    "viewCategories": "Alle categorieën bekijken",
+    "addCategory": "Categorie toevoegen",
+    "addIncome": "Inkomen toevoegen",
+    "addExpense": "Uitgave toevoegen",
+    "stat": "Statistieken"
+  },
+  "common": {
+    "pressStartFirst": "Druk eerst op /start",
+    "chooseFromMenu": "Kies een actie uit het menu.",
+    "somethingWrong": "Er ging iets mis. Begin opnieuw."
+  },
+  "category": {
+    "typePrompt": "Voor welk type wil je een categorie maken?",
+    "typeExpense": "Uitgaven",
+    "typeIncome": "Inkomsten",
+    "enterName": "Voer de categorienaam in:",
+    "created": "✅ Categorie succesvol aangemaakt!",
+    "none": "Je hebt nog geen categorieën.",
+    "listExpensesHeading": "Uitgaven:",
+    "listIncomesHeading": "Inkomsten:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Voeg eerst ten minste één categorie toe.",
+    "addAtLeastOneIncomeCategory": "Voeg eerst ten minste één inkomstencategorie toe.",
+    "chooseCategory": "Kies een categorie:",
+    "categoryAmountPrompt": "Categorie: {{name}}\n\nVoer het bedrag in:",
+    "enterValidExpenseAmount": "Voer een geldig bedrag in (bijv.: 500 of 1500.50):",
+    "enterValidIncomeAmount": "Voer een geldig bedrag in (bijv.: 50000 of 1500.50):",
+    "enterDescription": "Voer een omschrijving in:",
+    "expenseAdded": "✅ Uitgave toegevoegd!\n\nCategorie: {{name}}\nBedrag: {{amount}} \nOmschrijving: {{description}}",
+    "incomeAdded": "✅ Inkomen toegevoegd!\n\nCategorie: {{name}}\nBedrag: {{amount}}\nOmschrijving: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Wat wil je bekijken?",
+    "addCategoryFirst": {
+      "expense": "Voeg eerst ten minste één uitgavencategorie toe.",
+      "income": "Voeg eerst ten minste één inkomstencategorie toe."
+    },
+    "all": "Alle",
+    "month": "Huidige maand",
+    "week": "Week",
+    "day": "Vandaag",
+    "choosePeriod": "Kies een periode:",
+    "withDetails": "Met details",
+    "withoutDetails": "Zonder details",
+    "needDetails": "Details tonen?",
+    "rateUnavailable": "koers niet beschikbaar",
+    "nothingForPeriod": {
+      "expense": "Geen uitgaven in de gekozen periode 🙂",
+      "income": "Geen inkomsten in de gekozen periode 🙂"
+    },
+    "heading": {
+      "expense": "Uitgaven",
+      "income": "Inkomsten"
+    },
+    "withDetailsHeading": {
+      "expense": "Uitgaven (gedetailleerd):",
+      "income": "Inkomsten (gedetailleerd):"
+    },
+    "total": "Totaal"
+  }
+}

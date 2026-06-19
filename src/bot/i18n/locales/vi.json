@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Chào mừng! Tôi sẽ giúp bạn theo dõi chi tiêu.\n\nHãy bắt đầu bằng cách thêm một danh mục.",
+    "welcomeBack": "Chào mừng trở lại! Chọn một hành động:"
+  },
+  "menu": {
+    "viewCategories": "Xem tất cả danh mục",
+    "addCategory": "Thêm danh mục",
+    "addIncome": "Thêm thu nhập",
+    "addExpense": "Thêm chi tiêu",
+    "stat": "Thống kê"
+  },
+  "common": {
+    "pressStartFirst": "Vui lòng nhấn /start trước",
+    "chooseFromMenu": "Chọn một hành động từ menu.",
+    "somethingWrong": "Đã xảy ra lỗi. Hãy bắt đầu lại."
+  },
+  "category": {
+    "typePrompt": "Bạn muốn tạo danh mục cho loại nào?",
+    "typeExpense": "Chi tiêu",
+    "typeIncome": "Thu nhập",
+    "enterName": "Nhập tên danh mục:",
+    "created": "✅ Đã tạo danh mục thành công!",
+    "none": "Bạn chưa có danh mục nào.",
+    "listExpensesHeading": "Chi tiêu:",
+    "listIncomesHeading": "Thu nhập:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Hãy thêm ít nhất một danh mục trước.",
+    "addAtLeastOneIncomeCategory": "Hãy thêm ít nhất một danh mục thu nhập trước.",
+    "chooseCategory": "Chọn một danh mục:",
+    "categoryAmountPrompt": "Danh mục: {{name}}\n\nNhập số tiền:",
+    "enterValidExpenseAmount": "Nhập số tiền hợp lệ (vd: 500 hoặc 1500.50):",
+    "enterValidIncomeAmount": "Nhập số tiền hợp lệ (vd: 50000 hoặc 1500.50):",
+    "enterDescription": "Nhập mô tả:",
+    "expenseAdded": "✅ Đã thêm chi tiêu!\n\nDanh mục: {{name}}\nSố tiền: {{amount}} \nMô tả: {{description}}",
+    "incomeAdded": "✅ Đã thêm thu nhập!\n\nDanh mục: {{name}}\nSố tiền: {{amount}}\nMô tả: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Bạn muốn xem gì?",
+    "addCategoryFirst": {
+      "expense": "Hãy thêm ít nhất một danh mục chi tiêu trước.",
+      "income": "Hãy thêm ít nhất một danh mục thu nhập trước."
+    },
+    "all": "Tất cả",
+    "month": "Tháng hiện tại",
+    "week": "Tuần",
+    "day": "Hôm nay",
+    "choosePeriod": "Chọn khoảng thời gian:",
+    "withDetails": "Có chi tiết",
+    "withoutDetails": "Không chi tiết",
+    "needDetails": "Hiển thị chi tiết?",
+    "rateUnavailable": "không có tỷ giá",
+    "nothingForPeriod": {
+      "expense": "Không có chi tiêu trong khoảng thời gian đã chọn 🙂",
+      "income": "Không có thu nhập trong khoảng thời gian đã chọn 🙂"
+    },
+    "heading": {
+      "expense": "Chi tiêu",
+      "income": "Thu nhập"
+    },
+    "withDetailsHeading": {
+      "expense": "Chi tiêu (chi tiết):",
+      "income": "Thu nhập (chi tiết):"
+    },
+    "total": "Tổng"
+  }
+}

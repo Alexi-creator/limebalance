@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Hoş geldin! Harcamalarını takip etmene yardımcı olacağım.\n\nÖnce bir kategori ekle.",
+    "welcomeBack": "Tekrar hoş geldin! Bir işlem seç:"
+  },
+  "menu": {
+    "viewCategories": "Tüm kategorileri gör",
+    "addCategory": "Kategori ekle",
+    "addIncome": "Gelir ekle",
+    "addExpense": "Gider ekle",
+    "stat": "İstatistikler"
+  },
+  "common": {
+    "pressStartFirst": "Önce /start'a bas",
+    "chooseFromMenu": "Menüden bir işlem seç.",
+    "somethingWrong": "Bir şeyler ters gitti. Baştan başla."
+  },
+  "category": {
+    "typePrompt": "Hangi tür için kategori oluşturmak istersin?",
+    "typeExpense": "Giderler",
+    "typeIncome": "Gelirler",
+    "enterName": "Kategori adını gir:",
+    "created": "✅ Kategori başarıyla oluşturuldu!",
+    "none": "Henüz kategorin yok.",
+    "listExpensesHeading": "Giderler:",
+    "listIncomesHeading": "Gelirler:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Önce en az bir kategori ekle.",
+    "addAtLeastOneIncomeCategory": "Önce en az bir gelir kategorisi ekle.",
+    "chooseCategory": "Bir kategori seç:",
+    "categoryAmountPrompt": "Kategori: {{name}}\n\nTutarı gir:",
+    "enterValidExpenseAmount": "Geçerli bir tutar gir (örn.: 500 veya 1500.50):",
+    "enterValidIncomeAmount": "Geçerli bir tutar gir (örn.: 50000 veya 1500.50):",
+    "enterDescription": "Bir açıklama gir:",
+    "expenseAdded": "✅ Gider eklendi!\n\nKategori: {{name}}\nTutar: {{amount}} \nAçıklama: {{description}}",
+    "incomeAdded": "✅ Gelir eklendi!\n\nKategori: {{name}}\nTutar: {{amount}}\nAçıklama: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Neyi görmek istersin?",
+    "addCategoryFirst": {
+      "expense": "Önce en az bir gider kategorisi ekle.",
+      "income": "Önce en az bir gelir kategorisi ekle."
+    },
+    "all": "Tümü",
+    "month": "Bu ay",
+    "week": "Hafta",
+    "day": "Bugün",
+    "choosePeriod": "Bir dönem seç:",
+    "withDetails": "Detaylı",
+    "withoutDetails": "Detaysız",
+    "needDetails": "Detaylar gösterilsin mi?",
+    "rateUnavailable": "kur mevcut değil",
+    "nothingForPeriod": {
+      "expense": "Seçilen dönemde gider yok 🙂",
+      "income": "Seçilen dönemde gelir yok 🙂"
+    },
+    "heading": {
+      "expense": "Giderler",
+      "income": "Gelirler"
+    },
+    "withDetailsHeading": {
+      "expense": "Giderler (detaylı):",
+      "income": "Gelirler (detaylı):"
+    },
+    "total": "Toplam"
+  }
+}

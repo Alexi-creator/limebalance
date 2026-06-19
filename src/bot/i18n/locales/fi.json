@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Tervetuloa! Autan sinua seuraamaan menojasi.\n\nAloita lisäämällä kategoria.",
+    "welcomeBack": "Tervetuloa takaisin! Valitse toiminto:"
+  },
+  "menu": {
+    "viewCategories": "Näytä kaikki kategoriat",
+    "addCategory": "Lisää kategoria",
+    "addIncome": "Lisää tulo",
+    "addExpense": "Lisää meno",
+    "stat": "Tilastot"
+  },
+  "common": {
+    "pressStartFirst": "Paina ensin /start",
+    "chooseFromMenu": "Valitse toiminto valikosta.",
+    "somethingWrong": "Jotain meni pieleen. Aloita alusta."
+  },
+  "category": {
+    "typePrompt": "Minkä tyypin kategorian haluat luoda?",
+    "typeExpense": "Menot",
+    "typeIncome": "Tulot",
+    "enterName": "Syötä kategorian nimi:",
+    "created": "✅ Kategoria luotu onnistuneesti!",
+    "none": "Sinulla ei ole vielä kategorioita.",
+    "listExpensesHeading": "Menot:",
+    "listIncomesHeading": "Tulot:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Lisää ensin vähintään yksi kategoria.",
+    "addAtLeastOneIncomeCategory": "Lisää ensin vähintään yksi tulokategoria.",
+    "chooseCategory": "Valitse kategoria:",
+    "categoryAmountPrompt": "Kategoria: {{name}}\n\nSyötä summa:",
+    "enterValidExpenseAmount": "Syötä kelvollinen summa (esim.: 500 tai 1500.50):",
+    "enterValidIncomeAmount": "Syötä kelvollinen summa (esim.: 50000 tai 1500.50):",
+    "enterDescription": "Syötä kuvaus:",
+    "expenseAdded": "✅ Meno lisätty!\n\nKategoria: {{name}}\nSumma: {{amount}} \nKuvaus: {{description}}",
+    "incomeAdded": "✅ Tulo lisätty!\n\nKategoria: {{name}}\nSumma: {{amount}}\nKuvaus: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Mitä haluat katsoa?",
+    "addCategoryFirst": {
+      "expense": "Lisää ensin vähintään yksi menokategoria.",
+      "income": "Lisää ensin vähintään yksi tulokategoria."
+    },
+    "all": "Kaikki",
+    "month": "Kuluva kuukausi",
+    "week": "Viikko",
+    "day": "Tänään",
+    "choosePeriod": "Valitse ajanjakso:",
+    "withDetails": "Yksityiskohdilla",
+    "withoutDetails": "Ilman yksityiskohtia",
+    "needDetails": "Näytetäänkö yksityiskohdat?",
+    "rateUnavailable": "kurssi ei saatavilla",
+    "nothingForPeriod": {
+      "expense": "Ei menoja valitulla ajanjaksolla 🙂",
+      "income": "Ei tuloja valitulla ajanjaksolla 🙂"
+    },
+    "heading": {
+      "expense": "Menot",
+      "income": "Tulot"
+    },
+    "withDetailsHeading": {
+      "expense": "Menot (eritelty):",
+      "income": "Tulot (eritelty):"
+    },
+    "total": "Yhteensä"
+  }
+}

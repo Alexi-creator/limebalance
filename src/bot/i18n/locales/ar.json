@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "مرحبًا! سأساعدك في تتبع نفقاتك.\n\nابدأ بإضافة فئة.",
+    "welcomeBack": "مرحبًا بعودتك! اختر إجراءً:"
+  },
+  "menu": {
+    "viewCategories": "عرض كل الفئات",
+    "addCategory": "إضافة فئة",
+    "addIncome": "إضافة دخل",
+    "addExpense": "إضافة مصروف",
+    "stat": "الإحصائيات"
+  },
+  "common": {
+    "pressStartFirst": "اضغط /start أولًا",
+    "chooseFromMenu": "اختر إجراءً من القائمة.",
+    "somethingWrong": "حدث خطأ ما. ابدأ من جديد."
+  },
+  "category": {
+    "typePrompt": "لأي نوع تريد إنشاء فئة؟",
+    "typeExpense": "المصروفات",
+    "typeIncome": "الإيرادات",
+    "enterName": "أدخل اسم الفئة:",
+    "created": "✅ تم إنشاء الفئة بنجاح!",
+    "none": "ليس لديك أي فئات بعد.",
+    "listExpensesHeading": "المصروفات:",
+    "listIncomesHeading": "الإيرادات:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "أضف فئة واحدة على الأقل أولًا.",
+    "addAtLeastOneIncomeCategory": "أضف فئة دخل واحدة على الأقل أولًا.",
+    "chooseCategory": "اختر فئة:",
+    "categoryAmountPrompt": "الفئة: {{name}}\n\nأدخل المبلغ:",
+    "enterValidExpenseAmount": "أدخل مبلغًا صحيحًا (مثال: 500 أو 1500.50):",
+    "enterValidIncomeAmount": "أدخل مبلغًا صحيحًا (مثال: 50000 أو 1500.50):",
+    "enterDescription": "أدخل وصفًا:",
+    "expenseAdded": "✅ تمت إضافة المصروف!\n\nالفئة: {{name}}\nالمبلغ: {{amount}} \nالوصف: {{description}}",
+    "incomeAdded": "✅ تمت إضافة الدخل!\n\nالفئة: {{name}}\nالمبلغ: {{amount}}\nالوصف: {{description}}"
+  },
+  "stat": {
+    "whatToView": "ماذا تريد أن ترى؟",
+    "addCategoryFirst": {
+      "expense": "أضف فئة مصروفات واحدة على الأقل أولًا.",
+      "income": "أضف فئة دخل واحدة على الأقل أولًا."
+    },
+    "all": "الكل",
+    "month": "الشهر الحالي",
+    "week": "أسبوع",
+    "day": "اليوم",
+    "choosePeriod": "اختر فترة:",
+    "withDetails": "مع التفاصيل",
+    "withoutDetails": "بدون تفاصيل",
+    "needDetails": "هل تريد عرض التفاصيل؟",
+    "rateUnavailable": "سعر الصرف غير متاح",
+    "nothingForPeriod": {
+      "expense": "لا توجد مصروفات للفترة المختارة 🙂",
+      "income": "لا توجد إيرادات للفترة المختارة 🙂"
+    },
+    "heading": {
+      "expense": "المصروفات",
+      "income": "الإيرادات"
+    },
+    "withDetailsHeading": {
+      "expense": "المصروفات (بالتفصيل):",
+      "income": "الإيرادات (بالتفصيل):"
+    },
+    "total": "الإجمالي"
+  }
+}

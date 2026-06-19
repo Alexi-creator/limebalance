@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Добре дошъл! Ще ти помогна да следиш разходите си.\n\nЗапочни, като добавиш категория.",
+    "welcomeBack": "Добре дошъл отново! Избери действие:"
+  },
+  "menu": {
+    "viewCategories": "Виж всички категории",
+    "addCategory": "Добави категория",
+    "addIncome": "Добави приход",
+    "addExpense": "Добави разход",
+    "stat": "Статистика"
+  },
+  "common": {
+    "pressStartFirst": "Първо натисни /start",
+    "chooseFromMenu": "Избери действие от менюто.",
+    "somethingWrong": "Нещо се обърка. Започни отначало."
+  },
+  "category": {
+    "typePrompt": "За какъв тип искаш да създадеш категория?",
+    "typeExpense": "Разходи",
+    "typeIncome": "Приходи",
+    "enterName": "Въведи името на категорията:",
+    "created": "✅ Категорията е създадена успешно!",
+    "none": "Все още нямаш категории.",
+    "listExpensesHeading": "Разходи:",
+    "listIncomesHeading": "Приходи:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Първо добави поне една категория.",
+    "addAtLeastOneIncomeCategory": "Първо добави поне една категория за приходи.",
+    "chooseCategory": "Избери категория:",
+    "categoryAmountPrompt": "Категория: {{name}}\n\nВъведи сумата:",
+    "enterValidExpenseAmount": "Въведи валидна сума (напр.: 500 или 1500.50):",
+    "enterValidIncomeAmount": "Въведи валидна сума (напр.: 50000 или 1500.50):",
+    "enterDescription": "Въведи описание:",
+    "expenseAdded": "✅ Разходът е добавен!\n\nКатегория: {{name}}\nСума: {{amount}} \nОписание: {{description}}",
+    "incomeAdded": "✅ Приходът е добавен!\n\nКатегория: {{name}}\nСума: {{amount}}\nОписание: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Какво искаш да видиш?",
+    "addCategoryFirst": {
+      "expense": "Първо добави поне една категория за разходи.",
+      "income": "Първо добави поне една категория за приходи."
+    },
+    "all": "Всички",
+    "month": "Текущ месец",
+    "week": "Седмица",
+    "day": "Днес",
+    "choosePeriod": "Избери период:",
+    "withDetails": "С детайли",
+    "withoutDetails": "Без детайли",
+    "needDetails": "Да покажа ли детайли?",
+    "rateUnavailable": "курсът не е наличен",
+    "nothingForPeriod": {
+      "expense": "Няма разходи за избрания период 🙂",
+      "income": "Няма приходи за избрания период 🙂"
+    },
+    "heading": {
+      "expense": "Разходи",
+      "income": "Приходи"
+    },
+    "withDetailsHeading": {
+      "expense": "Разходи (подробно):",
+      "income": "Приходи (подробно):"
+    },
+    "total": "Общо"
+  }
+}

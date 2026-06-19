@@ -40,6 +40,7 @@
     "countries-and-timezones": "^3.9.0",
     "dotenv": "^17.4.2",
     "grammy": "^1.42.0",
+    "i18next": "^26.3.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.20.0",

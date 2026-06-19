@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Willkommen! Ich helfe dir, deine Ausgaben zu verfolgen.\n\nFüge zuerst eine Kategorie hinzu.",
+    "welcomeBack": "Willkommen zurück! Wähle eine Aktion:"
+  },
+  "menu": {
+    "viewCategories": "Alle Kategorien anzeigen",
+    "addCategory": "Kategorie hinzufügen",
+    "addIncome": "Einnahme hinzufügen",
+    "addExpense": "Ausgabe hinzufügen",
+    "stat": "Statistik"
+  },
+  "common": {
+    "pressStartFirst": "Bitte zuerst /start drücken",
+    "chooseFromMenu": "Wähle eine Aktion aus dem Menü.",
+    "somethingWrong": "Etwas ist schiefgelaufen. Bitte fang von vorne an."
+  },
+  "category": {
+    "typePrompt": "Für welchen Typ möchtest du eine Kategorie erstellen?",
+    "typeExpense": "Ausgaben",
+    "typeIncome": "Einnahmen",
+    "enterName": "Gib den Kategorienamen ein:",
+    "created": "✅ Kategorie erfolgreich erstellt!",
+    "none": "Du hast noch keine Kategorien.",
+    "listExpensesHeading": "Ausgaben:",
+    "listIncomesHeading": "Einnahmen:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Füge zuerst mindestens eine Kategorie hinzu.",
+    "addAtLeastOneIncomeCategory": "Füge zuerst mindestens eine Einnahmenkategorie hinzu.",
+    "chooseCategory": "Wähle eine Kategorie:",
+    "categoryAmountPrompt": "Kategorie: {{name}}\n\nGib den Betrag ein:",
+    "enterValidExpenseAmount": "Gib einen gültigen Betrag ein (z. B. 500 oder 1500.50):",
+    "enterValidIncomeAmount": "Gib einen gültigen Betrag ein (z. B. 50000 oder 1500.50):",
+    "enterDescription": "Gib eine Beschreibung ein:",
+    "expenseAdded": "✅ Ausgabe hinzugefügt!\n\nKategorie: {{name}}\nBetrag: {{amount}} \nBeschreibung: {{description}}",
+    "incomeAdded": "✅ Einnahme hinzugefügt!\n\nKategorie: {{name}}\nBetrag: {{amount}}\nBeschreibung: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Was möchtest du ansehen?",
+    "addCategoryFirst": {
+      "expense": "Füge zuerst mindestens eine Ausgabenkategorie hinzu.",
+      "income": "Füge zuerst mindestens eine Einnahmenkategorie hinzu."
+    },
+    "all": "Alle",
+    "month": "Aktueller Monat",
+    "week": "Woche",
+    "day": "Heute",
+    "choosePeriod": "Wähle einen Zeitraum:",
+    "withDetails": "Mit Details",
+    "withoutDetails": "Ohne Details",
+    "needDetails": "Details anzeigen?",
+    "rateUnavailable": "Kurs nicht verfügbar",
+    "nothingForPeriod": {
+      "expense": "Keine Ausgaben im gewählten Zeitraum 🙂",
+      "income": "Keine Einnahmen im gewählten Zeitraum 🙂"
+    },
+    "heading": {
+      "expense": "Ausgaben",
+      "income": "Einnahmen"
+    },
+    "withDetailsHeading": {
+      "expense": "Ausgaben (detailliert):",
+      "income": "Einnahmen (detailliert):"
+    },
+    "total": "Gesamt"
+  }
+}

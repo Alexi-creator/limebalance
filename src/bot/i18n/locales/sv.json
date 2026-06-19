@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Välkommen! Jag hjälper dig att hålla koll på dina utgifter.\n\nBörja med att lägga till en kategori.",
+    "welcomeBack": "Välkommen tillbaka! Välj en åtgärd:"
+  },
+  "menu": {
+    "viewCategories": "Visa alla kategorier",
+    "addCategory": "Lägg till kategori",
+    "addIncome": "Lägg till inkomst",
+    "addExpense": "Lägg till utgift",
+    "stat": "Statistik"
+  },
+  "common": {
+    "pressStartFirst": "Tryck på /start först",
+    "chooseFromMenu": "Välj en åtgärd från menyn.",
+    "somethingWrong": "Något gick fel. Börja om."
+  },
+  "category": {
+    "typePrompt": "Vilken typ vill du skapa en kategori för?",
+    "typeExpense": "Utgifter",
+    "typeIncome": "Inkomster",
+    "enterName": "Ange kategorinamnet:",
+    "created": "✅ Kategorin har skapats!",
+    "none": "Du har inga kategorier än.",
+    "listExpensesHeading": "Utgifter:",
+    "listIncomesHeading": "Inkomster:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Lägg först till minst en kategori.",
+    "addAtLeastOneIncomeCategory": "Lägg först till minst en inkomstkategori.",
+    "chooseCategory": "Välj en kategori:",
+    "categoryAmountPrompt": "Kategori: {{name}}\n\nAnge beloppet:",
+    "enterValidExpenseAmount": "Ange ett giltigt belopp (t.ex.: 500 eller 1500.50):",
+    "enterValidIncomeAmount": "Ange ett giltigt belopp (t.ex.: 50000 eller 1500.50):",
+    "enterDescription": "Ange en beskrivning:",
+    "expenseAdded": "✅ Utgift tillagd!\n\nKategori: {{name}}\nBelopp: {{amount}} \nBeskrivning: {{description}}",
+    "incomeAdded": "✅ Inkomst tillagd!\n\nKategori: {{name}}\nBelopp: {{amount}}\nBeskrivning: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Vad vill du se?",
+    "addCategoryFirst": {
+      "expense": "Lägg först till minst en utgiftskategori.",
+      "income": "Lägg först till minst en inkomstkategori."
+    },
+    "all": "Alla",
+    "month": "Innevarande månad",
+    "week": "Vecka",
+    "day": "Idag",
+    "choosePeriod": "Välj en period:",
+    "withDetails": "Med detaljer",
+    "withoutDetails": "Utan detaljer",
+    "needDetails": "Visa detaljer?",
+    "rateUnavailable": "kurs ej tillgänglig",
+    "nothingForPeriod": {
+      "expense": "Inga utgifter för vald period 🙂",
+      "income": "Inga inkomster för vald period 🙂"
+    },
+    "heading": {
+      "expense": "Utgifter",
+      "income": "Inkomster"
+    },
+    "withDetailsHeading": {
+      "expense": "Utgifter (detaljerat):",
+      "income": "Inkomster (detaljerat):"
+    },
+    "total": "Totalt"
+  }
+}

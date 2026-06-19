@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Bem-vindo! Vou te ajudar a controlar os gastos.\n\nComece adicionando uma categoria.",
+    "welcomeBack": "Bem-vindo de volta! Escolha uma ação:"
+  },
+  "menu": {
+    "viewCategories": "Ver todas as categorias",
+    "addCategory": "Adicionar categoria",
+    "addIncome": "Adicionar receita",
+    "addExpense": "Adicionar despesa",
+    "stat": "Estatísticas"
+  },
+  "common": {
+    "pressStartFirst": "Primeiro pressione /start",
+    "chooseFromMenu": "Escolha uma ação no menu.",
+    "somethingWrong": "Algo deu errado. Comece de novo."
+  },
+  "category": {
+    "typePrompt": "Para qual tipo deseja criar uma categoria?",
+    "typeExpense": "Despesas",
+    "typeIncome": "Receitas",
+    "enterName": "Digite o nome da categoria:",
+    "created": "✅ Categoria criada com sucesso!",
+    "none": "Você ainda não tem categorias.",
+    "listExpensesHeading": "Despesas:",
+    "listIncomesHeading": "Receitas:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Primeiro adicione pelo menos uma categoria.",
+    "addAtLeastOneIncomeCategory": "Primeiro adicione pelo menos uma categoria de receitas.",
+    "chooseCategory": "Escolha uma categoria:",
+    "categoryAmountPrompt": "Categoria: {{name}}\n\nDigite o valor:",
+    "enterValidExpenseAmount": "Digite um valor válido (ex.: 500 ou 1500.50):",
+    "enterValidIncomeAmount": "Digite um valor válido (ex.: 50000 ou 1500.50):",
+    "enterDescription": "Digite uma descrição:",
+    "expenseAdded": "✅ Despesa adicionada!\n\nCategoria: {{name}}\nValor: {{amount}} \nDescrição: {{description}}",
+    "incomeAdded": "✅ Receita adicionada!\n\nCategoria: {{name}}\nValor: {{amount}}\nDescrição: {{description}}"
+  },
+  "stat": {
+    "whatToView": "O que deseja ver?",
+    "addCategoryFirst": {
+      "expense": "Primeiro adicione pelo menos uma categoria de despesas.",
+      "income": "Primeiro adicione pelo menos uma categoria de receitas."
+    },
+    "all": "Todas",
+    "month": "Mês atual",
+    "week": "Semana",
+    "day": "Hoje",
+    "choosePeriod": "Escolha um período:",
+    "withDetails": "Com detalhes",
+    "withoutDetails": "Sem detalhes",
+    "needDetails": "Mostrar detalhes?",
+    "rateUnavailable": "taxa indisponível",
+    "nothingForPeriod": {
+      "expense": "Sem despesas no período escolhido 🙂",
+      "income": "Sem receitas no período escolhido 🙂"
+    },
+    "heading": {
+      "expense": "Despesas",
+      "income": "Receitas"
+    },
+    "withDetailsHeading": {
+      "expense": "Despesas (detalhado):",
+      "income": "Receitas (detalhado):"
+    },
+    "total": "Total"
+  }
+}

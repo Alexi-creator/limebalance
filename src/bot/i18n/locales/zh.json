@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "欢迎！我来帮你记录开支。\n\n先添加一个分类吧。",
+    "welcomeBack": "欢迎回来！请选择一个操作："
+  },
+  "menu": {
+    "viewCategories": "查看所有分类",
+    "addCategory": "添加分类",
+    "addIncome": "添加收入",
+    "addExpense": "添加支出",
+    "stat": "统计"
+  },
+  "common": {
+    "pressStartFirst": "请先按 /start",
+    "chooseFromMenu": "请从菜单中选择一个操作。",
+    "somethingWrong": "出错了，请重新开始。"
+  },
+  "category": {
+    "typePrompt": "你想为哪种类型创建分类？",
+    "typeExpense": "支出",
+    "typeIncome": "收入",
+    "enterName": "请输入分类名称：",
+    "created": "✅ 分类创建成功！",
+    "none": "你还没有任何分类。",
+    "listExpensesHeading": "支出：",
+    "listIncomesHeading": "收入："
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "请先添加至少一个分类。",
+    "addAtLeastOneIncomeCategory": "请先添加至少一个收入分类。",
+    "chooseCategory": "请选择一个分类：",
+    "categoryAmountPrompt": "分类：{{name}}\n\n请输入金额：",
+    "enterValidExpenseAmount": "请输入有效金额（例如：500 或 1500.50）：",
+    "enterValidIncomeAmount": "请输入有效金额（例如：50000 或 1500.50）：",
+    "enterDescription": "请输入描述：",
+    "expenseAdded": "✅ 支出已添加！\n\n分类：{{name}}\n金额：{{amount}} \n描述：{{description}}",
+    "incomeAdded": "✅ 收入已添加！\n\n分类：{{name}}\n金额：{{amount}}\n描述：{{description}}"
+  },
+  "stat": {
+    "whatToView": "你想查看什么？",
+    "addCategoryFirst": {
+      "expense": "请先添加至少一个支出分类。",
+      "income": "请先添加至少一个收入分类。"
+    },
+    "all": "全部",
+    "month": "本月",
+    "week": "本周",
+    "day": "今天",
+    "choosePeriod": "请选择时间段：",
+    "withDetails": "含明细",
+    "withoutDetails": "不含明细",
+    "needDetails": "需要明细吗？",
+    "rateUnavailable": "汇率不可用",
+    "nothingForPeriod": {
+      "expense": "所选时间段内没有支出 🙂",
+      "income": "所选时间段内没有收入 🙂"
+    },
+    "heading": {
+      "expense": "支出",
+      "income": "收入"
+    },
+    "withDetailsHeading": {
+      "expense": "支出（明细）：",
+      "income": "收入（明细）："
+    },
+    "total": "合计"
+  }
+}

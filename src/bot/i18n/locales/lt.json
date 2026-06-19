@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Sveikas! Padėsiu tau sekti išlaidas.\n\nPradėk pridėdamas kategoriją.",
+    "welcomeBack": "Sveikas sugrįžęs! Pasirink veiksmą:"
+  },
+  "menu": {
+    "viewCategories": "Peržiūrėti visas kategorijas",
+    "addCategory": "Pridėti kategoriją",
+    "addIncome": "Pridėti pajamas",
+    "addExpense": "Pridėti išlaidas",
+    "stat": "Statistika"
+  },
+  "common": {
+    "pressStartFirst": "Pirmiausia paspausk /start",
+    "chooseFromMenu": "Pasirink veiksmą iš meniu.",
+    "somethingWrong": "Kažkas nepavyko. Pradėk iš naujo."
+  },
+  "category": {
+    "typePrompt": "Kokiam tipui nori sukurti kategoriją?",
+    "typeExpense": "Išlaidos",
+    "typeIncome": "Pajamos",
+    "enterName": "Įvesk kategorijos pavadinimą:",
+    "created": "✅ Kategorija sėkmingai sukurta!",
+    "none": "Dar neturi kategorijų.",
+    "listExpensesHeading": "Išlaidos:",
+    "listIncomesHeading": "Pajamos:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Pirmiausia pridėk bent vieną kategoriją.",
+    "addAtLeastOneIncomeCategory": "Pirmiausia pridėk bent vieną pajamų kategoriją.",
+    "chooseCategory": "Pasirink kategoriją:",
+    "categoryAmountPrompt": "Kategorija: {{name}}\n\nĮvesk sumą:",
+    "enterValidExpenseAmount": "Įvesk teisingą sumą (pvz.: 500 arba 1500.50):",
+    "enterValidIncomeAmount": "Įvesk teisingą sumą (pvz.: 50000 arba 1500.50):",
+    "enterDescription": "Įvesk aprašymą:",
+    "expenseAdded": "✅ Išlaida pridėta!\n\nKategorija: {{name}}\nSuma: {{amount}} \nAprašymas: {{description}}",
+    "incomeAdded": "✅ Pajamos pridėtos!\n\nKategorija: {{name}}\nSuma: {{amount}}\nAprašymas: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Ką nori pamatyti?",
+    "addCategoryFirst": {
+      "expense": "Pirmiausia pridėk bent vieną išlaidų kategoriją.",
+      "income": "Pirmiausia pridėk bent vieną pajamų kategoriją."
+    },
+    "all": "Visos",
+    "month": "Šis mėnuo",
+    "week": "Savaitė",
+    "day": "Šiandien",
+    "choosePeriod": "Pasirink laikotarpį:",
+    "withDetails": "Su detalėmis",
+    "withoutDetails": "Be detalių",
+    "needDetails": "Rodyti detales?",
+    "rateUnavailable": "kursas nepasiekiamas",
+    "nothingForPeriod": {
+      "expense": "Pasirinktu laikotarpiu išlaidų nėra 🙂",
+      "income": "Pasirinktu laikotarpiu pajamų nėra 🙂"
+    },
+    "heading": {
+      "expense": "Išlaidos",
+      "income": "Pajamos"
+    },
+    "withDetailsHeading": {
+      "expense": "Išlaidos (detaliai):",
+      "income": "Pajamos (detaliai):"
+    },
+    "total": "Iš viso"
+  }
+}

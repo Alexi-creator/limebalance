@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Bienvenue ! Je vais t'aider à suivre tes dépenses.\n\nCommence par ajouter une catégorie.",
+    "welcomeBack": "Bon retour ! Choisis une action :"
+  },
+  "menu": {
+    "viewCategories": "Voir toutes les catégories",
+    "addCategory": "Ajouter une catégorie",
+    "addIncome": "Ajouter un revenu",
+    "addExpense": "Ajouter une dépense",
+    "stat": "Statistiques"
+  },
+  "common": {
+    "pressStartFirst": "Appuie d'abord sur /start",
+    "chooseFromMenu": "Choisis une action dans le menu.",
+    "somethingWrong": "Une erreur s'est produite. Recommence."
+  },
+  "category": {
+    "typePrompt": "Pour quel type créer une catégorie ?",
+    "typeExpense": "Dépenses",
+    "typeIncome": "Revenus",
+    "enterName": "Saisis le nom de la catégorie :",
+    "created": "✅ Catégorie créée avec succès !",
+    "none": "Tu n'as pas encore de catégories.",
+    "listExpensesHeading": "Dépenses :",
+    "listIncomesHeading": "Revenus :"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Ajoute d'abord au moins une catégorie.",
+    "addAtLeastOneIncomeCategory": "Ajoute d'abord au moins une catégorie de revenus.",
+    "chooseCategory": "Choisis une catégorie :",
+    "categoryAmountPrompt": "Catégorie : {{name}}\n\nSaisis le montant :",
+    "enterValidExpenseAmount": "Saisis un montant valide (ex. : 500 ou 1500.50) :",
+    "enterValidIncomeAmount": "Saisis un montant valide (ex. : 50000 ou 1500.50) :",
+    "enterDescription": "Saisis une description :",
+    "expenseAdded": "✅ Dépense ajoutée !\n\nCatégorie : {{name}}\nMontant : {{amount}} \nDescription : {{description}}",
+    "incomeAdded": "✅ Revenu ajouté !\n\nCatégorie : {{name}}\nMontant : {{amount}}\nDescription : {{description}}"
+  },
+  "stat": {
+    "whatToView": "Que veux-tu consulter ?",
+    "addCategoryFirst": {
+      "expense": "Ajoute d'abord au moins une catégorie de dépenses.",
+      "income": "Ajoute d'abord au moins une catégorie de revenus."
+    },
+    "all": "Tout",
+    "month": "Mois en cours",
+    "week": "Semaine",
+    "day": "Aujourd'hui",
+    "choosePeriod": "Choisis une période :",
+    "withDetails": "Avec détails",
+    "withoutDetails": "Sans détails",
+    "needDetails": "Afficher les détails ?",
+    "rateUnavailable": "taux indisponible",
+    "nothingForPeriod": {
+      "expense": "Aucune dépense pour la période choisie 🙂",
+      "income": "Aucun revenu pour la période choisie 🙂"
+    },
+    "heading": {
+      "expense": "Dépenses",
+      "income": "Revenus"
+    },
+    "withDetailsHeading": {
+      "expense": "Dépenses (détaillées) :",
+      "income": "Revenus (détaillés) :"
+    },
+    "total": "Total"
+  }
+}

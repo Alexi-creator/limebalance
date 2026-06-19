@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Witaj! Pomogę Ci śledzić wydatki.\n\nZacznij od dodania kategorii.",
+    "welcomeBack": "Witaj ponownie! Wybierz działanie:"
+  },
+  "menu": {
+    "viewCategories": "Pokaż wszystkie kategorie",
+    "addCategory": "Dodaj kategorię",
+    "addIncome": "Dodaj przychód",
+    "addExpense": "Dodaj wydatek",
+    "stat": "Statystyki"
+  },
+  "common": {
+    "pressStartFirst": "Najpierw naciśnij /start",
+    "chooseFromMenu": "Wybierz działanie z menu.",
+    "somethingWrong": "Coś poszło nie tak. Zacznij od nowa."
+  },
+  "category": {
+    "typePrompt": "Dla jakiego typu chcesz utworzyć kategorię?",
+    "typeExpense": "Wydatki",
+    "typeIncome": "Przychody",
+    "enterName": "Wpisz nazwę kategorii:",
+    "created": "✅ Kategoria została utworzona!",
+    "none": "Nie masz jeszcze żadnych kategorii.",
+    "listExpensesHeading": "Wydatki:",
+    "listIncomesHeading": "Przychody:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Najpierw dodaj co najmniej jedną kategorię.",
+    "addAtLeastOneIncomeCategory": "Najpierw dodaj co najmniej jedną kategorię przychodów.",
+    "chooseCategory": "Wybierz kategorię:",
+    "categoryAmountPrompt": "Kategoria: {{name}}\n\nWpisz kwotę:",
+    "enterValidExpenseAmount": "Wpisz poprawną kwotę (np.: 500 lub 1500.50):",
+    "enterValidIncomeAmount": "Wpisz poprawną kwotę (np.: 50000 lub 1500.50):",
+    "enterDescription": "Wpisz opis:",
+    "expenseAdded": "✅ Wydatek dodany!\n\nKategoria: {{name}}\nKwota: {{amount}} \nOpis: {{description}}",
+    "incomeAdded": "✅ Przychód dodany!\n\nKategoria: {{name}}\nKwota: {{amount}}\nOpis: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Co chcesz zobaczyć?",
+    "addCategoryFirst": {
+      "expense": "Najpierw dodaj co najmniej jedną kategorię wydatków.",
+      "income": "Najpierw dodaj co najmniej jedną kategorię przychodów."
+    },
+    "all": "Wszystkie",
+    "month": "Bieżący miesiąc",
+    "week": "Tydzień",
+    "day": "Dziś",
+    "choosePeriod": "Wybierz okres:",
+    "withDetails": "Ze szczegółami",
+    "withoutDetails": "Bez szczegółów",
+    "needDetails": "Pokazać szczegóły?",
+    "rateUnavailable": "kurs niedostępny",
+    "nothingForPeriod": {
+      "expense": "Brak wydatków w wybranym okresie 🙂",
+      "income": "Brak przychodów w wybranym okresie 🙂"
+    },
+    "heading": {
+      "expense": "Wydatki",
+      "income": "Przychody"
+    },
+    "withDetailsHeading": {
+      "expense": "Wydatki (szczegółowo):",
+      "income": "Przychody (szczegółowo):"
+    },
+    "total": "Razem"
+  }
+}

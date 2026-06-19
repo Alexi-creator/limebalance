@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Вітаю! Я допоможу тобі вести облік витрат.\n\nДля початку додай категорію.",
+    "welcomeBack": "З поверненням! Обери дію:"
+  },
+  "menu": {
+    "viewCategories": "Переглянути всі категорії",
+    "addCategory": "Додати категорію",
+    "addIncome": "Додати дохід",
+    "addExpense": "Додати витрату",
+    "stat": "Статистика"
+  },
+  "common": {
+    "pressStartFirst": "Спершу натисни /start",
+    "chooseFromMenu": "Обери дію з меню.",
+    "somethingWrong": "Щось пішло не так. Почни спочатку."
+  },
+  "category": {
+    "typePrompt": "Для якого типу створити категорію?",
+    "typeExpense": "Витрати",
+    "typeIncome": "Доходи",
+    "enterName": "Введи назву категорії:",
+    "created": "✅ Категорію успішно створено!",
+    "none": "У тебе ще немає категорій.",
+    "listExpensesHeading": "Витрати:",
+    "listIncomesHeading": "Доходи:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Спершу додай хоча б одну категорію.",
+    "addAtLeastOneIncomeCategory": "Спершу додай хоча б одну категорію доходів.",
+    "chooseCategory": "Обери категорію:",
+    "categoryAmountPrompt": "Категорія: {{name}}\n\nВведи суму:",
+    "enterValidExpenseAmount": "Введи коректну суму (наприклад: 500 або 1500.50):",
+    "enterValidIncomeAmount": "Введи коректну суму (наприклад: 50000 або 1500.50):",
+    "enterDescription": "Введи опис:",
+    "expenseAdded": "✅ Витрату додано!\n\nКатегорія: {{name}}\nСума: {{amount}} \nОпис: {{description}}",
+    "incomeAdded": "✅ Дохід додано!\n\nКатегорія: {{name}}\nСума: {{amount}}\nОпис: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Що дивимось?",
+    "addCategoryFirst": {
+      "expense": "Спершу додай хоча б одну категорію витрат.",
+      "income": "Спершу додай хоча б одну категорію доходів."
+    },
+    "all": "Усі",
+    "month": "Поточний місяць",
+    "week": "Тиждень",
+    "day": "Сьогодні",
+    "choosePeriod": "Обери період:",
+    "withDetails": "З деталізацією",
+    "withoutDetails": "Без деталізації",
+    "needDetails": "Потрібна деталізація?",
+    "rateUnavailable": "курс недоступний",
+    "nothingForPeriod": {
+      "expense": "За обраний період витрат немає 🙂",
+      "income": "За обраний період доходів немає 🙂"
+    },
+    "heading": {
+      "expense": "Витрати",
+      "income": "Доходи"
+    },
+    "withDetailsHeading": {
+      "expense": "Витрати з деталізацією:",
+      "income": "Доходи з деталізацією:"
+    },
+    "total": "Разом"
+  }
+}

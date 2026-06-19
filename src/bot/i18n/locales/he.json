@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "ברוך הבא! אעזור לך לעקוב אחר ההוצאות שלך.\n\nהתחל בהוספת קטגוריה.",
+    "welcomeBack": "ברוך שובך! בחר פעולה:"
+  },
+  "menu": {
+    "viewCategories": "הצג את כל הקטגוריות",
+    "addCategory": "הוסף קטגוריה",
+    "addIncome": "הוסף הכנסה",
+    "addExpense": "הוסף הוצאה",
+    "stat": "סטטיסטיקה"
+  },
+  "common": {
+    "pressStartFirst": "תחילה לחץ /start",
+    "chooseFromMenu": "בחר פעולה מהתפריט.",
+    "somethingWrong": "משהו השתבש. התחל מחדש."
+  },
+  "category": {
+    "typePrompt": "לאיזה סוג ליצור קטגוריה?",
+    "typeExpense": "הוצאות",
+    "typeIncome": "הכנסות",
+    "enterName": "הזן את שם הקטגוריה:",
+    "created": "✅ הקטגוריה נוצרה בהצלחה!",
+    "none": "אין לך עדיין קטגוריות.",
+    "listExpensesHeading": "הוצאות:",
+    "listIncomesHeading": "הכנסות:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "תחילה הוסף לפחות קטגוריה אחת.",
+    "addAtLeastOneIncomeCategory": "תחילה הוסף לפחות קטגוריית הכנסה אחת.",
+    "chooseCategory": "בחר קטגוריה:",
+    "categoryAmountPrompt": "קטגוריה: {{name}}\n\nהזן את הסכום:",
+    "enterValidExpenseAmount": "הזן סכום תקין (לדוגמה: 500 או 1500.50):",
+    "enterValidIncomeAmount": "הזן סכום תקין (לדוגמה: 50000 או 1500.50):",
+    "enterDescription": "הזן תיאור:",
+    "expenseAdded": "✅ ההוצאה נוספה!\n\nקטגוריה: {{name}}\nסכום: {{amount}} \nתיאור: {{description}}",
+    "incomeAdded": "✅ ההכנסה נוספה!\n\nקטגוריה: {{name}}\nסכום: {{amount}}\nתיאור: {{description}}"
+  },
+  "stat": {
+    "whatToView": "מה תרצה לראות?",
+    "addCategoryFirst": {
+      "expense": "תחילה הוסף לפחות קטגוריית הוצאה אחת.",
+      "income": "תחילה הוסף לפחות קטגוריית הכנסה אחת."
+    },
+    "all": "הכול",
+    "month": "החודש הנוכחי",
+    "week": "שבוע",
+    "day": "היום",
+    "choosePeriod": "בחר תקופה:",
+    "withDetails": "עם פירוט",
+    "withoutDetails": "ללא פירוט",
+    "needDetails": "להציג פירוט?",
+    "rateUnavailable": "השער אינו זמין",
+    "nothingForPeriod": {
+      "expense": "אין הוצאות בתקופה שנבחרה 🙂",
+      "income": "אין הכנסות בתקופה שנבחרה 🙂"
+    },
+    "heading": {
+      "expense": "הוצאות",
+      "income": "הכנסות"
+    },
+    "withDetailsHeading": {
+      "expense": "הוצאות (מפורט):",
+      "income": "הכנסות (מפורט):"
+    },
+    "total": "סך הכול"
+  }
+}

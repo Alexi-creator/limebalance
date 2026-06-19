@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "ようこそ！支出の管理をお手伝いします。\n\nまずはカテゴリーを追加してください。",
+    "welcomeBack": "おかえりなさい！操作を選んでください："
+  },
+  "menu": {
+    "viewCategories": "すべてのカテゴリーを表示",
+    "addCategory": "カテゴリーを追加",
+    "addIncome": "収入を追加",
+    "addExpense": "支出を追加",
+    "stat": "統計"
+  },
+  "common": {
+    "pressStartFirst": "まず /start を押してください",
+    "chooseFromMenu": "メニューから操作を選んでください。",
+    "somethingWrong": "問題が発生しました。最初からやり直してください。"
+  },
+  "category": {
+    "typePrompt": "どの種類のカテゴリーを作成しますか？",
+    "typeExpense": "支出",
+    "typeIncome": "収入",
+    "enterName": "カテゴリー名を入力してください：",
+    "created": "✅ カテゴリーを作成しました！",
+    "none": "まだカテゴリーがありません。",
+    "listExpensesHeading": "支出：",
+    "listIncomesHeading": "収入："
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "まずカテゴリーを少なくとも1つ追加してください。",
+    "addAtLeastOneIncomeCategory": "まず収入カテゴリーを少なくとも1つ追加してください。",
+    "chooseCategory": "カテゴリーを選んでください：",
+    "categoryAmountPrompt": "カテゴリー：{{name}}\n\n金額を入力してください：",
+    "enterValidExpenseAmount": "有効な金額を入力してください（例：500 または 1500.50）：",
+    "enterValidIncomeAmount": "有効な金額を入力してください（例：50000 または 1500.50）：",
+    "enterDescription": "説明を入力してください：",
+    "expenseAdded": "✅ 支出を追加しました！\n\nカテゴリー：{{name}}\n金額：{{amount}} \n説明：{{description}}",
+    "incomeAdded": "✅ 収入を追加しました！\n\nカテゴリー：{{name}}\n金額：{{amount}}\n説明：{{description}}"
+  },
+  "stat": {
+    "whatToView": "何を見ますか？",
+    "addCategoryFirst": {
+      "expense": "まず支出カテゴリーを少なくとも1つ追加してください。",
+      "income": "まず収入カテゴリーを少なくとも1つ追加してください。"
+    },
+    "all": "すべて",
+    "month": "今月",
+    "week": "今週",
+    "day": "今日",
+    "choosePeriod": "期間を選んでください：",
+    "withDetails": "詳細あり",
+    "withoutDetails": "詳細なし",
+    "needDetails": "詳細を表示しますか？",
+    "rateUnavailable": "レート利用不可",
+    "nothingForPeriod": {
+      "expense": "選択した期間の支出はありません 🙂",
+      "income": "選択した期間の収入はありません 🙂"
+    },
+    "heading": {
+      "expense": "支出",
+      "income": "収入"
+    },
+    "withDetailsHeading": {
+      "expense": "支出（詳細）：",
+      "income": "収入（詳細）："
+    },
+    "total": "合計"
+  }
+}

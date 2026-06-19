@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Bun venit! Te voi ajuta să-ți urmărești cheltuielile.\n\nÎncepe prin a adăuga o categorie.",
+    "welcomeBack": "Bine ai revenit! Alege o acțiune:"
+  },
+  "menu": {
+    "viewCategories": "Vezi toate categoriile",
+    "addCategory": "Adaugă categorie",
+    "addIncome": "Adaugă venit",
+    "addExpense": "Adaugă cheltuială",
+    "stat": "Statistici"
+  },
+  "common": {
+    "pressStartFirst": "Apasă mai întâi /start",
+    "chooseFromMenu": "Alege o acțiune din meniu.",
+    "somethingWrong": "Ceva n-a mers. Ia-o de la capăt."
+  },
+  "category": {
+    "typePrompt": "Pentru ce tip vrei să creezi o categorie?",
+    "typeExpense": "Cheltuieli",
+    "typeIncome": "Venituri",
+    "enterName": "Introdu numele categoriei:",
+    "created": "✅ Categorie creată cu succes!",
+    "none": "Nu ai încă nicio categorie.",
+    "listExpensesHeading": "Cheltuieli:",
+    "listIncomesHeading": "Venituri:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Adaugă mai întâi cel puțin o categorie.",
+    "addAtLeastOneIncomeCategory": "Adaugă mai întâi cel puțin o categorie de venituri.",
+    "chooseCategory": "Alege o categorie:",
+    "categoryAmountPrompt": "Categorie: {{name}}\n\nIntrodu suma:",
+    "enterValidExpenseAmount": "Introdu o sumă validă (ex.: 500 sau 1500.50):",
+    "enterValidIncomeAmount": "Introdu o sumă validă (ex.: 50000 sau 1500.50):",
+    "enterDescription": "Introdu o descriere:",
+    "expenseAdded": "✅ Cheltuială adăugată!\n\nCategorie: {{name}}\nSumă: {{amount}} \nDescriere: {{description}}",
+    "incomeAdded": "✅ Venit adăugat!\n\nCategorie: {{name}}\nSumă: {{amount}}\nDescriere: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Ce vrei să vezi?",
+    "addCategoryFirst": {
+      "expense": "Adaugă mai întâi cel puțin o categorie de cheltuieli.",
+      "income": "Adaugă mai întâi cel puțin o categorie de venituri."
+    },
+    "all": "Toate",
+    "month": "Luna curentă",
+    "week": "Săptămână",
+    "day": "Azi",
+    "choosePeriod": "Alege o perioadă:",
+    "withDetails": "Cu detalii",
+    "withoutDetails": "Fără detalii",
+    "needDetails": "Afișez detaliile?",
+    "rateUnavailable": "curs indisponibil",
+    "nothingForPeriod": {
+      "expense": "Nicio cheltuială în perioada aleasă 🙂",
+      "income": "Niciun venit în perioada aleasă 🙂"
+    },
+    "heading": {
+      "expense": "Cheltuieli",
+      "income": "Venituri"
+    },
+    "withDetailsHeading": {
+      "expense": "Cheltuieli (detaliat):",
+      "income": "Venituri (detaliat):"
+    },
+    "total": "Total"
+  }
+}

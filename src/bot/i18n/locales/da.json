@@ -1,0 +1,68 @@
+{
+  "start": {
+    "welcomeNew": "Velkommen! Jeg hjælper dig med at holde styr på dine udgifter.\n\nStart med at tilføje en kategori.",
+    "welcomeBack": "Velkommen tilbage! Vælg en handling:"
+  },
+  "menu": {
+    "viewCategories": "Vis alle kategorier",
+    "addCategory": "Tilføj kategori",
+    "addIncome": "Tilføj indtægt",
+    "addExpense": "Tilføj udgift",
+    "stat": "Statistik"
+  },
+  "common": {
+    "pressStartFirst": "Tryk på /start først",
+    "chooseFromMenu": "Vælg en handling fra menuen.",
+    "somethingWrong": "Noget gik galt. Start forfra."
+  },
+  "category": {
+    "typePrompt": "Hvilken type vil du oprette en kategori til?",
+    "typeExpense": "Udgifter",
+    "typeIncome": "Indtægter",
+    "enterName": "Indtast kategorinavnet:",
+    "created": "✅ Kategorien blev oprettet!",
+    "none": "Du har ingen kategorier endnu.",
+    "listExpensesHeading": "Udgifter:",
+    "listIncomesHeading": "Indtægter:"
+  },
+  "flow": {
+    "addAtLeastOneExpenseCategory": "Tilføj først mindst én kategori.",
+    "addAtLeastOneIncomeCategory": "Tilføj først mindst én indtægtskategori.",
+    "chooseCategory": "Vælg en kategori:",
+    "categoryAmountPrompt": "Kategori: {{name}}\n\nIndtast beløbet:",
+    "enterValidExpenseAmount": "Indtast et gyldigt beløb (f.eks.: 500 eller 1500.50):",
+    "enterValidIncomeAmount": "Indtast et gyldigt beløb (f.eks.: 50000 eller 1500.50):",
+    "enterDescription": "Indtast en beskrivelse:",
+    "expenseAdded": "✅ Udgift tilføjet!\n\nKategori: {{name}}\nBeløb: {{amount}} \nBeskrivelse: {{description}}",
+    "incomeAdded": "✅ Indtægt tilføjet!\n\nKategori: {{name}}\nBeløb: {{amount}}\nBeskrivelse: {{description}}"
+  },
+  "stat": {
+    "whatToView": "Hvad vil du se?",
+    "addCategoryFirst": {
+      "expense": "Tilføj først mindst én udgiftskategori.",
+      "income": "Tilføj først mindst én indtægtskategori."
+    },
+    "all": "Alle",
+    "month": "Indeværende måned",
+    "week": "Uge",
+    "day": "I dag",
+    "choosePeriod": "Vælg en periode:",
+    "withDetails": "Med detaljer",
+    "withoutDetails": "Uden detaljer",
+    "needDetails": "Vis detaljer?",
+    "rateUnavailable": "kurs ikke tilgængelig",
+    "nothingForPeriod": {
+      "expense": "Ingen udgifter for den valgte periode 🙂",
+      "income": "Ingen indtægter for den valgte periode 🙂"
+    },
+    "heading": {
+      "expense": "Udgifter",
+      "income": "Indtægter"
+    },
+    "withDetailsHeading": {
+      "expense": "Udgifter (detaljeret):",
+      "income": "Indtægter (detaljeret):"
+    },
+    "total": "I alt"
+  }
+}
