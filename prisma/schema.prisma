@@ -57,8 +57,33 @@ model User {
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   subscription        UserSubscription?
+  notifications       Notification[]
 
   @@map("users")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  type      String
+  // Stable key for derived notifications (e.g. "monthly_summary:2026-06") so re-generation
+  // upserts the same row instead of duplicating. NULL for one-off items like news.
+  dedupeKey String?   @map("dedupe_key")
+  title     String
+  body      String
+  // Structured data behind the notification (amounts, category, period…) for the frontend to
+  // render/localize. title/body are a server-rendered fallback.
+  payload   Json?
+  isRead    Boolean   @default(false) @map("is_read")
+  createdAt DateTime  @default(now()) @map("created_at")
+  readAt    DateTime? @map("read_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
 
 model ExpenseCategory {
