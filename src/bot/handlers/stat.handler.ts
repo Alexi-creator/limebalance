@@ -4,8 +4,9 @@ import { ExpenseCategoriesService } from '../../modules/expense-categories/expen
 import { ExpensesService } from '../../modules/expenses/expenses.service';
 import { IncomeCategoriesService } from '../../modules/income-categories/income-categories.service';
 import { IncomesService } from '../../modules/incomes/incomes.service';
+import { Locale, Messages, resolveLocale, t } from '../i18n';
 import { StateService } from '../state.service';
-import { MAIN_MENU } from './start.handler';
+import { mainMenu } from './start.handler';
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: '$',
@@ -25,13 +26,13 @@ const withEmoji = (name: string, emoji?: string | null) => (emoji ? `${emoji} ${
 const exact = (value: number, currency: string) => `${value.toFixed(2)} ${symbol(currency)}`;
 
 // Approx. amount in the user's base currency. null → rates unavailable.
-const money = (value: number | null, currency: string) =>
-  value === null ? 'курс недоступен' : `≈ ${exact(value, currency)}`;
+const money = (value: number | null, currency: string, m: Messages) =>
+  value === null ? m.rateUnavailable : `≈ ${exact(value, currency)}`;
 
 // Telegram caps a message at 4096 characters. A long reply (a breakdown with hundreds
 // of items) is split into parts on line boundaries; the keyboard is attached only to the last part.
 const TG_TEXT_LIMIT = 4000; // headroom below 4096
-async function replyLong(ctx: Context, text: string, replyMarkup: typeof MAIN_MENU) {
+async function replyLong(ctx: Context, text: string, replyMarkup: ReturnType<typeof mainMenu>) {
   const chunks: string[] = [];
   let cur = '';
   for (const line of text.split('\n')) {
@@ -69,23 +70,29 @@ export class StatHandler {
     private readonly stateService: StateService,
   ) {}
 
+  private locale(ctx: Context): Locale {
+    return resolveLocale(ctx.from?.language_code);
+  }
+
   async handleStat(ctx: Context) {
+    const m = t(this.locale(ctx));
     const keyboard = new InlineKeyboard()
-      .text('Расходы', '/stattype:expense')
-      .text('Доходы', '/stattype:income');
-    await ctx.reply('Что смотрим?', { reply_markup: keyboard });
+      .text(m.typeExpense, '/stattype:expense')
+      .text(m.typeIncome, '/stattype:income');
+    await ctx.reply(m.whatToView, { reply_markup: keyboard });
   }
 
   async handleTypeSelected(ctx: Context, userId: string, type: 'expense' | 'income') {
+    const locale = this.locale(ctx);
+    const m = t(locale);
     const categories =
       type === 'expense'
         ? await this.expenseCategoriesService.findAllByUser(userId)
         : await this.incomeCategoriesService.findAllByUser(userId);
 
     if (!categories.length) {
-      const label = type === 'expense' ? 'расходов' : 'доходов';
-      await ctx.reply(`Для начала добавьте хотя бы одну категорию ${label}.`, {
-        reply_markup: MAIN_MENU,
+      await ctx.reply(m.addAtLeastOneCategoryOfType(type), {
+        reply_markup: mainMenu(locale),
       });
       return;
     }
@@ -97,9 +104,9 @@ export class StatHandler {
       if (i % 2 === 1) keyboard.row();
     });
     if (categories.length % 2 === 0) keyboard.row();
-    keyboard.text('Все', `${prefix}all`);
+    keyboard.text(m.btnAll, `${prefix}all`);
 
-    await ctx.reply('Выберите категорию:', { reply_markup: keyboard });
+    await ctx.reply(m.chooseCategory, { reply_markup: keyboard });
   }
 
   async handleCategorySelected(
@@ -108,6 +115,7 @@ export class StatHandler {
     rawId: string,
     type: 'expense' | 'income',
   ) {
+    const m = t(this.locale(ctx));
     await this.stateService.reset(userId);
     await this.stateService.set(userId, {
       step:
@@ -116,14 +124,15 @@ export class StatHandler {
     });
 
     const keyboard = new InlineKeyboard()
-      .text('Текущий месяц', '/period:month')
-      .text('Неделя', '/period:week')
-      .text('Сегодня', '/period:day');
+      .text(m.btnMonth, '/period:month')
+      .text(m.btnWeek, '/period:week')
+      .text(m.btnDay, '/period:day');
 
-    await ctx.reply('Выберите период:', { reply_markup: keyboard });
+    await ctx.reply(m.choosePeriod, { reply_markup: keyboard });
   }
 
   async handlePeriodSelected(ctx: Context, userId: string, period: string) {
+    const m = t(this.locale(ctx));
     const state = await this.stateService.get(userId);
     const type = state?.step?.includes(':income:') ? 'income' : 'expense';
 
@@ -134,17 +143,19 @@ export class StatHandler {
     });
 
     const keyboard = new InlineKeyboard()
-      .text('С детализацией', '/details:yes')
-      .text('Без детализации', '/details:no');
+      .text(m.btnWithDetails, '/details:yes')
+      .text(m.btnWithoutDetails, '/details:no');
 
-    await ctx.reply('Нужна детализация?', { reply_markup: keyboard });
+    await ctx.reply(m.needDetails, { reply_markup: keyboard });
   }
 
   async handleDetailsSelected(ctx: Context, userId: string, isDetails: boolean) {
+    const locale = this.locale(ctx);
+    const m = t(locale);
     const state = await this.stateService.get(userId);
     if (!state?.period) {
       await this.stateService.reset(userId);
-      await ctx.reply('Что-то пошло не так. Начните заново.', { reply_markup: MAIN_MENU });
+      await ctx.reply(m.somethingWrong, { reply_markup: mainMenu(locale) });
       return;
     }
 
@@ -153,9 +164,6 @@ export class StatHandler {
     const { period } = state;
     await this.stateService.reset(userId);
 
-    const label = type === 'expense' ? 'Траты' : 'Доходы';
-    const labelEmpty = type === 'expense' ? 'трат' : 'доходов';
-
     if (isDetails) {
       const { baseCurrency, total, categories } =
         type === 'expense'
@@ -163,15 +171,18 @@ export class StatHandler {
           : await this.incomesService.statDetails(userId, categoryId, period);
 
       if (!categories.length) {
-        await ctx.reply(`За выбранный период ${labelEmpty} нет 🙂`, { reply_markup: MAIN_MENU });
+        await ctx.reply(m.nothingForPeriod(type), { reply_markup: mainMenu(locale) });
         return;
       }
 
-      let text = `${label} с детализацией:\n\n`;
+      let text = m.withDetailsHeading(type);
       for (const cat of categories) {
-        text += `${withEmoji(cat.category, cat.emoji ?? '📌')} — ${money(cat.total, baseCurrency)}\n`;
+        text += `${withEmoji(cat.category, cat.emoji ?? '📌')} — ${money(cat.total, baseCurrency, m)}\n`;
         for (const item of cat.items) {
-          const date = item.date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+          const date = item.date.toLocaleDateString(m.dateLocale, {
+            day: '2-digit',
+            month: '2-digit',
+          });
           // Item — in its original currency.
           text += `  • ${date}: ${exact(item.amount, item.currency)}`;
           if (item.description) text += ` — ${item.description}`;
@@ -179,9 +190,9 @@ export class StatHandler {
         }
         text += '\n';
       }
-      if (categories.length > 1) text += `Итого: ${money(total, baseCurrency)}`;
+      if (categories.length > 1) text += `${m.total}: ${money(total, baseCurrency, m)}`;
 
-      await replyLong(ctx, text, MAIN_MENU);
+      await replyLong(ctx, text, mainMenu(locale));
     } else {
       const { baseCurrency, total, items } =
         type === 'expense'
@@ -189,17 +200,17 @@ export class StatHandler {
           : await this.incomesService.statSummary(userId, categoryId, period);
 
       if (!items.length) {
-        await ctx.reply(`За выбранный период ${labelEmpty} нет 🙂`, { reply_markup: MAIN_MENU });
+        await ctx.reply(m.nothingForPeriod(type), { reply_markup: mainMenu(locale) });
         return;
       }
 
-      let text = `${label}:\n\n`;
+      let text = `${m.statHeading(type)}:\n\n`;
       for (const row of items) {
-        text += `• ${withEmoji(row.category, row.emoji)} — ${money(row.total, baseCurrency)}\n`;
+        text += `• ${withEmoji(row.category, row.emoji)} — ${money(row.total, baseCurrency, m)}\n`;
       }
-      if (items.length > 1) text += `\nИтого: ${money(total, baseCurrency)}`;
+      if (items.length > 1) text += `\n${m.total}: ${money(total, baseCurrency, m)}`;
 
-      await replyLong(ctx, text, MAIN_MENU);
+      await replyLong(ctx, text, mainMenu(locale));
     }
   }
 }

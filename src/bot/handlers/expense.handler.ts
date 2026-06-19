@@ -4,8 +4,9 @@ import { localWallClockNow } from '../../common/timezone.util';
 import { ExpenseCategoriesService } from '../../modules/expense-categories/expense-categories.service';
 import { ExpensesService } from '../../modules/expenses/expenses.service';
 import { UsersService } from '../../modules/users/users.service';
+import { resolveLocale, t } from '../i18n';
 import { StateService } from '../state.service';
-import { MAIN_MENU } from './start.handler';
+import { mainMenu } from './start.handler';
 
 @Injectable()
 export class ExpenseHandler {
@@ -17,9 +18,11 @@ export class ExpenseHandler {
   ) {}
 
   async handleAdd(ctx: Context, userId: string) {
+    const locale = resolveLocale(ctx.from?.language_code);
+    const m = t(locale);
     const categories = await this.categoriesService.findAllByUser(userId);
     if (!categories.length) {
-      await ctx.reply('Для начала добавьте хотя бы одну категорию.', { reply_markup: MAIN_MENU });
+      await ctx.reply(m.addAtLeastOneExpenseCategory, { reply_markup: mainMenu(locale) });
       return;
     }
     const keyboard = new InlineKeyboard();
@@ -27,37 +30,41 @@ export class ExpenseHandler {
       keyboard.text(cat.name, `/addexpense:${cat.id}`);
       if (i % 2 === 1) keyboard.row();
     });
-    await ctx.reply('Выберите категорию:', { reply_markup: keyboard });
+    await ctx.reply(m.chooseCategory, { reply_markup: keyboard });
   }
 
   async handleCategorySelected(ctx: Context, userId: string, categoryId: string) {
+    const m = t(resolveLocale(ctx.from?.language_code));
     const category = await this.categoriesService.findOne(categoryId, userId);
     await this.stateService.set(userId, {
       step: 'addexpense:waiting_amount',
       categoryId,
       categoryName: category.name,
     });
-    await ctx.reply(`Категория: ${category.name}\n\nВведите сумму:`);
+    await ctx.reply(m.categoryAmountPrompt(category.name));
   }
 
   async handleAmountInput(ctx: Context, userId: string, text: string) {
+    const m = t(resolveLocale(ctx.from?.language_code));
     const amount = parseFloat(text.replace(',', '.'));
     if (Number.isNaN(amount) || amount <= 0) {
-      await ctx.reply('Введите корректную сумму (например: 500 или 1500.50):');
+      await ctx.reply(m.enterValidExpenseAmount);
       return;
     }
     await this.stateService.set(userId, {
       step: 'addexpense:waiting_description',
       amount,
     });
-    await ctx.reply('Введите описание:');
+    await ctx.reply(m.enterDescription);
   }
 
   async handleDescriptionInput(ctx: Context, userId: string, text: string) {
+    const locale = resolveLocale(ctx.from?.language_code);
+    const m = t(locale);
     const state = await this.stateService.get(userId);
     if (!state?.categoryId || !state?.amount) {
       await this.stateService.reset(userId);
-      await ctx.reply('Что-то пошло не так. Начните заново.', { reply_markup: MAIN_MENU });
+      await ctx.reply(m.somethingWrong, { reply_markup: mainMenu(locale) });
       return;
     }
 
@@ -70,9 +77,8 @@ export class ExpenseHandler {
     });
 
     await this.stateService.reset(userId);
-    await ctx.reply(
-      `✅ Трата добавлена!\n\nКатегория: ${state.categoryName}\nСумма: ${Number(state.amount)} \nОписание: ${text}`,
-      { reply_markup: MAIN_MENU },
-    );
+    await ctx.reply(m.expenseAdded(state.categoryName, Number(state.amount), text), {
+      reply_markup: mainMenu(locale),
+    });
   }
 }

@@ -5,8 +5,9 @@ import { UsersService } from '../modules/users/users.service';
 import { CategoryHandler } from './handlers/category.handler';
 import { ExpenseHandler } from './handlers/expense.handler';
 import { IncomeHandler } from './handlers/income.handler';
-import { MAIN_MENU, StartHandler } from './handlers/start.handler';
+import { mainMenu, StartHandler } from './handlers/start.handler';
 import { StatHandler } from './handlers/stat.handler';
+import { matchMenuAction, resolveLocale, t } from './i18n';
 import { StateService } from './state.service';
 
 @Injectable()
@@ -93,25 +94,32 @@ export class BotService implements OnModuleInit {
 
     this.bot.on('message:text', async (ctx) => {
       const text = ctx.message.text;
+      const locale = resolveLocale(ctx.from.language_code);
       const telegramId = BigInt(ctx.from.id);
 
       const existing = await this.usersService.findByTelegramId(telegramId);
 
       if (!existing) {
-        await ctx.reply('Для начала нажмите /start');
+        await ctx.reply(t(locale).pressStartFirst);
         return;
       }
 
       const userId = existing.id;
       const step = await this.stateService.getStep(userId);
 
-      // route by menu button text
-      if (text === 'Добавить категорию') return this.categoryHandler.handleAdd(ctx);
-      if (text === 'Посмотреть все категории')
-        return this.categoryHandler.handleViewAll(ctx, userId);
-      if (text === 'Добавить трату') return this.expenseHandler.handleAdd(ctx, userId);
-      if (text === 'Добавить доход') return this.incomeHandler.handleAdd(ctx, userId);
-      if (text === 'Статистика') return this.statHandler.handleStat(ctx);
+      // route by menu button text (matched across all supported locales)
+      switch (matchMenuAction(text)) {
+        case 'addCategory':
+          return this.categoryHandler.handleAdd(ctx);
+        case 'viewCategories':
+          return this.categoryHandler.handleViewAll(ctx, userId);
+        case 'addExpense':
+          return this.expenseHandler.handleAdd(ctx, userId);
+        case 'addIncome':
+          return this.incomeHandler.handleAdd(ctx, userId);
+        case 'stat':
+          return this.statHandler.handleStat(ctx);
+      }
 
       // route by current FSM step
       if (
@@ -133,7 +141,7 @@ export class BotService implements OnModuleInit {
         return this.incomeHandler.handleDescriptionInput(ctx, userId, text);
       }
 
-      await ctx.reply('Выберите действие из меню.', { reply_markup: MAIN_MENU });
+      await ctx.reply(t(locale).chooseFromMenu, { reply_markup: mainMenu(locale) });
     });
   }
 }

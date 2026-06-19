@@ -1,16 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { Context, Keyboard } from 'grammy';
 import { UsersService } from '../../modules/users/users.service';
+import { Locale, resolveLocale, t } from '../i18n';
 
-export const MAIN_MENU = new Keyboard()
-  .text('Посмотреть все категории')
-  .text('Добавить категорию')
-  .row()
-  .text('Добавить доход')
-  .text('Статистика')
-  .row()
-  .text('Добавить трату')
-  .resized();
+// Builds the main reply keyboard in the given locale.
+export function mainMenu(locale: Locale) {
+  const m = t(locale);
+  return new Keyboard()
+    .text(m.menuViewCategories)
+    .text(m.menuAddCategory)
+    .row()
+    .text(m.menuAddIncome)
+    .text(m.menuStat)
+    .row()
+    .text(m.menuAddExpense)
+    .resized();
+}
 
 @Injectable()
 export class StartHandler {
@@ -18,13 +23,13 @@ export class StartHandler {
 
   async handle(ctx: Context) {
     if (!ctx.from) return;
+    const locale = resolveLocale(ctx.from.language_code);
+    const m = t(locale);
     const telegramId = BigInt(ctx.from.id);
     const { isNew } = await this.usersService.findOrCreateByTelegramId(telegramId);
 
-    const text = isNew
-      ? 'Добро пожаловать! Я помогу вести учёт расходов.\n\nДля начала добавьте категорию.'
-      : 'С возвращением! Выберите действие:';
+    const text = isNew ? m.welcomeNew : m.welcomeBack;
 
-    await ctx.reply(text, { reply_markup: MAIN_MENU });
+    await ctx.reply(text, { reply_markup: mainMenu(locale) });
   }
 }
