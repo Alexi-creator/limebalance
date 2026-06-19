@@ -48,7 +48,7 @@ export class TransactionsSummaryDto {
     example: 90480,
     nullable: true,
     description:
-      'Approx. income total over the whole result set (not just the page) in the base currency. null if rates are unavailable.',
+      'Approx. income total over the current page (items) in the base currency. null if rates are unavailable.',
   })
   income: number | null;
 
@@ -56,7 +56,7 @@ export class TransactionsSummaryDto {
     example: 49102,
     nullable: true,
     description:
-      'Approx. expense total over the whole result set in the base currency. null if rates are unavailable.',
+      'Approx. expense total over the current page (items) in the base currency. null if rates are unavailable.',
   })
   expense: number | null;
 
@@ -76,7 +76,7 @@ export class PaginatedTransactionsDto {
   @ApiProperty({
     type: TransactionsSummaryDto,
     description:
-      'Monetary total over the whole result set (with filters), converted to the base currency',
+      'Monetary total over the current page (items), converted to the base currency',
   })
   summary: TransactionsSummaryDto;
 

@@ -21,6 +21,8 @@ export interface TransactionRow {
   date: Date;
   createdAt: Date;
   type: 'income' | 'expense';
+  // USD snapshot at creation time — internal, used for the summary; stripped from the response.
+  amountUsd: number | null;
 }
 
 @Injectable()
@@ -49,7 +51,8 @@ export class TransactionsService {
         e.description,
         e.date,
         e.created_at AS "createdAt",
-        'expense'::text AS type
+        'expense'::text AS type,
+        e.amount_usd::float8 AS "amountUsd"
       FROM expenses e
       LEFT JOIN expense_categories ec ON ec.id = e.category_id
       WHERE ${expenseWhere}
@@ -65,7 +68,8 @@ export class TransactionsService {
         i.description,
         i.date,
         i.created_at AS "createdAt",
-        'income'::text AS type
+        'income'::text AS type,
+        i.amount_usd::float8 AS "amountUsd"
       FROM incomes i
       LEFT JOIN income_categories ic ON ic.id = i.category_id
       WHERE ${incomePart}
@@ -78,11 +82,7 @@ export class TransactionsService {
           ? incomePartQuery
           : Prisma.sql`${expensePart} UNION ALL ${incomePartQuery}`;
 
-    // The monetary total is computed over the whole result set (with filters), not the page.
-    const wantExpense = type !== TransactionType.INCOME;
-    const wantIncome = type !== TransactionType.EXPENSE;
-
-    const [items, countResult, expenseGroups, incomeGroups, user, rates] = await Promise.all([
+    const [items, countResult, user, rates] = await Promise.all([
       this.prisma.$queryRaw<TransactionRow[]>`
         ${union}
         ORDER BY date DESC, "createdAt" DESC
@@ -91,31 +91,23 @@ export class TransactionsService {
       this.prisma.$queryRaw<[{ count: bigint }]>`
         SELECT COUNT(*) AS count FROM (${union}) AS combined
       `,
-      wantExpense
-        ? this.prisma.$queryRaw<CurrencyGroup[]>`
-            SELECT e.currency, SUM(e.amount)::float8 AS amount, SUM(e.amount_usd)::float8 AS "amountUsd"
-            FROM expenses e WHERE ${expenseWhere} GROUP BY e.currency
-          `
-        : Promise.resolve<CurrencyGroup[]>([]),
-      wantIncome
-        ? this.prisma.$queryRaw<CurrencyGroup[]>`
-            SELECT i.currency, SUM(i.amount)::float8 AS amount, SUM(i.amount_usd)::float8 AS "amountUsd"
-            FROM incomes i WHERE ${incomePart} GROUP BY i.currency
-          `
-        : Promise.resolve<CurrencyGroup[]>([]),
       this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),
       this.currency.getRates(),
     ]);
 
     const baseCurrency = user?.currency ?? 'USD';
-    const income = this.currency.approxTotalInBase(incomeGroups, baseCurrency, rates, 'income');
-    const expense = this.currency.approxTotalInBase(expenseGroups, baseCurrency, rates, 'expense');
+    // The monetary total is computed over the current page (items), not the whole result set.
+    const incomeRows = items.filter((r) => r.type === 'income');
+    const expenseRows = items.filter((r) => r.type === 'expense');
+    const income = this.currency.approxTotalInBase(incomeRows, baseCurrency, rates, 'income');
+    const expense = this.currency.approxTotalInBase(expenseRows, baseCurrency, rates, 'expense');
     // net is known only if both totals were computed (rates available).
     const net =
       income === null || expense === null ? null : Math.round((income - expense) * 100) / 100;
 
     return {
-      items,
+      // amountUsd is internal (used for the summary above) — keep it out of the response.
+      items: items.map(({ amountUsd: _amountUsd, ...row }) => row),
       total: Number(countResult[0].count),
       page,
       limit,

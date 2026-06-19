@@ -34,13 +34,14 @@ describe('TransactionsService', () => {
   });
 
   describe('findAll', () => {
-    it('paginates and summarizes income/expense/net over the whole filtered set', async () => {
-      // Raw queries, in call order: items, count, expenseGroups, incomeGroups.
+    it('paginates and summarizes income/expense/net over the current page (items)', async () => {
+      // Raw queries, in call order: items, count.
       prisma.$queryRaw
-        .mockResolvedValueOnce([{ id: 't1', type: 'expense' }])
-        .mockResolvedValueOnce([{ count: 12n }])
-        .mockResolvedValueOnce([{ currency: 'USD', amount: 50, amountUsd: 50 }])
-        .mockResolvedValueOnce([{ currency: 'USD', amount: 200, amountUsd: 200 }]);
+        .mockResolvedValueOnce([
+          { id: 'i1', type: 'income', currency: 'USD', amount: 200, amountUsd: 200 },
+          { id: 'e1', type: 'expense', currency: 'USD', amount: 50, amountUsd: 50 },
+        ])
+        .mockResolvedValueOnce([{ count: 12n }]);
       // approxTotalInBase order: income first, then expense.
       currency.approxTotalInBase.mockReturnValueOnce(200).mockReturnValueOnce(50);
 
@@ -51,6 +52,26 @@ describe('TransactionsService', () => {
       expect(res.limit).toBe(5);
       expect(res.totalPages).toBe(3); // ceil(12 / 5)
       expect(res.summary).toEqual({ baseCurrency: 'USD', income: 200, expense: 50, net: 150 });
+      // The summary is derived from the page rows, split by type.
+      expect(currency.approxTotalInBase).toHaveBeenNthCalledWith(
+        1,
+        [{ id: 'i1', type: 'income', currency: 'USD', amount: 200, amountUsd: 200 }],
+        'USD',
+        {},
+        'income',
+      );
+      expect(currency.approxTotalInBase).toHaveBeenNthCalledWith(
+        2,
+        [{ id: 'e1', type: 'expense', currency: 'USD', amount: 50, amountUsd: 50 }],
+        'USD',
+        {},
+        'expense',
+      );
+      // amountUsd is internal and must not leak into the response items.
+      expect(res.items).toEqual([
+        { id: 'i1', type: 'income', currency: 'USD', amount: 200 },
+        { id: 'e1', type: 'expense', currency: 'USD', amount: 50 },
+      ]);
     });
 
     it('reports net=null when a total could not be computed (rates unavailable)', async () => {
