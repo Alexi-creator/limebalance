@@ -6,6 +6,7 @@ import { IncomesService } from '../../modules/incomes/incomes.service';
 import { UsersService } from '../../modules/users/users.service';
 import { resolveLocale, t } from '../i18n';
 import { StateService } from '../state.service';
+import { withEmoji } from './category.util';
 import { mainMenu } from './start.handler';
 
 @Injectable()
@@ -29,7 +30,7 @@ export class IncomeHandler {
     }
     const keyboard = new InlineKeyboard();
     categories.forEach((cat, i) => {
-      keyboard.text(cat.name, `/addincome:${cat.id}`);
+      keyboard.text(withEmoji(cat.name, cat.emoji), `/addincome:${cat.id}`);
       if (i % 2 === 1) keyboard.row();
     });
     await ctx.reply(m.chooseCategory, { reply_markup: keyboard });
@@ -38,12 +39,13 @@ export class IncomeHandler {
   async handleCategorySelected(ctx: Context, userId: string, categoryId: string) {
     const m = t(resolveLocale(ctx.from?.language_code));
     const category = await this.incomeCategoriesService.findOne(categoryId, userId);
+    const categoryLabel = withEmoji(category.name, category.emoji);
     await this.stateService.set(userId, {
       step: 'addincome:waiting_amount',
       categoryId,
-      categoryName: category.name,
+      categoryName: categoryLabel,
     });
-    await ctx.reply(m.categoryAmountPrompt(category.name));
+    await ctx.reply(m.categoryAmountPrompt(categoryLabel));
   }
 
   async handleAmountInput(ctx: Context, userId: string, text: string) {

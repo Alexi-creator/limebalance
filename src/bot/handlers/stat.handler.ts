@@ -6,6 +6,7 @@ import { IncomeCategoriesService } from '../../modules/income-categories/income-
 import { IncomesService } from '../../modules/incomes/incomes.service';
 import { Locale, Messages, resolveLocale, t } from '../i18n';
 import { StateService } from '../state.service';
+import { withEmoji } from './category.util';
 import { mainMenu } from './start.handler';
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -18,9 +19,6 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 const symbol = (code: string) => CURRENCY_SYMBOLS[code] ?? code;
-
-// Prefix a category label with its emoji (set via the web cabinet), when present.
-const withEmoji = (name: string, emoji?: string | null) => (emoji ? `${emoji} ${name}` : name);
 
 // Exact amount in its original currency.
 const exact = (value: number, currency: string) => `${value.toFixed(2)} ${symbol(currency)}`;

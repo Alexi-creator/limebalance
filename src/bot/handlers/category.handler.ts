@@ -4,6 +4,7 @@ import { ExpenseCategoriesService } from '../../modules/expense-categories/expen
 import { IncomeCategoriesService } from '../../modules/income-categories/income-categories.service';
 import { resolveLocale, t } from '../i18n';
 import { StateService } from '../state.service';
+import { withEmoji } from './category.util';
 import { mainMenu } from './start.handler';
 
 @Injectable()
@@ -56,11 +57,11 @@ export class CategoryHandler {
 
     let text = '';
     if (expenseCategories.length) {
-      text += `${m.listExpensesHeading}\n${expenseCategories.map((c, i) => `${i + 1}. ${c.name}`).join('\n')}`;
+      text += `${m.listExpensesHeading}\n${expenseCategories.map((c, i) => `${i + 1}. ${withEmoji(c.name, c.emoji)}`).join('\n')}`;
     }
     if (incomeCategories.length) {
       if (text) text += '\n\n';
-      text += `${m.listIncomesHeading}\n${incomeCategories.map((c, i) => `${i + 1}. ${c.name}`).join('\n')}`;
+      text += `${m.listIncomesHeading}\n${incomeCategories.map((c, i) => `${i + 1}. ${withEmoji(c.name, c.emoji)}`).join('\n')}`;
     }
 
     await ctx.reply(text, { reply_markup: mainMenu(locale) });
