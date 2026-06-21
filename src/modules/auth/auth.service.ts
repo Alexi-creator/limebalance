@@ -4,6 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -21,6 +22,8 @@ import { TelegramAuthDto } from './dto/telegram-auth.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly prisma: PrismaService,
@@ -224,10 +227,16 @@ export class AuthService {
     credential: string,
   ): Promise<{ email: string; googleId: string }> {
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
-    if (!clientId) throw new UnauthorizedException('Google OAuth not configured');
+    if (!clientId) {
+      this.logger.error('GOOGLE_CLIENT_ID is not set — Google login disabled');
+      throw new UnauthorizedException('Google OAuth not configured');
+    }
 
     const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
-    if (!response.ok) throw new UnauthorizedException('Invalid Google token');
+    if (!response.ok) {
+      this.logger.warn(`Google tokeninfo request failed: HTTP ${response.status}`);
+      throw new UnauthorizedException('Invalid Google token');
+    }
 
     const data = (await response.json()) as {
       aud?: string;
@@ -236,9 +245,13 @@ export class AuthService {
       email_verified?: string;
     };
 
-    if (data.aud !== clientId) throw new UnauthorizedException('Token audience mismatch');
+    if (data.aud !== clientId) {
+      this.logger.warn(`Google token audience mismatch: aud=${data.aud} expected=${clientId}`);
+      throw new UnauthorizedException('Token audience mismatch');
+    }
     if (!data.sub) throw new UnauthorizedException('Invalid Google token');
     if (!data.email || data.email_verified !== 'true') {
+      this.logger.warn(`Google email not verified: email=${data.email}`);
       throw new UnauthorizedException('Email not verified');
     }
 

@@ -8,6 +8,10 @@ describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
+    // GOOGLE_CLIENT_ID is required by env validation; provide a fallback so the
+    // e2e suite stays hermetic and doesn't depend on a local .env being present.
+    process.env.GOOGLE_CLIENT_ID ??= 'test-google-client-id';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
