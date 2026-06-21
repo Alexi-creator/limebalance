@@ -12,7 +12,7 @@ import {
 } from 'class-validator';
 
 export class CreateGoalDto {
-  @ApiProperty({ example: 'Отпуск на Бали' })
+  @ApiProperty({ example: 'Bali vacation' })
   @IsString()
   @Length(1, 100)
   name: string;

@@ -75,8 +75,7 @@ export class PaginatedTransactionsDto {
 
   @ApiProperty({
     type: TransactionsSummaryDto,
-    description:
-      'Monetary total over the current page (items), converted to the base currency',
+    description: 'Monetary total over the current page (items), converted to the base currency',
   })
   summary: TransactionsSummaryDto;
 

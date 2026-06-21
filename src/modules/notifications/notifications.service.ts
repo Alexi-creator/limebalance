@@ -4,21 +4,6 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
 import { NotificationDto, NotificationsResponseDto } from './dto/notification-response.dto';
 
-const MONTHS_RU = [
-  'Январь',
-  'Февраль',
-  'Март',
-  'Апрель',
-  'Май',
-  'Июнь',
-  'Июль',
-  'Август',
-  'Сентябрь',
-  'Октябрь',
-  'Ноябрь',
-  'Декабрь',
-];
-
 interface CurrencyGroup {
   currency: string;
   amount: number;
@@ -67,7 +52,7 @@ export class NotificationsService {
     return { unreadCount: await this.unreadCount(userId) };
   }
 
-  /** "Прочитать все" — marks every unread notification of the user read. */
+  /** "Mark all as read" — marks every unread notification of the user read. */
   async markAllRead(userId: string): Promise<{ unreadCount: number }> {
     await this.prisma.notification.updateMany({
       where: { userId, isRead: false },
@@ -127,14 +112,20 @@ export class NotificationsService {
       }));
 
     const baseCurrency = user?.currency ?? 'USD';
-    const income = this.currency.approxTotalInBase(toRows(incomeGroups), baseCurrency, rates, 'income');
+    const income = this.currency.approxTotalInBase(
+      toRows(incomeGroups),
+      baseCurrency,
+      rates,
+      'income',
+    );
     const expense = this.currency.approxTotalInBase(
       toRows(expenseGroups),
       baseCurrency,
       rates,
       'expense',
     );
-    const net = income !== null && expense !== null ? Math.round((income - expense) * 100) / 100 : null;
+    const net =
+      income !== null && expense !== null ? Math.round((income - expense) * 100) / 100 : null;
 
     let topCategory: { name: string; emoji: string | null } | null = null;
     const topCategoryId = topExpenseGroup[0]?.categoryId;
@@ -144,19 +135,6 @@ export class NotificationsService {
         select: { name: true, emoji: true },
       });
       if (cat) topCategory = { name: cat.name, emoji: cat.emoji };
-    }
-
-    const fmt = (v: number | null) =>
-      v === null ? '—' : `${v.toLocaleString('ru-RU')} ${baseCurrency}`;
-
-    const monthName = MONTHS_RU[month];
-    const title = 'Итоги месяца';
-    const parts = [`${monthName}: доход ${fmt(income)}, расход ${fmt(expense)}`];
-    if (net !== null) parts.push(`отложено ${fmt(net)}`);
-    let body = parts.join(', ') + '.';
-    if (topCategory) {
-      const emoji = topCategory.emoji ? `${topCategory.emoji} ` : '';
-      body += ` Топ-категория — ${emoji}${topCategory.name}.`;
     }
 
     const payload = {
@@ -172,8 +150,9 @@ export class NotificationsService {
     await this.prisma.notification.upsert({
       where: { userId_dedupeKey: { userId, dedupeKey } },
       // Refresh content only — isRead/readAt are intentionally left as they are.
-      update: { title, body, payload },
-      create: { userId, type: 'monthly_summary', dedupeKey, title, body, payload },
+      // title/body are omitted: the frontend localizes from `payload`.
+      update: { payload },
+      create: { userId, type: 'monthly_summary', dedupeKey, payload },
     });
   }
 }

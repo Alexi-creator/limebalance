@@ -108,9 +108,7 @@ describe('GoalsService', () => {
       prisma.goal.findMany.mockResolvedValue([
         goalRow({ targetDate: new Date('2026-04-01'), targetAmount: 1000 }),
       ]);
-      prisma.goalContribution.groupBy.mockResolvedValue([
-        { goalId: 'g1', _sum: { amount: 100 } },
-      ]);
+      prisma.goalContribution.groupBy.mockResolvedValue([{ goalId: 'g1', _sum: { amount: 100 } }]);
       currency.approxTotalInBase.mockReturnValueOnce(100).mockReturnValueOnce(1000);
 
       const res = await service.list('u1');
@@ -205,7 +203,7 @@ describe('GoalsService', () => {
       expect(dto.isCompleted).toBe(true);
     });
 
-    it('throws NotFound for a goal that is not the user\'s', async () => {
+    it("throws NotFound for a goal that is not the user's", async () => {
       prisma.goal.findFirst.mockResolvedValue(null);
 
       await expect(service.contribute('u1', 'gX', { amount: 10 })).rejects.toBeInstanceOf(

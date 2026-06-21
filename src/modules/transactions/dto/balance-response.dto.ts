@@ -16,7 +16,8 @@ export class BalanceResponseDto {
   @ApiProperty({
     example: 44000,
     nullable: true,
-    description: 'The same free balance in the base currency at the current rate. null if rates are unavailable.',
+    description:
+      'The same free balance in the base currency at the current rate. null if rates are unavailable.',
   })
   balance: number | null;
 

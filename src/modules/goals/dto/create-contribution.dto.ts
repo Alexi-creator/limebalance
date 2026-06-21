@@ -10,7 +10,7 @@ export class CreateContributionDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   amount: number;
 
-  @ApiPropertyOptional({ example: 'Зарплатная заначка' })
+  @ApiPropertyOptional({ example: 'Payday stash' })
   @IsOptional()
   @IsString()
   @MaxLength(200)

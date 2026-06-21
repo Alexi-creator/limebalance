@@ -16,7 +16,7 @@ export class GoalsController {
   @ApiOperation({
     summary: 'Goals page',
     description:
-      "Active (non-archived) goals with computed fields (progress, remaining, months left, " +
+      'Active (non-archived) goals with computed fields (progress, remaining, months left, ' +
       'per-month) plus the top aggregate card (total saved/target/remaining in the base currency).',
   })
   @ApiOkResponse({ type: GoalsResponseDto })
@@ -34,11 +34,7 @@ export class GoalsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Edit a goal (also archive/unarchive)' })
   @ApiOkResponse({ type: GoalDto })
-  update(
-    @CurrentUser() user: { id: string },
-    @Param('id') id: string,
-    @Body() dto: UpdateGoalDto,
-  ) {
+  update(@CurrentUser() user: { id: string }, @Param('id') id: string, @Body() dto: UpdateGoalDto) {
     return this.goalsService.update(user.id, id, dto);
   }
 
@@ -50,10 +46,10 @@ export class GoalsController {
 
   @Post(':id/contributions')
   @ApiOperation({
-    summary: '"+ Внести" — add a contribution',
+    summary: '"+ Add funds" — add a contribution',
     description:
       'Adds money to the goal (in the goal currency; negative = withdrawal). On first reaching the ' +
-      'target it sends the "Цель достигнута" notification. Returns the recomputed goal.',
+      'target it sends the "goal completed" notification. Returns the recomputed goal.',
   })
   @ApiOkResponse({ type: GoalDto })
   contribute(
@@ -65,7 +61,7 @@ export class GoalsController {
   }
 
   @Get(':id/contributions')
-  @ApiOperation({ summary: '"История" — contribution history of a goal' })
+  @ApiOperation({ summary: '"History" — contribution history of a goal' })
   listContributions(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.goalsService.listContributions(user.id, id);
   }

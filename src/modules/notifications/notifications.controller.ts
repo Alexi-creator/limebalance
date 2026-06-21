@@ -33,7 +33,7 @@ export class NotificationsController {
 
   @Post('read-all')
   @ApiOperation({
-    summary: 'Mark all notifications read ("Прочитать все")',
+    summary: 'Mark all notifications read',
     description: 'Marks every unread notification of the user read. Returns unreadCount = 0.',
   })
   markAllRead(@CurrentUser() user: { id: string }) {

@@ -78,7 +78,7 @@ export class GoalsService {
     return { success: true };
   }
 
-  /** "+ Внести". Creates a contribution and, on first reaching the target, fires the achievement notification. */
+  /** "+ Add funds". Creates a contribution and, on first reaching the target, fires the achievement notification. */
   async contribute(userId: string, goalId: string, dto: CreateContributionDto): Promise<GoalDto> {
     const goal = await this.ownedGoal(userId, goalId);
     const target = Number(goal.targetAmount);
@@ -157,7 +157,11 @@ export class GoalsService {
       select: { id: true, currency: true },
     });
     const sums = await this.sumByGoal(userId);
-    return goals.map((g) => ({ currency: g.currency, amount: sums.get(g.id) ?? 0, amountUsd: null }));
+    return goals.map((g) => ({
+      currency: g.currency,
+      amount: sums.get(g.id) ?? 0,
+      amountUsd: null,
+    }));
   }
 
   // --- internals ---
@@ -264,12 +268,11 @@ export class GoalsService {
     await this.prisma.notification.upsert({
       where: { userId_dedupeKey: { userId, dedupeKey } },
       update: {}, // already notified once — keep it idempotent
+      // title/body are omitted: the frontend localizes from `payload`.
       create: {
         userId,
         type: 'goal_completed',
         dedupeKey,
-        title: 'Цель достигнута 🎉',
-        body: `Вы накопили на цель «${goal.name}».`,
         payload,
       },
     });

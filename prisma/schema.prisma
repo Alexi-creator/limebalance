@@ -111,10 +111,12 @@ model Notification {
   // Stable key for derived notifications (e.g. "monthly_summary:2026-06") so re-generation
   // upserts the same row instead of duplicating. NULL for one-off items like news.
   dedupeKey String?   @map("dedupe_key")
-  title     String
-  body      String
-  // Structured data behind the notification (amounts, category, period…) for the frontend to
-  // render/localize. title/body are a server-rendered fallback.
+  // Optional server-rendered fallback text. Templated notifications (monthly_summary, goal_completed)
+  // are localized by the frontend from `payload`; free-form items (e.g. news) may still carry text here.
+  title     String?
+  body      String?
+  // Structured data behind the notification (amounts, category, period…). Source of truth for the
+  // frontend to render/localize. title/body are only a fallback.
   payload   Json?
   isRead    Boolean   @default(false) @map("is_read")
   createdAt DateTime  @default(now()) @map("created_at")

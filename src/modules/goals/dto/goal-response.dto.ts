@@ -4,7 +4,7 @@ export class GoalDto {
   @ApiProperty({ example: 'b3f1…' })
   id: string;
 
-  @ApiProperty({ example: 'Отпуск на Бали' })
+  @ApiProperty({ example: 'Bali vacation' })
   name: string;
 
   @ApiProperty({ nullable: true, example: '🌴' })
@@ -68,7 +68,8 @@ export class GoalsSummaryDto {
   @ApiProperty({
     nullable: true,
     example: 913200,
-    description: 'Total saved across active goals, converted to the base currency. null if rates are unavailable.',
+    description:
+      'Total saved across active goals, converted to the base currency. null if rates are unavailable.',
   })
   totalSaved: number | null;
 
@@ -79,7 +80,11 @@ export class GoalsSummaryDto {
   })
   totalTarget: number | null;
 
-  @ApiProperty({ nullable: true, example: 2506800, description: 'totalTarget − totalSaved, floored at 0' })
+  @ApiProperty({
+    nullable: true,
+    example: 2506800,
+    description: 'totalTarget − totalSaved, floored at 0',
+  })
   totalRemaining: number | null;
 
   @ApiProperty({ nullable: true, example: 27, description: 'Overall progress %, 0–100' })
@@ -101,7 +106,7 @@ export class ContributionDto {
   @ApiProperty({ example: 19200, description: 'In the goal currency. Negative = withdrawal.' })
   amount: number;
 
-  @ApiProperty({ nullable: true, example: 'Зарплатная заначка' })
+  @ApiProperty({ nullable: true, example: 'Payday stash' })
   note: string | null;
 
   @ApiProperty({ example: '2026-06-20' })

@@ -10,14 +10,19 @@ export class NotificationDto {
   })
   type: string;
 
-  @ApiProperty({ example: 'Итоги месяца', description: 'Server-rendered title (fallback text)' })
-  title: string;
+  @ApiProperty({
+    nullable: true,
+    example: 'Monthly summary',
+    description: 'Server-rendered title — fallback only. Localize from payload when present.',
+  })
+  title: string | null;
 
   @ApiProperty({
-    example: 'Июнь: доход 120 000, расход 95 000, отложено 25 000. Топ-категория — Рестораны.',
-    description: 'Server-rendered body (fallback text)',
+    nullable: true,
+    example: 'June: income 120,000, expenses 95,000, saved 25,000. Top category — Restaurants.',
+    description: 'Server-rendered body — fallback only. Localize from payload when present.',
   })
-  body: string;
+  body: string | null;
 
   @ApiProperty({
     nullable: true,
@@ -30,7 +35,7 @@ export class NotificationDto {
       income: 120000,
       expense: 95000,
       net: 25000,
-      topCategory: { name: 'Рестораны', emoji: '🍽️' },
+      topCategory: { name: 'Restaurants', emoji: '🍽️' },
     },
   })
   payload: unknown | null;

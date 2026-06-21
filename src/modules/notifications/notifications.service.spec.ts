@@ -66,7 +66,15 @@ describe('NotificationsService', () => {
       prisma.expenseCategory.findUnique.mockResolvedValue({ name: 'Рестораны', emoji: '🍽️' });
       currency.approxTotalInBase.mockReturnValueOnce(100).mockReturnValueOnce(40); // income, expense
       prisma.notification.findMany.mockResolvedValue([
-        { id: 'n1', type: 'monthly_summary', title: 't', body: 'b', payload: {}, isRead: false, createdAt: new Date() },
+        {
+          id: 'n1',
+          type: 'monthly_summary',
+          title: 't',
+          body: 'b',
+          payload: {},
+          isRead: false,
+          createdAt: new Date(),
+        },
       ]);
 
       const res = await service.list('u1');
