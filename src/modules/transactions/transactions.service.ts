@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
+import { GoalsService } from '../goals/goals.service';
 import { GetTransactionsDto, TransactionType } from './dto/get-transactions.dto';
 
 /** Amount for a single currency, for converting to the base (see CurrencyService.approxTotalInBase). */
@@ -30,6 +31,7 @@ export class TransactionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
+    private readonly goals: GoalsService,
   ) {}
 
   async findAll(userId: string, dto: GetTransactionsDto) {
@@ -119,7 +121,7 @@ export class TransactionsService {
   // Overall all-time balance: income − expenses. Computed via the USD snapshot (amountUsd)
   // and returned both in USD and in the user's base currency.
   async getBalance(userId: string) {
-    const [incomeGroups, expenseGroups, user, rates] = await Promise.all([
+    const [incomeGroups, expenseGroups, user, rates, goalRows] = await Promise.all([
       this.prisma.income.groupBy({
         by: ['currency'],
         where: { userId },
@@ -132,6 +134,7 @@ export class TransactionsService {
       }),
       this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),
       this.currency.getRates(),
+      this.goals.reservedRows(userId),
     ]);
 
     const toRows = (groups: typeof incomeGroups): CurrencyGroup[] =>
@@ -147,12 +150,16 @@ export class TransactionsService {
 
     // In USD and in the base currency — with a spread adjustment for cross-currency rows
     // (income ×1−spread, expense ×1+spread); single-currency rows are taken as-is.
+    // Goals (model A — transfer): money allocated to active goals is reserved, so it is
+    // subtracted from the free balance. Net worth (income − expense) splits into free + inGoals.
+    const round2 = (v: number) => Math.round(v * 100) / 100;
+    const sub = (a: number | null, b: number | null, c: number | null) =>
+      a === null || b === null || c === null ? null : round2(a - b - c);
+
     const incomeUsd = this.currency.approxTotalInBase(incomeRows, 'USD', rates, 'income');
     const expenseUsd = this.currency.approxTotalInBase(expenseRows, 'USD', rates, 'expense');
-    const balanceUsd =
-      incomeUsd === null || expenseUsd === null
-        ? null
-        : Math.round((incomeUsd - expenseUsd) * 100) / 100;
+    const goalsUsd = this.currency.approxTotalInBase(goalRows, 'USD', rates, 'none');
+    const balanceUsd = sub(incomeUsd, expenseUsd, goalsUsd);
 
     const incomeBase = this.currency.approxTotalInBase(incomeRows, baseCurrency, rates, 'income');
     const expenseBase = this.currency.approxTotalInBase(
@@ -161,12 +168,10 @@ export class TransactionsService {
       rates,
       'expense',
     );
-    const balance =
-      incomeBase === null || expenseBase === null
-        ? null
-        : Math.round((incomeBase - expenseBase) * 100) / 100;
+    const goalsBase = this.currency.approxTotalInBase(goalRows, baseCurrency, rates, 'none');
+    const balance = sub(incomeBase, expenseBase, goalsBase);
 
-    return { baseCurrency, balanceUsd, balance };
+    return { baseCurrency, balanceUsd, balance, inGoals: goalsBase, inGoalsUsd: goalsUsd };
   }
 
   private buildWhere(

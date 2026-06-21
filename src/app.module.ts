@@ -9,6 +9,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { CurrencyModule } from './modules/currency/currency.module';
 import { ExpenseCategoriesModule } from './modules/expense-categories/expense-categories.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
+import { GoalsModule } from './modules/goals/goals.module';
 import { IncomeCategoriesModule } from './modules/income-categories/income-categories.module';
 import { IncomesModule } from './modules/incomes/incomes.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -30,6 +31,7 @@ import { PrismaModule } from './prisma/prisma.module';
     IncomeCategoriesModule,
     IncomesModule,
     ExpensesModule,
+    GoalsModule,
     TransactionsModule,
     NotificationsModule,
     AuthModule,
