@@ -23,6 +23,7 @@ import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from './auth.cons
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
+import { ConfirmEmailDto } from './dto/confirm-email.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
@@ -191,14 +192,32 @@ export class AuthController {
     summary: 'Set or change the password',
     description:
       'Dual purpose depending on the account state. ' +
-      'If the user has no email yet (signed in via Telegram) — send email + password, both required: ' +
-      'this sets the email and password for the account for the first time. ' +
+      'If the user has no email yet (signed in via Telegram) — send email + password, both required. ' +
+      'The email is NOT linked right away: a confirmation link is sent to the given email, ' +
+      'and the email and password appear on the account only after following it (POST /auth/confirm-email). ' +
+      'The response contains pendingConfirmation: true. ' +
       'If an email already exists — this is a password change: only password changes, the email cannot be changed via this endpoint. ' +
-      'After this, hasPassword in the profile becomes true.',
+      'After a password change, hasPassword in the profile becomes true.',
   })
   @ApiOkResponse({ type: SuccessResponseDto })
   setCredentials(@CurrentUser() user: { id: string }, @Body() dto: SetCredentialsDto) {
     return this.authService.setCredentials(user.id, dto);
+  }
+
+  @Post('confirm-email')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Confirm email linking',
+    description:
+      'Completes linking an email to an account created via Telegram: accepts the token from the email ' +
+      '(see POST /auth/me/credentials) and writes the pending email and password onto the account. ' +
+      'The token is one-time and lives for 24 hours. If the link has expired, the email is already linked, ' +
+      'or the email was meanwhile taken by someone else — an error.',
+  })
+  @ApiOkResponse({ type: SuccessResponseDto })
+  confirmEmail(@Body() dto: ConfirmEmailDto) {
+    return this.authService.confirmEmail(dto.token);
   }
 
   @Post('forgot-password')

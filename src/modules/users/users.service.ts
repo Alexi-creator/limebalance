@@ -151,11 +151,24 @@ export class UsersService {
       },
     });
     if (!user) throw new NotFoundException(`User ${id} not found`);
+
+    // Email awaiting confirmation: set via POST /auth/me/credentials but not yet linked
+    // (the user hasn't followed the link). Only relevant while there's no email on the account
+    // and the token hasn't expired. Lets the frontend show a "confirm your email" notice.
+    const pending = user.email
+      ? null
+      : await this.prisma.emailVerificationToken.findFirst({
+          where: { userId: id, expiresAt: { gt: new Date() } },
+          orderBy: { createdAt: 'desc' },
+          select: { email: true },
+        });
+
     const { password, ...rest } = user;
     return {
       ...rest,
       telegramId: user.telegramId?.toString() ?? null,
       hasPassword: !!password,
+      pendingEmail: pending?.email ?? null,
     };
   }
 }

@@ -66,6 +66,16 @@ export class ProfileResponseDto {
   })
   hasPassword: boolean;
 
+  @ApiProperty({
+    example: 'user@example.com',
+    nullable: true,
+    description:
+      'Email awaiting confirmation: set via POST /auth/me/credentials but not yet linked ' +
+      '(the user has not followed the link from the email). null when nothing is pending. ' +
+      'When non-null, the frontend can show a "confirm your email" notice for this address.',
+  })
+  pendingEmail: string | null;
+
   @ApiPropertyOptional({
     type: SubscriptionResponseDto,
     nullable: true,

@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { hash } from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import type { TelegramAuthDto } from './dto/telegram-auth.dto';
@@ -50,6 +51,10 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: { get: (k: string) => (k === 'BOT_TOKEN' ? BOT_TOKEN : undefined) },
+        },
+        {
+          provide: MailService,
+          useValue: { sendEmailConfirmation: jest.fn(), sendPasswordReset: jest.fn() },
         },
       ],
     }).compile();

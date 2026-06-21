@@ -12,6 +12,7 @@ import { ExpensesModule } from './modules/expenses/expenses.module';
 import { GoalsModule } from './modules/goals/goals.module';
 import { IncomeCategoriesModule } from './modules/income-categories/income-categories.module';
 import { IncomesModule } from './modules/incomes/incomes.module';
+import { MailModule } from './modules/mail/mail.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { UsersModule } from './modules/users/users.module';
@@ -25,6 +26,7 @@ import { PrismaModule } from './prisma/prisma.module';
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     PrismaModule,
+    MailModule,
     CurrencyModule,
     UsersModule,
     ExpenseCategoriesModule,

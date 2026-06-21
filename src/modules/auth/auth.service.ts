@@ -12,8 +12,9 @@ import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { currencyFromTimezone } from '../../common/currency-from-timezone';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
-import { REFRESH_TOKEN_TTL_DAYS } from './auth.constants';
+import { EMAIL_VERIFICATION_TTL_MS, REFRESH_TOKEN_TTL_DAYS } from './auth.constants';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -29,6 +30,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly mail: MailService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -123,7 +125,8 @@ export class AuthService {
   }
 
   // Email and password in a single route:
-  // - no email yet (e.g. registered via Telegram) → email and password are required together;
+  // - no email yet (e.g. registered via Telegram) → email and password are required together,
+  //   but not linked right away: a confirmation link is sent to the email (see confirmEmail);
   // - email already set → it cannot be changed, the password can be changed (optional).
   async setCredentials(userId: string, dto: SetCredentialsDto) {
     const user = await this.usersService.findOne(userId);
@@ -166,11 +169,49 @@ export class AuthService {
       throw new ConflictException('Email is already in use');
     }
 
+    // Don't link right away: store the email and the (already hashed) password in a temporary token
+    // and email a link. The email appears on the account only after it's followed.
+    await this.prisma.emailVerificationToken.deleteMany({ where: { userId } });
+
     const passwordHash = await hash(dto.password, 10);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { email: dto.email, password: passwordHash },
+    const token = randomUUID();
+    const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
+    await this.prisma.emailVerificationToken.create({
+      data: { userId, email: dto.email, password: passwordHash, token, expiresAt },
     });
+
+    await this.mail.sendEmailConfirmation(dto.email, token);
+    return { success: true, pendingConfirmation: true };
+  }
+
+  // Following the link from the email: pull the pending email+password from the token and write them onto the account.
+  async confirmEmail(token: string) {
+    const record = await this.prisma.emailVerificationToken.findUnique({ where: { token } });
+
+    if (!record || record.expiresAt < new Date()) {
+      if (record) await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
+      throw new BadRequestException('The confirmation link is invalid or expired');
+    }
+
+    const user = await this.usersService.findOne(record.userId);
+    if (user.email) {
+      // Email already linked (e.g. another one was confirmed in the meantime) — the token is no longer needed.
+      await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
+      throw new ConflictException('The account already has an email');
+    }
+
+    // While the email was awaiting confirmation, this address could have been taken by someone else.
+    const existing = await this.usersService.findByEmail(record.email);
+    if (existing) {
+      await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
+      throw new ConflictException('Email is already in use');
+    }
+
+    await this.prisma.user.update({
+      where: { id: record.userId },
+      data: { email: record.email, password: record.password },
+    });
+    await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
 
     return { success: true };
   }
@@ -185,7 +226,7 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
     await this.prisma.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } });
 
-    // TODO: send an email with the token
+    await this.mail.sendPasswordReset(email, token);
     return { success: true };
   }
 

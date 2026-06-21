@@ -49,17 +49,18 @@ model User {
   timezone   String   @default("UTC")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  expenseCategories   ExpenseCategory[]
-  expenses            Expense[]
-  incomeCategories    IncomeCategory[]
-  incomes             Income[]
-  state               UserState?
-  refreshTokens       RefreshToken[]
-  passwordResetTokens PasswordResetToken[]
-  subscription        UserSubscription?
-  notifications       Notification[]
-  goals               Goal[]
-  goalContributions   GoalContribution[]
+  expenseCategories       ExpenseCategory[]
+  expenses                Expense[]
+  incomeCategories        IncomeCategory[]
+  incomes                 Income[]
+  state                   UserState?
+  refreshTokens           RefreshToken[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  subscription            UserSubscription?
+  notifications           Notification[]
+  goals                   Goal[]
+  goalContributions       GoalContribution[]
 
   @@map("users")
 }
@@ -207,6 +208,23 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+// Email confirmation when linking it to an account created via Telegram.
+// Until the user follows the link, the email and password live here, not in users.
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  email     String
+  password  String
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
 }
 
 model RefreshToken {
