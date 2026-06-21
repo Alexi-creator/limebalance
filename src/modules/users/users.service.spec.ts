@@ -5,11 +5,15 @@ import { UsersService } from './users.service';
 
 describe('UsersService', () => {
   let service: UsersService;
-  let prisma: { user: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock } };
+  let prisma: {
+    user: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
+    emailVerificationToken: { findFirst: jest.Mock };
+  };
 
   beforeEach(async () => {
     prisma = {
       user: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+      emailVerificationToken: { findFirst: jest.fn() },
     };
 
     const module = await Test.createTestingModule({
@@ -115,6 +119,7 @@ describe('UsersService', () => {
         timezone: 'Asia/Bangkok',
         subscription: null,
         hasPassword: true,
+        pendingEmail: null,
       });
       expect(me).not.toHaveProperty('password');
     });
@@ -133,6 +138,41 @@ describe('UsersService', () => {
       const me = await service.findMe('u1');
       expect(me.hasPassword).toBe(false);
       expect(me.telegramId).toBeNull();
+    });
+
+    it('exposes pendingEmail from an unconfirmed verification token when no email is set', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        email: null,
+        name: 'Ilia',
+        telegramId: 123n,
+        password: null,
+        currency: 'USD',
+        timezone: 'UTC',
+        subscription: null,
+      });
+      prisma.emailVerificationToken.findFirst.mockResolvedValue({ email: 'pending@b.c' });
+
+      const me = await service.findMe('u1');
+
+      expect(me.email).toBeNull();
+      expect(me.pendingEmail).toBe('pending@b.c');
+    });
+
+    it('does not look up a pending email when one is already set', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        email: 'a@b.c',
+        name: 'Ilia',
+        telegramId: null,
+        password: 'hash',
+        currency: 'USD',
+        timezone: 'UTC',
+        subscription: null,
+      });
+
+      const me = await service.findMe('u1');
+
+      expect(me.pendingEmail).toBeNull();
+      expect(prisma.emailVerificationToken.findFirst).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when the user is gone', async () => {
