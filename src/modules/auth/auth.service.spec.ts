@@ -1,5 +1,5 @@
 import { createHash, createHmac } from 'node:crypto';
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
@@ -26,21 +26,43 @@ function signTelegram(fields: Omit<TelegramAuthDto, 'hash' | 'timezone'>): Teleg
 
 describe('AuthService', () => {
   let service: AuthService;
-  let users: { findByEmail: jest.Mock; findOrCreateByTelegramId: jest.Mock };
-  let prisma: {
-    user: { create: jest.Mock };
-    refreshToken: { deleteMany: jest.Mock; create: jest.Mock };
+  let users: {
+    findByEmail: jest.Mock;
+    findOrCreateByTelegramId: jest.Mock;
+    findOne: jest.Mock;
   };
+  let prisma: {
+    user: { create: jest.Mock; update: jest.Mock };
+    refreshToken: { deleteMany: jest.Mock; create: jest.Mock };
+    emailVerificationToken: {
+      deleteMany: jest.Mock;
+      create: jest.Mock;
+      findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+    };
+  };
+  let mail: { sendEmailConfirmation: jest.Mock; sendPasswordReset: jest.Mock };
 
   beforeEach(async () => {
-    users = { findByEmail: jest.fn(), findOrCreateByTelegramId: jest.fn() };
+    users = { findByEmail: jest.fn(), findOrCreateByTelegramId: jest.fn(), findOne: jest.fn() };
     prisma = {
-      user: { create: jest.fn() },
+      user: { create: jest.fn(), update: jest.fn().mockResolvedValue({}) },
       refreshToken: {
         deleteMany: jest.fn().mockResolvedValue({}),
         create: jest.fn().mockResolvedValue({}),
       },
+      emailVerificationToken: {
+        deleteMany: jest.fn().mockResolvedValue({}),
+        create: jest.fn().mockResolvedValue({}),
+        findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        update: jest.fn().mockResolvedValue({}),
+        delete: jest.fn().mockResolvedValue({}),
+      },
     };
+    mail = { sendEmailConfirmation: jest.fn(), sendPasswordReset: jest.fn() };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -52,10 +74,7 @@ describe('AuthService', () => {
           provide: ConfigService,
           useValue: { get: (k: string) => (k === 'BOT_TOKEN' ? BOT_TOKEN : undefined) },
         },
-        {
-          provide: MailService,
-          useValue: { sendEmailConfirmation: jest.fn(), sendPasswordReset: jest.fn() },
-        },
+        { provide: MailService, useValue: mail },
       ],
     }).compile();
 
@@ -136,6 +155,128 @@ describe('AuthService', () => {
     it('rejects expired auth data even if correctly signed', async () => {
       const dto = signTelegram({ id: 42, auth_date: now() - 90_000 }); // > 24h old
       await expect(service.loginWithTelegram(dto)).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('setCredentials (no email yet)', () => {
+    it('stores a verification token and emails a link instead of linking the email right away', async () => {
+      users.findOne.mockResolvedValue({ id: 'u1', email: null });
+      users.findByEmail.mockResolvedValue(null);
+
+      const res = await service.setCredentials('u1', { email: 'new@b.c', password: 'password1' });
+
+      // email is NOT written to the user yet — only a pending token is created
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(prisma.emailVerificationToken.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'u1',
+          email: 'new@b.c',
+          token: expect.any(String),
+        }),
+      });
+      expect(mail.sendEmailConfirmation).toHaveBeenCalledWith('new@b.c', expect.any(String));
+      expect(res).toEqual({ success: true, pendingConfirmation: true });
+    });
+
+    it('rejects when the email is already in use and sends nothing', async () => {
+      users.findOne.mockResolvedValue({ id: 'u1', email: null });
+      users.findByEmail.mockResolvedValue({ id: 'u2' });
+
+      await expect(
+        service.setCredentials('u1', { email: 'taken@b.c', password: 'password1' }),
+      ).rejects.toThrow(ConflictException);
+      expect(mail.sendEmailConfirmation).not.toHaveBeenCalled();
+      expect(prisma.emailVerificationToken.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('confirmEmail', () => {
+    const validRecord = {
+      id: 't1',
+      userId: 'u1',
+      email: 'new@b.c',
+      password: 'hashed-pw',
+      expiresAt: new Date(Date.now() + 60_000),
+    };
+
+    it('writes the pending email+password onto the account and consumes the token', async () => {
+      prisma.emailVerificationToken.findUnique.mockResolvedValue(validRecord);
+      users.findOne.mockResolvedValue({ id: 'u1', email: null });
+      users.findByEmail.mockResolvedValue(null);
+
+      const res = await service.confirmEmail('tok');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'u1' },
+        data: { email: 'new@b.c', password: 'hashed-pw' },
+      });
+      expect(prisma.emailVerificationToken.delete).toHaveBeenCalledWith({ where: { id: 't1' } });
+      expect(res).toEqual({ success: true });
+    });
+
+    it('rejects an unknown token', async () => {
+      prisma.emailVerificationToken.findUnique.mockResolvedValue(null);
+      await expect(service.confirmEmail('nope')).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects and deletes an expired token', async () => {
+      prisma.emailVerificationToken.findUnique.mockResolvedValue({
+        ...validRecord,
+        expiresAt: new Date(Date.now() - 60_000),
+      });
+      await expect(service.confirmEmail('tok')).rejects.toThrow(BadRequestException);
+      expect(prisma.emailVerificationToken.delete).toHaveBeenCalledWith({ where: { id: 't1' } });
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the account already has an email', async () => {
+      prisma.emailVerificationToken.findUnique.mockResolvedValue(validRecord);
+      users.findOne.mockResolvedValue({ id: 'u1', email: 'existing@b.c' });
+      await expect(service.confirmEmail('tok')).rejects.toThrow(ConflictException);
+      expect(prisma.emailVerificationToken.delete).toHaveBeenCalledWith({ where: { id: 't1' } });
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the email was taken by someone else in the meantime', async () => {
+      prisma.emailVerificationToken.findUnique.mockResolvedValue(validRecord);
+      users.findOne.mockResolvedValue({ id: 'u1', email: null });
+      users.findByEmail.mockResolvedValue({ id: 'u2' });
+      await expect(service.confirmEmail('tok')).rejects.toThrow(ConflictException);
+      expect(prisma.emailVerificationToken.delete).toHaveBeenCalledWith({ where: { id: 't1' } });
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resendEmailConfirmation', () => {
+    it('refreshes the token and re-sends the email to the pending address', async () => {
+      users.findOne.mockResolvedValue({ id: 'u1', email: null });
+      prisma.emailVerificationToken.findFirst.mockResolvedValue({
+        id: 't1',
+        userId: 'u1',
+        email: 'new@b.c',
+      });
+
+      const res = await service.resendEmailConfirmation('u1');
+
+      expect(prisma.emailVerificationToken.update).toHaveBeenCalledWith({
+        where: { id: 't1' },
+        data: expect.objectContaining({ token: expect.any(String), expiresAt: expect.any(Date) }),
+      });
+      expect(mail.sendEmailConfirmation).toHaveBeenCalledWith('new@b.c', expect.any(String));
+      expect(res).toEqual({ success: true });
+    });
+
+    it('rejects when the account already has an email', async () => {
+      users.findOne.mockResolvedValue({ id: 'u1', email: 'a@b.c' });
+      await expect(service.resendEmailConfirmation('u1')).rejects.toThrow(ConflictException);
+      expect(mail.sendEmailConfirmation).not.toHaveBeenCalled();
+    });
+
+    it('rejects when there is nothing awaiting confirmation', async () => {
+      users.findOne.mockResolvedValue({ id: 'u1', email: null });
+      prisma.emailVerificationToken.findFirst.mockResolvedValue(null);
+      await expect(service.resendEmailConfirmation('u1')).rejects.toThrow(BadRequestException);
+      expect(mail.sendEmailConfirmation).not.toHaveBeenCalled();
     });
   });
 });

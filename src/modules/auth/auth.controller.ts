@@ -220,6 +220,22 @@ export class AuthController {
     return this.authService.confirmEmail(dto.token);
   }
 
+  @Post('resend-email-confirmation')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Resend the email confirmation link',
+    description:
+      'Sends a fresh confirmation link to the email awaiting confirmation (set earlier via ' +
+      'POST /auth/me/credentials), reusing the already-stored email and password — no need to ' +
+      'resubmit them. Refreshes the token and its 24-hour expiry. Errors if the account already ' +
+      'has an email or has nothing awaiting confirmation.',
+  })
+  @ApiOkResponse({ type: SuccessResponseDto })
+  resendEmailConfirmation(@CurrentUser() user: { id: string }) {
+    return this.authService.resendEmailConfirmation(user.id);
+  }
+
   @Post('forgot-password')
   @Public()
   @HttpCode(HttpStatus.OK)

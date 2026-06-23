@@ -216,6 +216,33 @@ export class AuthService {
     return { success: true };
   }
 
+  // Resend the confirmation link, reusing the email+password already stored in the pending token.
+  // Refreshes the token string and its expiry so the previous link is invalidated.
+  async resendEmailConfirmation(userId: string) {
+    const user = await this.usersService.findOne(userId);
+    if (user.email) {
+      throw new ConflictException('The account already has an email');
+    }
+
+    const record = await this.prisma.emailVerificationToken.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!record) {
+      throw new BadRequestException('No email is awaiting confirmation');
+    }
+
+    const token = randomUUID();
+    const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
+    await this.prisma.emailVerificationToken.update({
+      where: { id: record.id },
+      data: { token, expiresAt },
+    });
+
+    await this.mail.sendEmailConfirmation(record.email, token);
+    return { success: true };
+  }
+
   async forgotPassword(email: string) {
     const user = await this.usersService.findByEmail(email);
     if (!user) return { success: true }; // don't reveal that the email doesn't exist
