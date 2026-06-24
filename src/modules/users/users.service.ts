@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FREE_SUBSCRIPTION } from '../subscriptions/subscriptions.constants';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -32,7 +33,10 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   create(dto: CreateUserDto) {
-    return this.prisma.user.create({ data: dto, select: PUBLIC_USER_SELECT });
+    return this.prisma.user.create({
+      data: { ...dto, subscription: FREE_SUBSCRIPTION },
+      select: PUBLIC_USER_SELECT,
+    });
   }
 
   findAll() {
@@ -66,7 +70,7 @@ export class UsersService {
     const existing = await this.prisma.user.findUnique({ where: { telegramId } });
     if (existing) return { user: existing, isNew: false };
     const user = await this.prisma.user.create({
-      data: { telegramId, ...pickDefaults(defaults) },
+      data: { telegramId, ...pickDefaults(defaults), subscription: FREE_SUBSCRIPTION },
     });
     return { user, isNew: true };
   }
@@ -78,7 +82,9 @@ export class UsersService {
   async findOrCreateByEmail(email: string) {
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) return { user: existing, isNew: false };
-    const user = await this.prisma.user.create({ data: { email } });
+    const user = await this.prisma.user.create({
+      data: { email, subscription: FREE_SUBSCRIPTION },
+    });
     return { user, isNew: true };
   }
 
@@ -105,7 +111,7 @@ export class UsersService {
     }
 
     const user = await this.prisma.user.create({
-      data: { email, googleId, ...pickDefaults(defaults) },
+      data: { email, googleId, ...pickDefaults(defaults), subscription: FREE_SUBSCRIPTION },
     });
     return { user, isNew: true };
   }

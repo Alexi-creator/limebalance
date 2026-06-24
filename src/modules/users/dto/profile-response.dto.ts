@@ -23,6 +23,12 @@ export class PlanResponseDto {
 
   @ApiProperty({ type: String, example: '0.00', description: 'Price (Decimal, as a string)' })
   price: string;
+
+  @ApiProperty({
+    example: false,
+    description: 'Whether the plan unlocks the investing / crypto section',
+  })
+  investingAccess: boolean;
 }
 
 export class SubscriptionResponseDto {

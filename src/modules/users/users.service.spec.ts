@@ -48,7 +48,11 @@ describe('UsersService', () => {
 
       expect(prisma.user.create).toHaveBeenCalledWith({
         // timezone omitted (empty) so it doesn't overwrite the schema default
-        data: { telegramId: 42n, currency: 'EUR' },
+        data: {
+          telegramId: 42n,
+          currency: 'EUR',
+          subscription: { create: { plan: { connect: { name: 'free' } } } },
+        },
       });
       expect(res).toEqual({ user: { id: 'u2' }, isNew: true });
     });
@@ -84,7 +88,12 @@ describe('UsersService', () => {
       const res = await service.findOrCreateByGoogle('gid', 'a@b.c', { timezone: 'Asia/Bangkok' });
 
       expect(prisma.user.create).toHaveBeenCalledWith({
-        data: { email: 'a@b.c', googleId: 'gid', timezone: 'Asia/Bangkok' },
+        data: {
+          email: 'a@b.c',
+          googleId: 'gid',
+          timezone: 'Asia/Bangkok',
+          subscription: { create: { plan: { connect: { name: 'free' } } } },
+        },
       });
       expect(res.isNew).toBe(true);
     });

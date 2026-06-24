@@ -13,6 +13,7 @@ import { compare, hash } from 'bcryptjs';
 import { currencyFromTimezone } from '../../common/currency-from-timezone';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { FREE_SUBSCRIPTION } from '../subscriptions/subscriptions.constants';
 import { UsersService } from '../users/users.service';
 import { EMAIL_VERIFICATION_TTL_MS, REFRESH_TOKEN_TTL_DAYS } from './auth.constants';
 import { GoogleAuthDto } from './dto/google-auth.dto';
@@ -46,6 +47,7 @@ export class AuthService {
         password: passwordHash,
         currency,
         ...(dto.timezone ? { timezone: dto.timezone } : {}),
+        subscription: FREE_SUBSCRIPTION,
       },
     });
 
