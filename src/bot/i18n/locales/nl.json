@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Druk eerst op /start",
     "chooseFromMenu": "Kies een actie uit het menu.",
-    "somethingWrong": "Er ging iets mis. Begin opnieuw."
+    "somethingWrong": "Er ging iets mis. Begin opnieuw.",
+    "limitReached": "Je hebt de limiet van je huidige abonnement bereikt. Upgrade je abonnement om door te gaan: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Voor welk type wil je een categorie maken?",

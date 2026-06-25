@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Primero pulsa /start",
     "chooseFromMenu": "Elige una acción del menú.",
-    "somethingWrong": "Algo salió mal. Empieza de nuevo."
+    "somethingWrong": "Algo salió mal. Empieza de nuevo.",
+    "limitReached": "Has alcanzado el límite de tu plan actual. Para continuar, cambia a otro plan: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "¿Para qué tipo quieres crear una categoría?",

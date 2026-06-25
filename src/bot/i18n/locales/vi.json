@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Vui lòng nhấn /start trước",
     "chooseFromMenu": "Chọn một hành động từ menu.",
-    "somethingWrong": "Đã xảy ra lỗi. Hãy bắt đầu lại."
+    "somethingWrong": "Đã xảy ra lỗi. Hãy bắt đầu lại.",
+    "limitReached": "Bạn đã đạt đến giới hạn của gói hiện tại. Để tiếp tục, hãy nâng cấp gói của bạn: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Bạn muốn tạo danh mục cho loại nào?",

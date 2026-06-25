@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Először nyomd meg a /start parancsot",
     "chooseFromMenu": "Válassz egy műveletet a menüből.",
-    "somethingWrong": "Valami hiba történt. Kezdd elölről."
+    "somethingWrong": "Valami hiba történt. Kezdd elölről.",
+    "limitReached": "Elérted a jelenlegi csomagod korlátját. A folytatáshoz válts másik csomagra: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Milyen típushoz szeretnél kategóriát létrehozni?",

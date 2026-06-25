@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Trykk på /start først",
     "chooseFromMenu": "Velg en handling fra menyen.",
-    "somethingWrong": "Noe gikk galt. Start på nytt."
+    "somethingWrong": "Noe gikk galt. Start på nytt.",
+    "limitReached": "Du har nådd grensen for det nåværende abonnementet ditt. For å fortsette, oppgrader abonnementet: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Hvilken type vil du opprette en kategori for?",

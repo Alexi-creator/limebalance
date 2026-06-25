@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Bitte zuerst /start drücken",
     "chooseFromMenu": "Wähle eine Aktion aus dem Menü.",
-    "somethingWrong": "Etwas ist schiefgelaufen. Bitte fang von vorne an."
+    "somethingWrong": "Etwas ist schiefgelaufen. Bitte fang von vorne an.",
+    "limitReached": "Du hast das Limit deines aktuellen Tarifs erreicht. Um fortzufahren, wechsle zu einem anderen Tarif: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Für welchen Typ möchtest du eine Kategorie erstellen?",

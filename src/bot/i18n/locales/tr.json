@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Önce /start'a bas",
     "chooseFromMenu": "Menüden bir işlem seç.",
-    "somethingWrong": "Bir şeyler ters gitti. Baştan başla."
+    "somethingWrong": "Bir şeyler ters gitti. Baştan başla.",
+    "limitReached": "Mevcut planınızın sınırına ulaştınız. Devam etmek için planınızı yükseltin: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Hangi tür için kategori oluşturmak istersin?",

@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Tekan /start dulu",
     "chooseFromMenu": "Pilih tindakan dari menu.",
-    "somethingWrong": "Terjadi kesalahan. Mulai lagi."
+    "somethingWrong": "Terjadi kesalahan. Mulai lagi.",
+    "limitReached": "Anda telah mencapai batas paket Anda saat ini. Untuk melanjutkan, tingkatkan paket Anda: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Untuk tipe apa kamu ingin membuat kategori?",

@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Bot } from 'grammy';
+import { PlanLimitExceededException } from '../modules/subscriptions/plan-limit-exceeded.exception';
 import { UsersService } from '../modules/users/users.service';
 import { CategoryHandler } from './handlers/category.handler';
 import { ExpenseHandler } from './handlers/expense.handler';
@@ -107,41 +108,52 @@ export class BotService implements OnModuleInit {
       const userId = existing.id;
       const step = await this.stateService.getStep(userId);
 
-      // route by menu button text (matched across all supported locales)
-      switch (matchMenuAction(text)) {
-        case 'addCategory':
-          return this.categoryHandler.handleAdd(ctx);
-        case 'viewCategories':
-          return this.categoryHandler.handleViewAll(ctx, userId);
-        case 'addExpense':
-          return this.expenseHandler.handleAdd(ctx, userId);
-        case 'addIncome':
-          return this.incomeHandler.handleAdd(ctx, userId);
-        case 'stat':
-          return this.statHandler.handleStat(ctx);
-      }
+      try {
+        // route by menu button text (matched across all supported locales)
+        switch (matchMenuAction(text)) {
+          case 'addCategory':
+            return await this.categoryHandler.handleAdd(ctx);
+          case 'viewCategories':
+            return await this.categoryHandler.handleViewAll(ctx, userId);
+          case 'addExpense':
+            return await this.expenseHandler.handleAdd(ctx, userId);
+          case 'addIncome':
+            return await this.incomeHandler.handleAdd(ctx, userId);
+          case 'stat':
+            return await this.statHandler.handleStat(ctx);
+        }
 
-      // route by current FSM step
-      if (
-        step === 'addcategory:expense:waiting_name' ||
-        step === 'addcategory:income:waiting_name'
-      ) {
-        return this.categoryHandler.handleNameInput(ctx, userId, text, step);
-      }
-      if (step === 'addexpense:waiting_amount') {
-        return this.expenseHandler.handleAmountInput(ctx, userId, text);
-      }
-      if (step === 'addexpense:waiting_description') {
-        return this.expenseHandler.handleDescriptionInput(ctx, userId, text);
-      }
-      if (step === 'addincome:waiting_amount') {
-        return this.incomeHandler.handleAmountInput(ctx, userId, text);
-      }
-      if (step === 'addincome:waiting_description') {
-        return this.incomeHandler.handleDescriptionInput(ctx, userId, text);
-      }
+        // route by current FSM step
+        if (
+          step === 'addcategory:expense:waiting_name' ||
+          step === 'addcategory:income:waiting_name'
+        ) {
+          return await this.categoryHandler.handleNameInput(ctx, userId, text, step);
+        }
+        if (step === 'addexpense:waiting_amount') {
+          return await this.expenseHandler.handleAmountInput(ctx, userId, text);
+        }
+        if (step === 'addexpense:waiting_description') {
+          return await this.expenseHandler.handleDescriptionInput(ctx, userId, text);
+        }
+        if (step === 'addincome:waiting_amount') {
+          return await this.incomeHandler.handleAmountInput(ctx, userId, text);
+        }
+        if (step === 'addincome:waiting_description') {
+          return await this.incomeHandler.handleDescriptionInput(ctx, userId, text);
+        }
 
-      await ctx.reply(t(locale).chooseFromMenu, { reply_markup: mainMenu(locale) });
+        await ctx.reply(t(locale).chooseFromMenu, { reply_markup: mainMenu(locale) });
+      } catch (err) {
+        // Plan limit hit (free tier ran out): clear the in-progress flow and prompt to upgrade,
+        // instead of letting the error bubble up and leave the user with no reply.
+        if (err instanceof PlanLimitExceededException) {
+          await this.stateService.reset(userId);
+          await ctx.reply(t(locale).limitReached, { reply_markup: mainMenu(locale) });
+          return;
+        }
+        throw err;
+      }
     });
   }
 }

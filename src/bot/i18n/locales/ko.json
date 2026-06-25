@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "먼저 /start 를 눌러주세요",
     "chooseFromMenu": "메뉴에서 작업을 선택하세요.",
-    "somethingWrong": "문제가 발생했습니다. 처음부터 다시 시작하세요."
+    "somethingWrong": "문제가 발생했습니다. 처음부터 다시 시작하세요.",
+    "limitReached": "현재 요금제의 한도에 도달했습니다. 계속하려면 다른 요금제로 업그레이드하세요: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "어떤 유형의 카테고리를 만들까요?",

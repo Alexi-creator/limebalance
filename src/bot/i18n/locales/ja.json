@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "まず /start を押してください",
     "chooseFromMenu": "メニューから操作を選んでください。",
-    "somethingWrong": "問題が発生しました。最初からやり直してください。"
+    "somethingWrong": "問題が発生しました。最初からやり直してください。",
+    "limitReached": "現在のプランの上限に達しました。続けるには、別のプランにアップグレードしてください: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "どの種類のカテゴリーを作成しますか？",

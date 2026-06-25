@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "กรุณากด /start ก่อน",
     "chooseFromMenu": "เลือกการทำงานจากเมนู",
-    "somethingWrong": "เกิดข้อผิดพลาด กรุณาเริ่มใหม่"
+    "somethingWrong": "เกิดข้อผิดพลาด กรุณาเริ่มใหม่",
+    "limitReached": "คุณใช้ครบขีดจำกัดของแพ็กเกจปัจจุบันแล้ว หากต้องการใช้งานต่อ โปรดอัปเกรดแพ็กเกจ: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "คุณต้องการสร้างหมวดหมู่สำหรับประเภทใด?",

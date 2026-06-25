@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Prvo pritisni /start",
     "chooseFromMenu": "Odaberi radnju iz izbornika.",
-    "somethingWrong": "Nešto je pošlo po zlu. Počni ispočetka."
+    "somethingWrong": "Nešto je pošlo po zlu. Počni ispočetka.",
+    "limitReached": "Dosegnuli ste ograničenje trenutnog plana. Za nastavak prijeđite na drugi plan: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Za koju vrstu želiš stvoriti kategoriju?",

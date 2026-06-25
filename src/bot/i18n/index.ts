@@ -52,6 +52,7 @@ export interface Messages {
   pressStartFirst: string;
   chooseFromMenu: string;
   somethingWrong: string;
+  limitReached: string;
 
   categoryTypePrompt: string;
   typeExpense: string;
@@ -106,6 +107,7 @@ export function t(locale: Locale): Messages {
     pressStartFirst: tt('common.pressStartFirst'),
     chooseFromMenu: tt('common.chooseFromMenu'),
     somethingWrong: tt('common.somethingWrong'),
+    limitReached: tt('common.limitReached'),
 
     categoryTypePrompt: tt('category.typePrompt'),
     typeExpense: tt('category.typeExpense'),

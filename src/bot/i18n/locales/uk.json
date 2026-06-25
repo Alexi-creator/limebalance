@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Спершу натисни /start",
     "chooseFromMenu": "Обери дію з меню.",
-    "somethingWrong": "Щось пішло не так. Почни спочатку."
+    "somethingWrong": "Щось пішло не так. Почни спочатку.",
+    "limitReached": "Ви досягли ліміту поточного тарифного плану. Щоб продовжити, перейдіть на інший тариф: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Для якого типу створити категорію?",

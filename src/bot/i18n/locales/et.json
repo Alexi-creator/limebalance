@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Vajuta kõigepealt /start",
     "chooseFromMenu": "Vali menüüst tegevus.",
-    "somethingWrong": "Midagi läks valesti. Alusta uuesti."
+    "somethingWrong": "Midagi läks valesti. Alusta uuesti.",
+    "limitReached": "Oled jõudnud oma praeguse paketi limiidini. Jätkamiseks vali teine pakett: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Mis tüübi jaoks soovid kategooria luua?",

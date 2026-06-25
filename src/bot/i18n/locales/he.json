@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "תחילה לחץ /start",
     "chooseFromMenu": "בחר פעולה מהתפריט.",
-    "somethingWrong": "משהו השתבש. התחל מחדש."
+    "somethingWrong": "משהו השתבש. התחל מחדש.",
+    "limitReached": "הגעת למגבלת התוכנית הנוכחית שלך. כדי להמשיך, שדרג את התוכנית שלך: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "לאיזה סוג ליצור קטגוריה?",

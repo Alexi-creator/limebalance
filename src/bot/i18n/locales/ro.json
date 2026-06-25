@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Apasă mai întâi /start",
     "chooseFromMenu": "Alege o acțiune din meniu.",
-    "somethingWrong": "Ceva n-a mers. Ia-o de la capăt."
+    "somethingWrong": "Ceva n-a mers. Ia-o de la capăt.",
+    "limitReached": "Ai atins limita planului tău actual. Pentru a continua, treci la alt plan: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Pentru ce tip vrei să creezi o categorie?",

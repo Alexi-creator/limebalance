@@ -1,6 +1,7 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { localWallClockNow } from '../../common/timezone.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PlanLimitExceededException } from './plan-limit-exceeded.exception';
 import { FREE_PLAN_NAME } from './subscriptions.constants';
 
 /** Current usage against a single limit. `limit`/`remaining` are null when the plan is unlimited. */
@@ -57,7 +58,7 @@ export class SubscriptionsService {
     const { maxCategories } = await this.getEffectivePlan(userId);
     if (maxCategories === null) return;
     if ((await this.countCategories(userId)) >= maxCategories) {
-      throw new ForbiddenException(
+      throw new PlanLimitExceededException(
         `Category limit reached (${maxCategories}). Upgrade your plan to add more.`,
       );
     }
@@ -73,7 +74,7 @@ export class SubscriptionsService {
     const { maxTransactionsPerMonth } = await this.getEffectivePlan(userId);
     if (maxTransactionsPerMonth === null) return;
     if ((await this.countTransactionsThisMonth(userId)) >= maxTransactionsPerMonth) {
-      throw new ForbiddenException(
+      throw new PlanLimitExceededException(
         `Monthly transaction limit reached (${maxTransactionsPerMonth}). Upgrade your plan or wait until next month.`,
       );
     }

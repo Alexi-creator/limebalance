@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Najprej pritisni /start",
     "chooseFromMenu": "Izberi dejanje iz menija.",
-    "somethingWrong": "Nekaj je šlo narobe. Začni znova."
+    "somethingWrong": "Nekaj je šlo narobe. Začni znova.",
+    "limitReached": "Dosegli ste omejitev trenutnega paketa. Za nadaljevanje preklopite na drug paket: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Za katero vrsto želiš ustvariti kategorijo?",

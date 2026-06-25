@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Vispirms nospied /start",
     "chooseFromMenu": "Izvēlies darbību no izvēlnes.",
-    "somethingWrong": "Kaut kas nogāja greizi. Sāc no jauna."
+    "somethingWrong": "Kaut kas nogāja greizi. Sāc no jauna.",
+    "limitReached": "Esat sasniedzis sava pašreizējā plāna limitu. Lai turpinātu, pārejiet uz citu plānu: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Kādam tipam vēlies izveidot kategoriju?",

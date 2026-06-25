@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Paina ensin /start",
     "chooseFromMenu": "Valitse toiminto valikosta.",
-    "somethingWrong": "Jotain meni pieleen. Aloita alusta."
+    "somethingWrong": "Jotain meni pieleen. Aloita alusta.",
+    "limitReached": "Olet saavuttanut nykyisen tilauksesi rajan. Jatkaaksesi vaihda toiseen tilaukseen: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Minkä tyypin kategorian haluat luoda?",

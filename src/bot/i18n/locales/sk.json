@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Najprv stlač /start",
     "chooseFromMenu": "Vyber akciu z menu.",
-    "somethingWrong": "Niečo sa pokazilo. Začni znova."
+    "somethingWrong": "Niečo sa pokazilo. Začni znova.",
+    "limitReached": "Dosiahli ste limit svojho aktuálneho plánu. Ak chcete pokračovať, prejdite na iný plán: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Pre aký typ chceš vytvoriť kategóriu?",

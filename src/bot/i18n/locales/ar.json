@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "اضغط /start أولًا",
     "chooseFromMenu": "اختر إجراءً من القائمة.",
-    "somethingWrong": "حدث خطأ ما. ابدأ من جديد."
+    "somethingWrong": "حدث خطأ ما. ابدأ من جديد.",
+    "limitReached": "لقد وصلت إلى حد خطتك الحالية. للمتابعة، قم بالترقية إلى خطة أخرى: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "لأي نوع تريد إنشاء فئة؟",

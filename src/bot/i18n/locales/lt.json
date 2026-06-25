@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "Pirmiausia paspausk /start",
     "chooseFromMenu": "Pasirink veiksmą iš meniu.",
-    "somethingWrong": "Kažkas nepavyko. Pradėk iš naujo."
+    "somethingWrong": "Kažkas nepavyko. Pradėk iš naujo.",
+    "limitReached": "Pasiekėte dabartinio plano limitą. Norėdami tęsti, pereikite prie kito plano: https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "Kokiam tipui nori sukurti kategoriją?",

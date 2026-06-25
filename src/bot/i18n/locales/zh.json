@@ -13,7 +13,8 @@
   "common": {
     "pressStartFirst": "请先按 /start",
     "chooseFromMenu": "请从菜单中选择一个操作。",
-    "somethingWrong": "出错了，请重新开始。"
+    "somethingWrong": "出错了，请重新开始。",
+    "limitReached": "您已达到当前套餐的上限。要继续使用，请升级您的套餐：https://app.limebalance.com/"
   },
   "category": {
     "typePrompt": "你想为哪种类型创建分类？",
