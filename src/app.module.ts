@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { BotModule } from './bot/bot.module';
 import { envSchema } from './config/env.schema';
+import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { CurrencyModule } from './modules/currency/currency.module';
@@ -41,6 +42,7 @@ import { PrismaModule } from './prisma/prisma.module';
     NotificationsModule,
     SubscriptionsModule,
     AuthModule,
+    AdminModule,
     BotModule,
   ],
   providers: [
