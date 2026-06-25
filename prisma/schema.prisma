@@ -44,6 +44,10 @@ model User {
   telegramId BigInt?  @unique @map("telegram_id")
   googleId   String?  @unique @map("google_id")
   email      String?  @unique
+  // Whether the email on this account has been confirmed. true for Google (Google verifies it)
+  // and for emails confirmed via the link; false for fresh email/password registrations until the
+  // user follows the confirmation link. Accounts with no email keep the default and are ignored.
+  emailVerified Boolean @default(false) @map("email_verified")
   password   String?
   name       String   @default("")
   role       Role     @default(USER)
@@ -212,13 +216,19 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
-// Email confirmation when linking it to an account created via Telegram.
-// Until the user follows the link, the email and password live here, not in users.
+// Email confirmation, used by two flows:
+//  - Telegram-link: the user adds an email to a Telegram-created account. Until the link is
+//    followed, the email and password live here (not on the user). password is set.
+//  - Registration: the email/password are already on the user; this token only confirms ownership
+//    and flips users.email_verified. password is NULL.
 model EmailVerificationToken {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
   email     String
-  password  String
+  // Pending password for the Telegram-link flow (email not yet on the account). NULL for the
+  // registration flow, where the email/password already live on the user and the token only
+  // confirms ownership (flips users.email_verified).
+  password  String?
   token     String   @unique
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")

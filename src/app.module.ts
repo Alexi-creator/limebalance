@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { BotModule } from './bot/bot.module';
 import { envSchema } from './config/env.schema';
@@ -26,6 +27,7 @@ import { PrismaModule } from './prisma/prisma.module';
       validate: (config) => envSchema.parse(config),
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    ScheduleModule.forRoot(),
     PrismaModule,
     MailModule,
     CurrencyModule,

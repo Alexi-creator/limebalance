@@ -32,7 +32,7 @@ describe('AuthService', () => {
     findOne: jest.Mock;
   };
   let prisma: {
-    user: { create: jest.Mock; update: jest.Mock };
+    user: { create: jest.Mock; update: jest.Mock; findUnique: jest.Mock };
     refreshToken: { deleteMany: jest.Mock; create: jest.Mock };
     emailVerificationToken: {
       deleteMany: jest.Mock;
@@ -48,7 +48,7 @@ describe('AuthService', () => {
   beforeEach(async () => {
     users = { findByEmail: jest.fn(), findOrCreateByTelegramId: jest.fn(), findOne: jest.fn() };
     prisma = {
-      user: { create: jest.fn(), update: jest.fn().mockResolvedValue({}) },
+      user: { create: jest.fn(), update: jest.fn().mockResolvedValue({}), findUnique: jest.fn() },
       refreshToken: {
         deleteMany: jest.fn().mockResolvedValue({}),
         create: jest.fn().mockResolvedValue({}),
@@ -108,6 +108,11 @@ describe('AuthService', () => {
           }),
         }),
       );
+      // Soft verification: a confirmation email is sent, but the user is still logged in.
+      expect(prisma.emailVerificationToken.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ userId: 'u1', email: 'a@b.c', password: null }),
+      });
+      expect(mail.sendEmailConfirmation).toHaveBeenCalledWith('a@b.c', expect.any(String));
       expect(res).toEqual({ accessToken: 'access-token', refreshToken: expect.any(String) });
     });
   });
@@ -208,7 +213,25 @@ describe('AuthService', () => {
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'u1' },
-        data: { email: 'new@b.c', password: 'hashed-pw' },
+        data: { email: 'new@b.c', password: 'hashed-pw', emailVerified: true },
+      });
+      expect(prisma.emailVerificationToken.delete).toHaveBeenCalledWith({ where: { id: 't1' } });
+      expect(res).toEqual({ success: true });
+    });
+
+    it('marks the email verified for the registration flow (email already on the account)', async () => {
+      // Registration flow: the email matches what's already on the user, password is null in the token.
+      prisma.emailVerificationToken.findUnique.mockResolvedValue({
+        ...validRecord,
+        password: null,
+      });
+      users.findOne.mockResolvedValue({ id: 'u1', email: 'new@b.c' });
+
+      const res = await service.confirmEmail('tok');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'u1' },
+        data: { emailVerified: true },
       });
       expect(prisma.emailVerificationToken.delete).toHaveBeenCalledWith({ where: { id: 't1' } });
       expect(res).toEqual({ success: true });
@@ -249,7 +272,7 @@ describe('AuthService', () => {
 
   describe('resendEmailConfirmation', () => {
     it('refreshes the token and re-sends the email to the pending address', async () => {
-      users.findOne.mockResolvedValue({ id: 'u1', email: null });
+      prisma.user.findUnique.mockResolvedValue({ email: null, emailVerified: false });
       prisma.emailVerificationToken.findFirst.mockResolvedValue({
         id: 't1',
         userId: 'u1',
@@ -266,14 +289,28 @@ describe('AuthService', () => {
       expect(res).toEqual({ success: true });
     });
 
-    it('rejects when the account already has an email', async () => {
-      users.findOne.mockResolvedValue({ id: 'u1', email: 'a@b.c' });
+    it('rejects when the email is already confirmed', async () => {
+      prisma.user.findUnique.mockResolvedValue({ email: 'a@b.c', emailVerified: true });
       await expect(service.resendEmailConfirmation('u1')).rejects.toThrow(ConflictException);
       expect(mail.sendEmailConfirmation).not.toHaveBeenCalled();
     });
 
+    it('resends for an unverified registration (email on the account, not yet confirmed)', async () => {
+      prisma.user.findUnique.mockResolvedValue({ email: 'a@b.c', emailVerified: false });
+      prisma.emailVerificationToken.findFirst.mockResolvedValue({
+        id: 't1',
+        userId: 'u1',
+        email: 'a@b.c',
+      });
+
+      const res = await service.resendEmailConfirmation('u1');
+
+      expect(mail.sendEmailConfirmation).toHaveBeenCalledWith('a@b.c', expect.any(String));
+      expect(res).toEqual({ success: true });
+    });
+
     it('rejects when there is nothing awaiting confirmation', async () => {
-      users.findOne.mockResolvedValue({ id: 'u1', email: null });
+      prisma.user.findUnique.mockResolvedValue({ email: null, emailVerified: false });
       prisma.emailVerificationToken.findFirst.mockResolvedValue(null);
       await expect(service.resendEmailConfirmation('u1')).rejects.toThrow(BadRequestException);
       expect(mail.sendEmailConfirmation).not.toHaveBeenCalled();

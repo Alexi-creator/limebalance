@@ -76,7 +76,7 @@ describe('UsersService', () => {
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'e1' },
-        data: { googleId: 'gid' },
+        data: { googleId: 'gid', emailVerified: true },
       });
       expect(res).toEqual({ user: { id: 'e1', googleId: 'gid' }, isNew: false });
     });
@@ -91,6 +91,7 @@ describe('UsersService', () => {
         data: {
           email: 'a@b.c',
           googleId: 'gid',
+          emailVerified: true,
           timezone: 'Asia/Bangkok',
           subscription: { create: { plan: { connect: { name: 'free' } } } },
         },
@@ -110,6 +111,7 @@ describe('UsersService', () => {
     it('strips the password, stringifies telegramId and exposes hasPassword', async () => {
       prisma.user.findUnique.mockResolvedValue({
         email: 'a@b.c',
+        emailVerified: true,
         name: 'Ilia',
         telegramId: 123n,
         password: 'secret-hash',
@@ -122,6 +124,7 @@ describe('UsersService', () => {
 
       expect(me).toEqual({
         email: 'a@b.c',
+        emailVerified: true,
         name: 'Ilia',
         telegramId: '123',
         currency: 'EUR',

@@ -88,8 +88,13 @@ export class UsersService {
     return { user, isNew: true };
   }
 
+  // Only used when linking a Google account (the email comes from a Google-verified token), so the
+  // email is considered confirmed.
   setEmail(userId: string, email: string) {
-    return this.prisma.user.update({ where: { id: userId }, data: { email } });
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { email, emailVerified: true },
+    });
   }
 
   findByGoogleId(googleId: string) {
@@ -101,17 +106,25 @@ export class UsersService {
     if (byGoogleId) return { user: byGoogleId, isNew: false };
 
     // An account with this email already exists (e.g. registered with a password) — link Google.
+    // Google verifies the email, so confirm it here too (covers an unverified password signup).
     const byEmail = await this.prisma.user.findUnique({ where: { email } });
     if (byEmail) {
       const user = await this.prisma.user.update({
         where: { id: byEmail.id },
-        data: { googleId },
+        data: { googleId, emailVerified: true },
       });
       return { user, isNew: false };
     }
 
+    // Google sign-up: the email is verified by Google.
     const user = await this.prisma.user.create({
-      data: { email, googleId, ...pickDefaults(defaults), subscription: FREE_SUBSCRIPTION },
+      data: {
+        email,
+        googleId,
+        emailVerified: true,
+        ...pickDefaults(defaults),
+        subscription: FREE_SUBSCRIPTION,
+      },
     });
     return { user, isNew: true };
   }
@@ -143,6 +156,7 @@ export class UsersService {
       where: { id },
       select: {
         email: true,
+        emailVerified: true,
         name: true,
         telegramId: true,
         password: true,

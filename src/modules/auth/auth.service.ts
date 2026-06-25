@@ -51,6 +51,11 @@ export class AuthService {
       },
     });
 
+    // Soft verification: the user is logged in immediately, but the email stays unverified until
+    // they follow the confirmation link. The email/password already live on the user, so the token
+    // carries no pending password — it only confirms ownership.
+    await this.issueEmailVerification(user.id, dto.email, null);
+
     return this.issueTokens(user.id);
   }
 
@@ -173,20 +178,27 @@ export class AuthService {
 
     // Don't link right away: store the email and the (already hashed) password in a temporary token
     // and email a link. The email appears on the account only after it's followed.
-    await this.prisma.emailVerificationToken.deleteMany({ where: { userId } });
-
     const passwordHash = await hash(dto.password, 10);
-    const token = randomUUID();
-    const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
-    await this.prisma.emailVerificationToken.create({
-      data: { userId, email: dto.email, password: passwordHash, token, expiresAt },
-    });
-
-    await this.mail.sendEmailConfirmation(dto.email, token);
+    await this.issueEmailVerification(userId, dto.email, passwordHash);
     return { success: true, pendingConfirmation: true };
   }
 
-  // Following the link from the email: pull the pending email+password from the token and write them onto the account.
+  // Replaces any pending token for the user with a fresh one and emails the confirmation link.
+  // password is the pending hash for the Telegram-link flow, or null for the registration flow
+  // (where the email/password already live on the user and the token only confirms ownership).
+  private async issueEmailVerification(userId: string, email: string, password: string | null) {
+    await this.prisma.emailVerificationToken.deleteMany({ where: { userId } });
+    const token = randomUUID();
+    const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
+    await this.prisma.emailVerificationToken.create({
+      data: { userId, email, password, token, expiresAt },
+    });
+    await this.mail.sendEmailConfirmation(email, token);
+  }
+
+  // Following the link from the email. Two cases:
+  //  - registration flow: the email already lives on the user — just mark it verified;
+  //  - Telegram-link flow: pull the pending email+password from the token and write them onto the account.
   async confirmEmail(token: string) {
     const record = await this.prisma.emailVerificationToken.findUnique({ where: { token } });
 
@@ -196,13 +208,24 @@ export class AuthService {
     }
 
     const user = await this.usersService.findOne(record.userId);
+
+    // Registration flow: the email is already on the account and matches the token.
     if (user.email) {
-      // Email already linked (e.g. another one was confirmed in the meantime) — the token is no longer needed.
+      if (user.email !== record.email) {
+        // The account already has a different email (e.g. another one was confirmed meanwhile).
+        await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
+        throw new ConflictException('The account already has an email');
+      }
+      await this.prisma.user.update({
+        where: { id: record.userId },
+        data: { emailVerified: true },
+      });
       await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
-      throw new ConflictException('The account already has an email');
+      return { success: true };
     }
 
-    // While the email was awaiting confirmation, this address could have been taken by someone else.
+    // Telegram-link flow: the email isn't on the account yet. While it awaited confirmation, this
+    // address could have been taken by someone else.
     const existing = await this.usersService.findByEmail(record.email);
     if (existing) {
       await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
@@ -211,7 +234,7 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: record.userId },
-      data: { email: record.email, password: record.password },
+      data: { email: record.email, password: record.password, emailVerified: true },
     });
     await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
 
@@ -221,9 +244,15 @@ export class AuthService {
   // Resend the confirmation link, reusing the email+password already stored in the pending token.
   // Refreshes the token string and its expiry so the previous link is invalidated.
   async resendEmailConfirmation(userId: string) {
-    const user = await this.usersService.findOne(userId);
-    if (user.email) {
-      throw new ConflictException('The account already has an email');
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, emailVerified: true },
+    });
+    if (!dbUser) throw new BadRequestException('User not found');
+    // Nothing to confirm if the email is already on the account and verified (registration flow)
+    // — note that a Telegram-link account has no email yet, so it falls through to the resend below.
+    if (dbUser.email && dbUser.emailVerified) {
+      throw new ConflictException('The email is already confirmed');
     }
 
     const record = await this.prisma.emailVerificationToken.findFirst({

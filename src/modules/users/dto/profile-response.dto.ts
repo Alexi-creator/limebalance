@@ -50,6 +50,16 @@ export class ProfileResponseDto {
   @ApiProperty({ example: 'user@example.com', nullable: true })
   email: string | null;
 
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether the email on the account is confirmed. false right after an email/password signup ' +
+      'until the user follows the confirmation link; true for Google and confirmed emails. ' +
+      'Always false when there is no email. The frontend can show a "confirm your email" banner ' +
+      'while email is set but emailVerified is false.',
+  })
+  emailVerified: boolean;
+
   @ApiProperty({ example: 'Ilia' })
   name: string;
 
