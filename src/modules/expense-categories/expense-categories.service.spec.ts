@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { ExpenseCategoriesService } from './expense-categories.service';
 
 describe('ExpenseCategoriesService', () => {
@@ -26,6 +27,7 @@ describe('ExpenseCategoriesService', () => {
         ExpenseCategoriesService,
         { provide: PrismaService, useValue: prisma },
         { provide: CurrencyService, useValue: currency },
+        { provide: SubscriptionsService, useValue: { assertCanAddCategory: jest.fn() } },
       ],
     }).compile();
 

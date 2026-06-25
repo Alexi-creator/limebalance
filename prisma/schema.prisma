@@ -14,11 +14,10 @@ enum Role {
 model Plan {
   id   String @id @default(uuid())
   name String @unique
-  // Optional usage caps. NULL = unlimited. Currently all plans are unlimited; kept for future tiers.
-  maxCategories Int?
-  maxExpenses   Int?
-  maxIncomes    Int?
-  price         Decimal @db.Decimal(10, 2)
+  // Combined usage caps (mainly for the free tier). NULL = unlimited (pro / ultra).
+  maxCategories         Int? // total expense + income categories (lifetime)
+  maxTransactionsPerMonth Int? // expenses + incomes within the current calendar month
+  price                 Decimal @db.Decimal(10, 2)
   // Feature gate: unlocks the investing / crypto section. The differentiator between free and paid plans.
   investingAccess Boolean @default(false)
 

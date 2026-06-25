@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -17,11 +17,27 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    // Mirror the production bootstrap (see src/main.ts) so the smoke test
+    // exercises the same routing/validation behaviour the real app uses.
+    app.setGlobalPrefix('api');
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+    );
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer()).get('/').expect(200).expect('Hello World!');
+  it('boots and applies the global "api" prefix (root is not mapped)', () => {
+    return request(app.getHttpServer()).get('/').expect(404);
+  });
+
+  it('protects authenticated routes via the global JwtAuthGuard', () => {
+    // No access token cookie/header -> the global guard rejects before any handler runs.
+    return request(app.getHttpServer()).get('/api/auth/me').expect(401);
+  });
+
+  it('validates request bodies on public routes', () => {
+    // Empty body fails LoginDto validation, proving the ValidationPipe is wired up.
+    return request(app.getHttpServer()).post('/api/auth/login').send({}).expect(400);
   });
 
   afterEach(async () => {

@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import type { CreateExpenseDto } from './dto/create-expense.dto';
 import { ExpensesService } from './expenses.service';
 
@@ -48,6 +49,7 @@ describe('ExpensesService', () => {
         ExpensesService,
         { provide: PrismaService, useValue: prisma },
         { provide: CurrencyService, useValue: currency },
+        { provide: SubscriptionsService, useValue: { assertCanAddTransaction: jest.fn() } },
       ],
     }).compile();
 

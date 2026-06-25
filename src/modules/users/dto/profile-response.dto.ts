@@ -9,17 +9,18 @@ export class PlanResponseDto {
   name: string;
 
   @ApiProperty({
-    example: 10,
+    example: 5,
     nullable: true,
-    description: 'Category limit or null (no limit)',
+    description: 'Total categories (expense + income) allowed, or null = unlimited',
   })
   maxCategories: number | null;
 
-  @ApiProperty({ example: 100, nullable: true })
-  maxExpenses: number | null;
-
-  @ApiProperty({ example: 100, nullable: true })
-  maxIncomes: number | null;
+  @ApiProperty({
+    example: 20,
+    nullable: true,
+    description: 'Transactions (expenses + incomes) per calendar month, or null = unlimited',
+  })
+  maxTransactionsPerMonth: number | null;
 
   @ApiProperty({ type: String, example: '0.00', description: 'Price (Decimal, as a string)' })
   price: string;

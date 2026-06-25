@@ -5,20 +5,19 @@ import { PrismaClient } from '@prisma/client';
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
-// Plans differ by feature access (investing / crypto section), not by record limits.
-// All plans are unlimited (max* = null); the gate is `investingAccess`.
+// Free is gated both by feature access (no investing section) and by combined usage caps:
+// 5 categories total (lifetime) and 20 transactions per calendar month. Paid plans are unlimited.
 const PLANS = [
-  { name: 'free', price: 0, investingAccess: false }, // unlimited, no investing section
-  { name: 'pro', price: 12, investingAccess: true }, // $12 / month
-  { name: 'ultra', price: 100, investingAccess: true }, // $100 lifetime
+  { name: 'free', price: 0, investingAccess: false, maxCategories: 5, maxTransactionsPerMonth: 20 },
+  { name: 'pro', price: 12, investingAccess: true, maxCategories: null, maxTransactionsPerMonth: null }, // $12 / month
+  { name: 'ultra', price: 100, investingAccess: true, maxCategories: null, maxTransactionsPerMonth: null }, // $100 lifetime
 ];
 
 async function main() {
   for (const plan of PLANS) {
     const data = {
-      maxCategories: null,
-      maxExpenses: null,
-      maxIncomes: null,
+      maxCategories: plan.maxCategories,
+      maxTransactionsPerMonth: plan.maxTransactionsPerMonth,
       price: plan.price,
       investingAccess: plan.investingAccess,
     };

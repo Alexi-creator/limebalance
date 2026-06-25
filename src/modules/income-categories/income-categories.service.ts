@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateIncomeCategoryDto } from './dto/create-income-category.dto';
 import { UpdateIncomeCategoryDto } from './dto/update-income-category.dto';
 
@@ -9,9 +10,11 @@ export class IncomeCategoriesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
-  create(userId: string, dto: CreateIncomeCategoryDto) {
+  async create(userId: string, dto: CreateIncomeCategoryDto) {
+    await this.subscriptions.assertCanAddCategory(userId);
     return this.prisma.incomeCategory.create({ data: { ...dto, userId } });
   }
 

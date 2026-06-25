@@ -3,6 +3,7 @@ import { localWallClockNow } from '../../common/timezone.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
 import { aggregateSummary, buildBuckets, type Granularity } from '../currency/summary.util';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 
@@ -11,9 +12,11 @@ export class ExpensesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   async create(userId: string, dto: CreateExpenseDto) {
+    await this.subscriptions.assertCanAddTransaction(userId);
     const currency = dto.currency ?? (await this.resolveUserCurrency(userId));
     // USD value snapshot at the current rate (fixed at creation time).
     const amountUsd = await this.currency.convert(dto.amount, currency, 'USD');
