@@ -5,6 +5,19 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateExpenseCategoryDto } from './dto/create-expense-category.dto';
 import { UpdateExpenseCategoryDto } from './dto/update-expense-category.dto';
 
+/** Per-category spend stats. Comparison fields are present only when a compare range is requested. */
+export interface CategoryStat {
+  id: string;
+  name: string;
+  emoji: string | null;
+  count: number;
+  totals: { currency: string; total: number; count: number }[];
+  baseCurrency: string;
+  approxTotal: number | null;
+  previousApproxTotal?: number | null;
+  deltaApproxTotal?: number | null;
+}
+
 @Injectable()
 export class ExpenseCategoriesService {
   constructor(
@@ -25,7 +38,7 @@ export class ExpenseCategoriesService {
   async statsByCategory(
     userId: string,
     range: { from?: Date; to?: Date; compareFrom?: Date; compareTo?: Date } = {},
-  ) {
+  ): Promise<CategoryStat[]> {
     const { from, to, compareFrom, compareTo } = range;
     const compare = compareFrom !== undefined || compareTo !== undefined;
 

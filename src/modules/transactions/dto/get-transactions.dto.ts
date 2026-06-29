@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
@@ -22,21 +22,30 @@ export class GetTransactionsDto {
   @IsEnum(TransactionType)
   type?: TransactionType;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Filter by one or more categories. Repeat the param: ?categoryId=a&categoryId=b',
+  })
   @IsOptional()
-  @IsUUID()
-  categoryId?: string;
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @IsUUID('all', { each: true })
+  categoryId?: string[];
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ example: 'THB', description: 'Filter by currency (ISO 4217)' })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['THB', 'AED'],
+    description:
+      'Filter by one or more currencies (ISO 4217). Repeat the param: ?currency=THB&currency=AED',
+  })
   @IsOptional()
-  @IsString()
-  @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO 4217 code' })
-  currency?: string;
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @Matches(/^[A-Z]{3}$/, { each: true, message: 'currency must be a 3-letter ISO 4217 code' })
+  currency?: string[];
 
   @ApiPropertyOptional({ example: '2026-01-01' })
   @IsOptional()

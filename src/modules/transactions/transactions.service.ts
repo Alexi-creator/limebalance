@@ -177,25 +177,25 @@ export class TransactionsService {
   private buildWhere(
     alias: string,
     userId: string,
-    categoryId?: string,
+    categoryId?: string[],
     search?: string,
-    currency?: string,
+    currency?: string[],
     from?: string,
     to?: string,
   ): Prisma.Sql {
     const a = Prisma.raw(alias);
     const conditions: Prisma.Sql[] = [Prisma.sql`${a}.user_id::text = ${userId}`];
 
-    if (categoryId) {
-      conditions.push(Prisma.sql`${a}.category_id::text = ${categoryId}`);
+    if (categoryId?.length) {
+      conditions.push(Prisma.sql`${a}.category_id::text IN (${Prisma.join(categoryId)})`);
     }
 
     if (search) {
       conditions.push(Prisma.sql`${a}.description ILIKE ${`%${search}%`}`);
     }
 
-    if (currency) {
-      conditions.push(Prisma.sql`${a}.currency = ${currency}`);
+    if (currency?.length) {
+      conditions.push(Prisma.sql`${a}.currency IN (${Prisma.join(currency)})`);
     }
 
     // date — a DATE column (no time), compare bounds by day (inclusive on both sides).
