@@ -158,6 +158,7 @@ export class UsersService {
         email: true,
         emailVerified: true,
         name: true,
+        role: true,
         telegramId: true,
         password: true,
         currency: true,

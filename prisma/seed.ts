@@ -41,6 +41,9 @@ async function main() {
         update: { planId: ultra.id, expiresAt: null },
         create: { userId: owner.id, planId: ultra.id, expiresAt: null },
       });
+
+      // Promote the owner to ADMIN so they (and only they) can use the admin panel.
+      await prisma.user.update({ where: { id: owner.id }, data: { role: 'ADMIN' } });
     } else {
       process.stderr.write(`OWNER_EMAIL ${ownerEmail} not found — skipping ultra grant\n`);
     }

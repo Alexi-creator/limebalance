@@ -64,6 +64,13 @@ export class ProfileResponseDto {
   name: string;
 
   @ApiProperty({
+    enum: Role,
+    example: Role.USER,
+    description: 'Account role. Only ADMIN may access the admin panel.',
+  })
+  role: Role;
+
+  @ApiProperty({
     type: String,
     nullable: true,
     example: '123456789',
