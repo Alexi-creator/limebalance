@@ -20,6 +20,10 @@ model Plan {
   price                 Decimal @db.Decimal(10, 2)
   // Feature gate: unlocks the investing / crypto section. The differentiator between free and paid plans.
   investingAccess Boolean @default(false)
+  // Soft retirement. NULL = active (offered for new subscriptions); a timestamp = archived. Archived
+  // plans are hidden from new signups, but existing subscribers keep the plan and its functionality
+  // until their subscription expires. Lets a paid plan be pulled from sale without stripping paid time.
+  archivedAt DateTime? @map("archived_at")
 
   subscriptions UserSubscription[]
 
