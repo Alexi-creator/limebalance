@@ -15,6 +15,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: FastifyRequest) => req.cookies?.access_token ?? null,
+        // Mobile clients don't use cookies — they keep tokens in the OS keychain
+        // and send the access token as an Authorization: Bearer header.
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       secretOrKey: config.getOrThrow<string>('JWT_SECRET'),
     });

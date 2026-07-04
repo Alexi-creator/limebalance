@@ -9,6 +9,8 @@ import { StateService } from '../state.service';
 import { withEmoji } from './category.util';
 import { mainMenu } from './start.handler';
 
+// Only currencies with a distinctive, widely recognized symbol; anything else
+// falls back to the ISO code (ambiguous ones like SEK/NOK/DKK "kr" stay as codes).
 const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: '$',
   EUR: '€',
@@ -16,6 +18,31 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   THB: '฿',
   GBP: '£',
   JPY: '¥',
+  CNY: '¥',
+  KRW: '₩',
+  INR: '₹',
+  UAH: '₴',
+  KZT: '₸',
+  TRY: '₺',
+  VND: '₫',
+  ILS: '₪',
+  PHP: '₱',
+  NGN: '₦',
+  GEL: '₾',
+  AZN: '₼',
+  PLN: 'zł',
+  CZK: 'Kč',
+  BRL: 'R$',
+  MXN: 'MX$',
+  ARS: 'AR$',
+  UYU: '$U',
+  AUD: 'A$',
+  CAD: 'C$',
+  NZD: 'NZ$',
+  HKD: 'HK$',
+  SGD: 'S$',
+  TWD: 'NT$',
+  IDR: 'Rp',
 };
 
 const symbol = (code: string) => CURRENCY_SYMBOLS[code] ?? code;

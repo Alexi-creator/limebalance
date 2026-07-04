@@ -22,13 +22,16 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/l
 
 # Load .env relative to THIS script, not the current working directory, so the
 # job behaves the same whether cron does `cd` or not.
+# Pull only the keys we need instead of sourcing the whole file: .env is written
+# for docker --env-file (values unquoted, may contain shell-special chars like
+# `<` in MAIL_FROM), so `source` would choke on it.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${SCRIPT_DIR}/../.env"
 if [ -f "$ENV_FILE" ]; then
-  set -a
-  # shellcheck disable=SC1090
-  . "$ENV_FILE"
-  set +a
+  for key in DATABASE_URL BOT_TOKEN BACKUP_CHAT_ID AGE_RECIPIENT; do
+    val="$(grep -E "^${key}=" "$ENV_FILE" | tail -n1)" || true
+    [ -n "$val" ] && export "$key=${val#*=}"
+  done
 fi
 
 : "${DATABASE_URL:?DATABASE_URL is required}"

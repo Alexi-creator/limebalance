@@ -60,10 +60,13 @@ export class AuthController {
     type: SuccessResponseDto,
     description: 'Tokens are set as httpOnly cookies',
   })
-  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: FastifyReply) {
+  async register(
+    @Body() dto: RegisterDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
     const tokens = await this.authService.register(dto);
-    this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
-    return { success: true };
+    return this.respondWithTokens(req, res, tokens);
   }
 
   @Post('login')
@@ -77,10 +80,13 @@ export class AuthController {
       'The endpoint is rate-limited (10 requests/min per IP).',
   })
   @ApiOkResponse({ type: SuccessResponseDto, description: 'Tokens are set as httpOnly cookies' })
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: FastifyReply) {
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
     const tokens = await this.authService.login(dto);
-    this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
-    return { success: true };
+    return this.respondWithTokens(req, res, tokens);
   }
 
   @Post('google')
@@ -95,10 +101,13 @@ export class AuthController {
       'Tokens are set as httpOnly cookies. The timezone field is a browser hint, applied only when creating a new account.',
   })
   @ApiOkResponse({ type: SuccessResponseDto })
-  async loginGoogle(@Body() dto: GoogleAuthDto, @Res({ passthrough: true }) res: FastifyReply) {
+  async loginGoogle(
+    @Body() dto: GoogleAuthDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
     const tokens = await this.authService.loginWithGoogle(dto);
-    this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
-    return { success: true };
+    return this.respondWithTokens(req, res, tokens);
   }
 
   @Post('telegram')
@@ -113,10 +122,13 @@ export class AuthController {
       'timezone here is an unsigned browser hint, applied only when creating an account.',
   })
   @ApiOkResponse({ type: SuccessResponseDto })
-  async loginTelegram(@Body() dto: TelegramAuthDto, @Res({ passthrough: true }) res: FastifyReply) {
+  async loginTelegram(
+    @Body() dto: TelegramAuthDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
     const tokens = await this.authService.loginWithTelegram(dto);
-    this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
-    return { success: true };
+    return this.respondWithTokens(req, res, tokens);
   }
 
   @Post('refresh')
@@ -131,12 +143,12 @@ export class AuthController {
   })
   @ApiOkResponse({ type: SuccessResponseDto })
   async refresh(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
-    const refreshToken = req.cookies?.[REFRESH_COOKIE];
+    // Web sends the refresh token via the httpOnly cookie; mobile sends it in the body.
+    const refreshToken = req.cookies?.[REFRESH_COOKIE] ?? this.refreshTokenFromBody(req);
     if (!refreshToken) throw new UnauthorizedException('No refresh token');
 
     const tokens = await this.authService.refresh(refreshToken);
-    this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
-    return { success: true };
+    return this.respondWithTokens(req, res, tokens);
   }
 
   @Post('logout')
@@ -150,7 +162,7 @@ export class AuthController {
   })
   @ApiOkResponse({ type: SuccessResponseDto })
   async logout(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
-    const refreshToken = req.cookies?.[REFRESH_COOKIE];
+    const refreshToken = req.cookies?.[REFRESH_COOKIE] ?? this.refreshTokenFromBody(req);
     if (refreshToken) await this.authService.logout(refreshToken);
     res.clearCookie(ACCESS_COOKIE, { path: '/' });
     res.clearCookie(REFRESH_COOKIE, { path: '/api/auth' });
@@ -295,6 +307,26 @@ export class AuthController {
   })
   linkTelegram(@CurrentUser() user: { id: string }, @Body() dto: TelegramAuthDto) {
     return this.authService.linkTelegram(user.id, dto);
+  }
+
+  // Mobile clients (X-Client: mobile) can't rely on httpOnly cookies: they store tokens in the
+  // OS keychain and send the access token as an Authorization: Bearer header. For them the tokens
+  // go in the response body and no cookies are set. Web keeps the cookie flow untouched.
+  private respondWithTokens(
+    req: FastifyRequest,
+    res: FastifyReply,
+    tokens: { accessToken: string; refreshToken: string },
+  ) {
+    if (req.headers['x-client'] === 'mobile') {
+      return { success: true, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+    }
+    this.setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+    return { success: true };
+  }
+
+  private refreshTokenFromBody(req: FastifyRequest): string | undefined {
+    const body = req.body as { refreshToken?: unknown } | null | undefined;
+    return typeof body?.refreshToken === 'string' ? body.refreshToken : undefined;
   }
 
   private setTokenCookies(res: FastifyReply, accessToken: string, refreshToken: string) {
