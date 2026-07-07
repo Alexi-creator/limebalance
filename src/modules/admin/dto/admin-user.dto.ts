@@ -64,6 +64,13 @@ export class AdminUserDto {
   @ApiProperty({ example: false, description: 'Whether a Telegram account is linked' })
   hasTelegram: boolean;
 
+  @ApiProperty({
+    example: 'durov',
+    nullable: true,
+    description: 'Telegram @username (without the @), or null if not linked / not set',
+  })
+  telegramUsername: string | null;
+
   @ApiProperty({ example: true, description: 'Whether a Google account is linked' })
   hasGoogle: boolean;
 

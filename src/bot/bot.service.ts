@@ -45,7 +45,11 @@ export class BotService implements OnModuleInit {
     this.bot.on('callback_query:data', async (ctx) => {
       const data = ctx.callbackQuery.data;
       const telegramId = BigInt(ctx.from.id);
-      const { user } = await this.usersService.findOrCreateByTelegramId(telegramId);
+      const { user } = await this.usersService.findOrCreateByTelegramId(
+        telegramId,
+        undefined,
+        ctx.from.username ?? null,
+      );
 
       if (data === '/addcategory:expense') {
         await this.categoryHandler.handleTypeSelected(ctx, user.id, 'expense');

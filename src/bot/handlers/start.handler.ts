@@ -26,7 +26,11 @@ export class StartHandler {
     const locale = resolveLocale(ctx.from.language_code);
     const m = t(locale);
     const telegramId = BigInt(ctx.from.id);
-    const { isNew } = await this.usersService.findOrCreateByTelegramId(telegramId);
+    const { isNew } = await this.usersService.findOrCreateByTelegramId(
+      telegramId,
+      undefined,
+      ctx.from.username ?? null,
+    );
 
     const text = isNew ? m.welcomeNew : m.welcomeBack;
 

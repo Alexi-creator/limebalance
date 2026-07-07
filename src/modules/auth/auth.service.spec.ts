@@ -148,7 +148,7 @@ describe('AuthService', () => {
 
       const res = await service.loginWithTelegram(dto);
 
-      expect(users.findOrCreateByTelegramId).toHaveBeenCalledWith(42n, expect.any(Object));
+      expect(users.findOrCreateByTelegramId).toHaveBeenCalledWith(42n, expect.any(Object), null);
       expect(res).toEqual({ accessToken: 'access-token', refreshToken: expect.any(String) });
     });
 

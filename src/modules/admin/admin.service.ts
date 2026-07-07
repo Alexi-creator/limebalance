@@ -16,6 +16,7 @@ function toRow(user: {
   blockedAt: Date | null;
   createdAt: Date;
   telegramId: bigint | null;
+  telegramUsername: string | null;
   googleId: string | null;
   password: string | null;
   subscription: { expiresAt: Date | null; plan: { name: string } } | null;
@@ -40,6 +41,7 @@ function toRow(user: {
     createdAt: user.createdAt,
     // Login methods — booleans only, no secrets / raw ids.
     hasTelegram: user.telegramId !== null,
+    telegramUsername: user.telegramUsername,
     hasGoogle: user.googleId !== null,
     hasPassword: user.password !== null,
     plan: user.subscription?.plan.name ?? null,

@@ -99,7 +99,11 @@ export class AuthService {
     this.verifyTelegramHash(dto);
     // timezone — an unsigned hint from the browser; applied only on creation.
     const defaults = { currency: currencyFromTimezone(dto.timezone), timezone: dto.timezone };
-    const { user } = await this.usersService.findOrCreateByTelegramId(BigInt(dto.id), defaults);
+    const { user } = await this.usersService.findOrCreateByTelegramId(
+      BigInt(dto.id),
+      defaults,
+      dto.username ?? null,
+    );
     return this.issueTokens(user.id);
   }
 
@@ -127,7 +131,7 @@ export class AuthService {
     if (existing && existing.id !== userId) {
       throw new ConflictException('Telegram account already linked to another user');
     }
-    await this.usersService.setTelegramId(userId, BigInt(dto.id));
+    await this.usersService.setTelegramId(userId, BigInt(dto.id), dto.username ?? null);
     return { success: true };
   }
 

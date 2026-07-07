@@ -66,11 +66,31 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { telegramId } });
   }
 
-  async findOrCreateByTelegramId(telegramId: bigint, defaults?: UserDefaults) {
+  // telegramUsername: undefined = leave as is, string/null = the current @username (users can
+  // change or remove it, so it's refreshed whenever the caller has fresh Telegram data).
+  async findOrCreateByTelegramId(
+    telegramId: bigint,
+    defaults?: UserDefaults,
+    telegramUsername?: string | null,
+  ) {
     const existing = await this.prisma.user.findUnique({ where: { telegramId } });
-    if (existing) return { user: existing, isNew: false };
+    if (existing) {
+      if (telegramUsername !== undefined && telegramUsername !== existing.telegramUsername) {
+        const user = await this.prisma.user.update({
+          where: { id: existing.id },
+          data: { telegramUsername },
+        });
+        return { user, isNew: false };
+      }
+      return { user: existing, isNew: false };
+    }
     const user = await this.prisma.user.create({
-      data: { telegramId, ...pickDefaults(defaults), subscription: FREE_SUBSCRIPTION },
+      data: {
+        telegramId,
+        ...(telegramUsername !== undefined ? { telegramUsername } : {}),
+        ...pickDefaults(defaults),
+        subscription: FREE_SUBSCRIPTION,
+      },
     });
     return { user, isNew: true };
   }
@@ -133,8 +153,14 @@ export class UsersService {
     return this.prisma.user.update({ where: { id: userId }, data: { googleId } });
   }
 
-  setTelegramId(userId: string, telegramId: bigint) {
-    return this.prisma.user.update({ where: { id: userId }, data: { telegramId } });
+  setTelegramId(userId: string, telegramId: bigint, telegramUsername?: string | null) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        telegramId,
+        ...(telegramUsername !== undefined ? { telegramUsername } : {}),
+      },
+    });
   }
 
   async getTimezone(id: string): Promise<string> {
