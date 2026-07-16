@@ -79,9 +79,13 @@ export class IncomesService {
   async update(id: string, userId: string, dto: UpdateIncomeDto) {
     const existing = await this.findOne(id, userId);
 
-    // Recompute the USD snapshot only if the amount or currency changed.
+    // Recompute the USD snapshot only if the amount or currency actually changed (by value, not
+    // payload presence: the frontend may send the whole form, and an untouched amount must not
+    // silently re-snapshot at today's rate).
+    const amountChanged = dto.amount !== undefined && dto.amount !== Number(existing.amount);
+    const currencyChanged = dto.currency !== undefined && dto.currency !== existing.currency;
     let amountUsd: number | null | undefined;
-    if (dto.amount !== undefined || dto.currency !== undefined) {
+    if (amountChanged || currencyChanged) {
       const amount = dto.amount ?? Number(existing.amount);
       const currency = dto.currency ?? existing.currency;
       amountUsd = await this.currency.convert(amount, currency, 'USD');
@@ -173,13 +177,22 @@ export class IncomesService {
     };
   }
 
-  async statDetails(userId: string, categoryId: string | null, period: string) {
+  async statDetails(
+    userId: string,
+    categoryId: string | null,
+    period: string,
+    // An explicit date range overrides `period`; either bound may be omitted (open-ended).
+    range?: { from?: Date; to?: Date },
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { currency: true, timezone: true },
     });
     const baseCurrency = user?.currency ?? 'USD';
-    const { from, to } = this.getPeriodDates(period, user?.timezone ?? 'UTC');
+    const { from, to } =
+      range && (range.from || range.to)
+        ? range
+        : this.getPeriodDates(period, user?.timezone ?? 'UTC');
 
     const [incomes, rates] = await Promise.all([
       this.prisma.income.findMany({

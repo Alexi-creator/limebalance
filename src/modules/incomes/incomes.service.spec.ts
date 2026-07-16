@@ -19,6 +19,7 @@ describe('IncomesService', () => {
   let prisma: {
     income: {
       create: jest.Mock;
+      findMany: jest.Mock;
       findFirst: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
@@ -26,12 +27,13 @@ describe('IncomesService', () => {
     user: { findUnique: jest.Mock };
     $transaction: jest.Mock;
   };
-  let currency: { convert: jest.Mock };
+  let currency: { convert: jest.Mock; getRates: jest.Mock; approxTotalInBase: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
       income: {
         create: jest.fn(),
+        findMany: jest.fn(),
         findFirst: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -39,7 +41,7 @@ describe('IncomesService', () => {
       user: { findUnique: jest.fn() },
       $transaction: jest.fn(),
     };
-    currency = { convert: jest.fn() };
+    currency = { convert: jest.fn(), getRates: jest.fn(), approxTotalInBase: jest.fn() };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -117,6 +119,19 @@ describe('IncomesService', () => {
         data: { description: 'fixed' },
       });
     });
+
+    it('skips the snapshot when amount and currency are sent but unchanged', async () => {
+      prisma.income.findFirst.mockResolvedValue({ id: 'i1', amount: 100, currency: 'USD' });
+      prisma.income.update.mockResolvedValue({});
+
+      await service.update('i1', 'u1', { amount: 100, currency: 'USD', description: 'fixed' });
+
+      expect(currency.convert).not.toHaveBeenCalled();
+      expect(prisma.income.update).toHaveBeenCalledWith({
+        where: { id: 'i1' },
+        data: { amount: 100, currency: 'USD', description: 'fixed' },
+      });
+    });
   });
 
   describe('remove', () => {
@@ -152,6 +167,57 @@ describe('IncomesService', () => {
       runTx(tx);
       await expect(service.removeMany('u1', ['a', 'b'])).rejects.toThrow(NotFoundException);
       expect(tx.income.deleteMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('statDetails', () => {
+    beforeEach(() => {
+      prisma.user.findUnique.mockResolvedValue({ currency: 'RUB', timezone: 'UTC' });
+      currency.getRates.mockResolvedValue({});
+      // Total = plain sum of the group amounts — enough to verify wiring.
+      currency.approxTotalInBase.mockImplementation(
+        (groups: { amount: number }[]) => groups.reduce((s, g) => s + g.amount, 0) || null,
+      );
+    });
+
+    it('groups operations by category with per-category and overall totals', async () => {
+      const row = {
+        amount: 50000,
+        amountUsd: 600,
+        currency: 'THB',
+        description: 'Salary',
+        date: new Date('2026-06-15T00:00:00Z'),
+        category: { name: 'Work', emoji: '💼' },
+      };
+      prisma.income.findMany.mockResolvedValue([
+        row,
+        { ...row, amount: 100, currency: 'USD', category: { name: 'Gifts', emoji: '🎁' } },
+      ]);
+
+      const result = await service.statDetails('u1', null, 'month');
+
+      expect(result.baseCurrency).toBe('RUB');
+      expect(result.total).toBe(50100);
+      expect(result.categories).toHaveLength(2);
+      expect(result.categories[0]).toMatchObject({ category: 'Work', emoji: '💼', total: 50000 });
+      // Items keep the operation's original currency.
+      expect(result.categories[1].items).toEqual([
+        expect.objectContaining({ amount: 100, currency: 'USD' }),
+      ]);
+    });
+
+    it('filters by an explicit date range, ignoring period', async () => {
+      prisma.income.findMany.mockResolvedValue([]);
+      const from = new Date('2026-01-01T00:00:00Z');
+      const to = new Date('2026-01-31T23:59:59.999Z');
+
+      await service.statDetails('u1', 'cat-1', 'day', { from, to });
+
+      expect(prisma.income.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'u1', categoryId: 'cat-1', date: { gte: from, lte: to } },
+        }),
+      );
     });
   });
 });

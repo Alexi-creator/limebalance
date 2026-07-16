@@ -78,6 +78,66 @@ export class BucketSummaryDto {
   approxTotal: number | null;
 }
 
+export class ExpenseStatItemDto {
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    example: '2026-06-15T00:00:00.000Z',
+    description: 'Operation date (civil date, without time)',
+  })
+  date: Date;
+
+  @ApiProperty({ example: 1500.5, description: "Amount in the operation's original currency" })
+  amount: number;
+
+  @ApiProperty({ example: 'THB', description: "Operation's ISO 4217 currency code" })
+  currency: string;
+
+  @ApiPropertyOptional({ example: 'Groceries at the supermarket' })
+  description?: string;
+}
+
+export class ExpenseStatCategoryDto {
+  @ApiProperty({ example: 'Food', description: 'Category name' })
+  category: string;
+
+  @ApiProperty({ example: '🍔', nullable: true, description: 'Category emoji' })
+  emoji: string | null;
+
+  @ApiProperty({
+    example: 12345.5,
+    nullable: true,
+    description:
+      'Category total in the base currency at the current rate. null if rates are unavailable.',
+  })
+  total: number | null;
+
+  @ApiProperty({
+    type: [ExpenseStatItemDto],
+    description: 'Category operations, each in its original currency',
+  })
+  items: ExpenseStatItemDto[];
+}
+
+export class ExpenseStatResponseDto {
+  @ApiProperty({ example: 'RUB', description: "User's base currency for the totals" })
+  baseCurrency: string;
+
+  @ApiProperty({
+    example: 49102,
+    nullable: true,
+    description:
+      'Overall total for the period in the base currency. null if rates are unavailable.',
+  })
+  total: number | null;
+
+  @ApiProperty({
+    type: [ExpenseStatCategoryDto],
+    description: 'Breakdown by categories with operation details',
+  })
+  categories: ExpenseStatCategoryDto[];
+}
+
 export class ExpenseSummaryResponseDto {
   @ApiProperty({ example: 'RUB', description: "User's base currency for total/approxTotal" })
   baseCurrency: string;

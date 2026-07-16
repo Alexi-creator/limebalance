@@ -7,10 +7,14 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { resolveSummaryRange } from '../currency/summary.util';
+import { endOfDay, resolveSummaryRange } from '../currency/summary.util';
 import { BulkDeleteExpensesDto } from './dto/bulk-delete-expenses.dto';
 import { CreateExpenseDto } from './dto/create-expense.dto';
-import { ExpenseResponseDto, ExpenseSummaryResponseDto } from './dto/expense-response.dto';
+import {
+  ExpenseResponseDto,
+  ExpenseStatResponseDto,
+  ExpenseSummaryResponseDto,
+} from './dto/expense-response.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { ExpensesService } from './expenses.service';
 
@@ -74,6 +78,43 @@ export class ExpensesController {
     @Query('granularity') granularity?: string,
   ) {
     return this.expensesService.getSummary(user.id, resolveSummaryRange({ from, to, granularity }));
+  }
+
+  @Get('stat')
+  @ApiOperation({
+    summary: 'Expense statistics for a period (same as the Telegram bot)',
+    description:
+      'Everything in one response: the overall total, per-category totals and the operation details. ' +
+      'period — day (today), week (last 7 days) or month (current month, default); the bounds are computed ' +
+      "in the user's timezone. Alternatively pass an explicit from/to date range (inclusive, either bound " +
+      'may be omitted) — it takes precedence over period. categoryId optionally narrows the stats to a ' +
+      "single category. Category and overall totals are converted to the user's base currency at the " +
+      'current rate (null if rates are unavailable); each operation keeps its original currency.',
+  })
+  @ApiQuery({ name: 'period', required: false, enum: ['day', 'week', 'month'] })
+  @ApiQuery({ name: 'from', required: false, example: '2026-06-01' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-06-30' })
+  @ApiQuery({
+    name: 'categoryId',
+    required: false,
+    example: '550e8400-e29b-41d4-a716-446655440001',
+  })
+  @ApiOkResponse({ type: ExpenseStatResponseDto })
+  stat(
+    @CurrentUser() user: { id: string },
+    @Query('period') period?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.expensesService.statDetails(
+      user.id,
+      categoryId ?? null,
+      period ?? 'month',
+      from || to
+        ? { from: from ? new Date(from) : undefined, to: to ? endOfDay(to) : undefined }
+        : undefined,
+    );
   }
 
   @Get(':id')

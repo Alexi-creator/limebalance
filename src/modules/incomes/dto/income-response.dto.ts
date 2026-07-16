@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BucketSummaryDto } from '../../expenses/dto/expense-response.dto';
+import { BucketSummaryDto, ExpenseStatCategoryDto } from '../../expenses/dto/expense-response.dto';
 import { IncomeCategoryResponseDto } from '../../income-categories/dto/income-category-response.dto';
 
 export class IncomeResponseDto {
@@ -41,6 +41,25 @@ export class IncomeResponseDto {
     description: 'Category (present in GET responses; absent in POST/DELETE responses)',
   })
   category?: IncomeCategoryResponseDto;
+}
+
+export class IncomeStatResponseDto {
+  @ApiProperty({ example: 'RUB', description: "User's base currency for the totals" })
+  baseCurrency: string;
+
+  @ApiProperty({
+    example: 90480,
+    nullable: true,
+    description:
+      'Overall total for the period in the base currency. null if rates are unavailable.',
+  })
+  total: number | null;
+
+  @ApiProperty({
+    type: [ExpenseStatCategoryDto],
+    description: 'Breakdown by categories with operation details',
+  })
+  categories: ExpenseStatCategoryDto[];
 }
 
 export class IncomeSummaryResponseDto {

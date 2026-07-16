@@ -66,6 +66,14 @@ export function resolveSummaryRange(params: { from?: string; to?: string; granul
   return { from, to, granularity };
 }
 
+// Inclusive `to` bound for a civil date param: the end of that day in wall-clock (UTC) components,
+// so a plain YYYY-MM-DD keeps that whole day's operations instead of cutting at midnight.
+export function endOfDay(value: string): Date {
+  const d = new Date(value);
+  d.setUTCHours(23, 59, 59, 999);
+  return d;
+}
+
 function normalizeGranularity(value?: string): Granularity | undefined {
   return value === 'day' || value === 'week' || value === 'month' ? value : undefined;
 }
