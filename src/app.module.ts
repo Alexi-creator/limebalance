@@ -14,6 +14,7 @@ import { ExpensesModule } from './modules/expenses/expenses.module';
 import { GoalsModule } from './modules/goals/goals.module';
 import { IncomeCategoriesModule } from './modules/income-categories/income-categories.module';
 import { IncomesModule } from './modules/incomes/incomes.module';
+import { InvestingModule } from './modules/investing/investing.module';
 import { MailModule } from './modules/mail/mail.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
@@ -38,6 +39,7 @@ import { PrismaModule } from './prisma/prisma.module';
     IncomesModule,
     ExpensesModule,
     GoalsModule,
+    InvestingModule,
     TransactionsModule,
     NotificationsModule,
     SubscriptionsModule,

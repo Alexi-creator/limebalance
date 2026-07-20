@@ -67,7 +67,7 @@ const ROW_ARGS = {
         incomeCategories: true,
         expenses: true,
         incomes: true,
-        goals: true,
+        goals: { where: { archived: false } },
       },
     },
   },

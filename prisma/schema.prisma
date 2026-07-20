@@ -77,6 +77,10 @@ model User {
   notifications           Notification[]
   goals                   Goal[]
   goalContributions       GoalContribution[]
+  exchangeAccounts        ExchangeAccount[]
+  tradeExecutions         TradeExecution[]
+  closedPositions         ClosedPosition[]
+  holdings                Holding[]
 
   @@map("users")
 }
@@ -261,6 +265,136 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+enum ExchangeAccountStatus {
+  ACTIVE
+  ERROR // last sync failed (bad key, network…) — kept retrying, lastError is shown in the UI
+  DISABLED // paused by the user; the cron skips it
+}
+
+// A connected exchange API key (investing / crypto diary section).
+model ExchangeAccount {
+  id       String @id @default(uuid())
+  userId   String @map("user_id")
+  // Exchange slug; only "bybit" for now, but the sync/UI are keyed by it for future exchanges.
+  exchange String @default("bybit")
+  label    String @default("")
+  // AES-256-GCM, "iv:tag:ciphertext" base64 (see investing/crypto.util.ts). Never returned by the API.
+  apiKey    String                @map("api_key")
+  apiSecret String                @map("api_secret")
+  status    ExchangeAccountStatus @default(ACTIVE)
+  lastError String?               @map("last_error")
+  // History is pulled starting from this point — set to the user's registration date on connect,
+  // so crypto history begins together with the rest of the app's money history.
+  syncFrom DateTime @map("sync_from")
+  // Sync cursors: records up to these timestamps are already in the DB (advance monotonically).
+  closedPnlSyncedTo  DateTime? @map("closed_pnl_synced_to")
+  executionsSyncedTo DateTime? @map("executions_synced_to")
+  lastSyncAt         DateTime? @map("last_sync_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions TradeExecution[]
+  positions  ClosedPosition[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("exchange_accounts")
+}
+
+// A single fill (partial execution of an order), as reported by the exchange. Raw material for
+// the diary details; closed positions are the aggregated view the user works with.
+model TradeExecution {
+  id        String @id @default(uuid())
+  accountId String @map("account_id")
+  userId    String @map("user_id")
+  execId    String @map("exec_id")
+  orderId   String @map("order_id")
+  symbol    String
+  // Bybit product category: linear (USDT perp) for the MVP; spot/inverse later.
+  category    String
+  side        String // Buy | Sell
+  // Bybit execType: "Trade" for real fills, "Funding" for funding-fee settlements
+  // (also AdlTrade/BustTrade/Delivery — treated as trades, only Funding is singled out).
+  execType    String   @default("Trade") @map("exec_type")
+  price       Decimal  @db.Decimal(30, 12)
+  qty         Decimal  @db.Decimal(30, 12)
+  fee         Decimal  @db.Decimal(30, 12)
+  feeCurrency String?  @map("fee_currency")
+  execTime    DateTime @map("exec_time")
+  // Original exchange payload — lets us backfill new columns without re-fetching.
+  raw       Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  account ExchangeAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // The exchange's execId is the idempotency key: re-syncing the same window upserts, never duplicates.
+  @@unique([accountId, execId])
+  @@index([userId, execTime])
+  @@index([accountId, symbol, execTime])
+  @@map("trade_executions")
+}
+
+// A closed position with realized PnL — the diary's main entity. Comes either from an exchange
+// sync (source=bybit, immutable via the API) or entered by hand (source=manual, full CRUD).
+model ClosedPosition {
+  id String @id @default(uuid())
+  // NULL for manual entries — they don't belong to any exchange account.
+  accountId String? @map("account_id")
+  userId    String  @map("user_id")
+  source    String  @default("bybit") // bybit | manual
+  // Bybit id of the closing order — the dedupe key for closed-pnl records. NULL for manual entries.
+  orderId  String? @map("order_id")
+  symbol   String
+  category String
+  // Side of the CLOSING order: Sell closes a long, Buy closes a short (manual entries are
+  // stored with the same convention so all rows read uniformly).
+  side          String
+  qty           Decimal  @db.Decimal(30, 12)
+  avgEntryPrice Decimal  @map("avg_entry_price") @db.Decimal(30, 12)
+  avgExitPrice  Decimal  @map("avg_exit_price") @db.Decimal(30, 12)
+  // Realized PnL in the settlement currency (USDT for linear), fees included by Bybit.
+  closedPnl Decimal  @map("closed_pnl") @db.Decimal(30, 12)
+  leverage  Decimal? @db.Decimal(10, 2)
+  // Bybit's closed-pnl records carry no open time. Spot is derived by FIFO over the fills
+  // (spot-fifo.util), linear by matching closing qty against opening fills (linear-fifo.util) —
+  // NULL there only when the opening fills predate the synced history. Manual entries may set it.
+  openedAt  DateTime? @map("opened_at")
+  closedAt  DateTime  @map("closed_at")
+  raw       Json?
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  account ExchangeAccount? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, orderId])
+  @@index([userId, closedAt])
+  @@index([accountId, symbol, closedAt])
+  @@map("closed_positions")
+}
+
+// A manually tracked asset holding ("0.5 BTC in a cold wallet") — the portfolio view, independent
+// of exchange sync. Valued at current market prices on read.
+model Holding {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  // Asset ticker: BTC, ETH, SOL, USDT…
+  asset  String
+  amount Decimal @db.Decimal(30, 12)
+  // Average acquisition price per unit in USD. NULL = unknown (gift, mining) — then no PnL is shown.
+  avgBuyPrice Decimal? @map("avg_buy_price") @db.Decimal(30, 12)
+  // Free-form: exchange name, cold wallet, staking…
+  location  String   @default("")
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("holdings")
 }
 
 model UserState {

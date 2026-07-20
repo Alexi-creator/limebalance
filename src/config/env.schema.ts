@@ -9,6 +9,18 @@ export const envSchema = z.object({
   JWT_SECRET: z.string().min(32),
   GOOGLE_CLIENT_ID: z.string().min(1),
 
+  // Master key for encrypting exchange API keys at rest (investing section): 32 bytes hex.
+  // Optional so the app can boot without the investing feature; connecting an exchange
+  // account fails with a clear error until it is set. Generate: openssl rand -hex 32
+  ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, 'ENCRYPTION_KEY must be 32 bytes in hex (64 hex chars)')
+    .optional(),
+
+  // Bybit API base URL. Override with a backup domain (api.bytick.com) where api.bybit.com
+  // is ISP-blocked; defaults to the main domain.
+  BYBIT_API_URL: z.url().optional(),
+
   // Frontend base URL — used to build links in emails (email confirmation, password reset).
   FRONTEND_URL: z.url().optional(),
 
