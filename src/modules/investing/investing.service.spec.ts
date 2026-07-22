@@ -227,7 +227,9 @@ describe('InvestingService', () => {
     it('surfaces a sync failure (e.g. Bybit IP-whitelist rejection) as 502, not a bare 500', async () => {
       prisma.exchangeAccount.findFirst.mockResolvedValue({ id: 'acc-1' });
       sync.syncAccount.mockRejectedValue(
-        new Error("Bybit error 10010: Unmatched IP, please check your API key's bound IP addresses."),
+        new Error(
+          "Bybit error 10010: Unmatched IP, please check your API key's bound IP addresses.",
+        ),
       );
 
       await expect(service.syncNow('u1', 'acc-1')).rejects.toThrow(BadGatewayException);
