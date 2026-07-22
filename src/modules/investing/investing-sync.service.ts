@@ -6,7 +6,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BybitClient, type BybitCredentials } from './bybit.client';
 import { decryptSecret } from './crypto.util';
 import { deriveLinearOpenedAt } from './linear-fifo.util';
-import { buildSpotClosedTrades } from './spot-fifo.util';
+import { flipSide } from './side.util';
+import { computeSpotPositions } from './spot-fifo.util';
 
 // Bybit limits one range query to 7 days; we step through history in such windows.
 const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -66,7 +67,11 @@ export class InvestingSyncService {
 
     try {
       const now = new Date();
+      // Closed-pnl runs first so it can flip an existing OPEN row to CLOSED in place; only
+      // afterwards do we ask Bybit what's still open, so a position closed moments ago isn't
+      // re-created as a fresh OPEN row.
       await this.syncClosedPnl(account, creds, now);
+      await this.syncOpenPositions(account, creds);
       await this.syncExecutions(account, creds, now);
       await this.rebuildSpotPositions(account);
       await this.rebuildLinearOpenedAt(account);
@@ -98,6 +103,8 @@ export class InvestingSyncService {
             userId: account.userId,
             symbol: rec.symbol,
             category: PNL_CATEGORY,
+            status: 'CLOSED' as const,
+            orderId: rec.orderId,
             side: rec.side,
             qty: rec.qty,
             avgEntryPrice: rec.avgEntryPrice,
@@ -107,11 +114,29 @@ export class InvestingSyncService {
             closedAt: new Date(Number(rec.updatedTime)),
             raw: rec as Prisma.InputJsonValue,
           };
-          // update mirrors create: Bybit may re-send a record with refined values while
-          // the closing order is still filling.
-          await this.prisma.closedPosition.upsert({
+
+          // Prefer flipping the OPEN row this position was tracked under (from
+          // syncOpenPositions) into CLOSED, rather than creating a second row — that's the row
+          // the user may have already attached journal notes to. Only one open row per
+          // (account, symbol, category) is expected under one-way position mode.
+          const openRow = await this.prisma.position.findFirst({
+            where: {
+              accountId: account.id,
+              symbol: rec.symbol,
+              category: PNL_CATEGORY,
+              status: 'OPEN',
+            },
+          });
+          if (openRow) {
+            await this.prisma.position.update({ where: { id: openRow.id }, data });
+            continue;
+          }
+
+          // No tracked open row (e.g. backfill of history that predates open-position
+          // tracking, or the open-sync hasn't run yet) — fall back to upserting by orderId.
+          await this.prisma.position.upsert({
             where: { accountId_orderId: { accountId: account.id, orderId: rec.orderId } },
-            create: { accountId: account.id, orderId: rec.orderId, ...data },
+            create: { accountId: account.id, ...data },
             update: data,
           });
         }
@@ -172,9 +197,11 @@ export class InvestingSyncService {
     }
   }
 
-  // Bybit reports no realized PnL for spot, so closed spot trades are derived from the fills by
-  // FIFO matching. Recomputed from the full fill history on every sync — stateless and
-  // idempotent: each sell fill maps to a deterministic dedupe key, so re-runs upsert in place.
+  // Bybit reports no realized PnL for spot and no live "position" endpoint either (spot holdings
+  // are just a balance) — both closed round trips and the currently open remainder are derived
+  // from the fills by FIFO matching, one row per BUY fill (not merged per symbol) so each
+  // purchase is its own diary entry. Recomputed from the full fill history on every sync,
+  // stateless and idempotent: every row has a deterministic orderId, so re-runs upsert in place.
   private async rebuildSpotPositions(account: ExchangeAccount) {
     const fills = await this.prisma.tradeExecution.findMany({
       where: { accountId: account.id, category: 'spot' },
@@ -182,7 +209,7 @@ export class InvestingSyncService {
     });
     if (!fills.length) return;
 
-    const trades = buildSpotClosedTrades(
+    const { closed, open } = computeSpotPositions(
       fills.map((f) => ({
         execId: f.execId,
         symbol: f.symbol,
@@ -195,26 +222,100 @@ export class InvestingSyncService {
       })),
     );
 
-    for (const trade of trades) {
+    for (const slice of closed) {
       const data = {
         userId: account.userId,
-        symbol: trade.symbol,
+        symbol: slice.symbol,
         category: 'spot',
+        status: 'CLOSED' as const,
         // Spot round trips are always long: bought first, sold later — Sell closes a long.
         side: 'Sell',
-        qty: trade.qty,
-        avgEntryPrice: trade.avgEntryPrice,
-        avgExitPrice: trade.avgExitPrice,
-        closedPnl: trade.closedPnl,
-        openedAt: trade.openedAt,
-        closedAt: trade.closedAt,
+        qty: slice.qty,
+        avgEntryPrice: slice.avgEntryPrice,
+        avgExitPrice: slice.avgExitPrice,
+        closedPnl: slice.closedPnl,
+        openedAt: slice.openedAt,
+        closedAt: slice.closedAt,
       };
-      await this.prisma.closedPosition.upsert({
-        where: { accountId_orderId: { accountId: account.id, orderId: trade.dedupeKey } },
-        create: { accountId: account.id, orderId: trade.dedupeKey, ...data },
+      // A slice that fully drains its lot IS that lot's row, now closed — same orderId as when
+      // it was open, so notes attached while open survive. A slice that only partially drains
+      // its lot (the lot stays open, shrunk, below) gets its own separate historical row.
+      const orderId = slice.closesLot ? `spot-open:${slice.lotKey}` : slice.dedupeKey;
+      await this.prisma.position.upsert({
+        where: { accountId_orderId: { accountId: account.id, orderId } },
+        create: { accountId: account.id, orderId, ...data },
         update: data,
       });
     }
+
+    // One row per still-unsold buy lot — each purchase is its own open diary entry.
+    for (const lot of open) {
+      const orderId = `spot-open:${lot.lotKey}`;
+      const data = {
+        userId: account.userId,
+        symbol: lot.symbol,
+        category: 'spot',
+        status: 'OPEN' as const,
+        side: 'Sell',
+        qty: lot.qty,
+        avgEntryPrice: lot.avgEntryPrice,
+        openedAt: lot.openedAt,
+      };
+      await this.prisma.position.upsert({
+        where: { accountId_orderId: { accountId: account.id, orderId } },
+        create: { accountId: account.id, orderId, ...data },
+        update: data,
+      });
+    }
+  }
+
+  // Fetches Bybit's live open linear positions and keeps one Position row per (account, symbol)
+  // in sync with them — creating a fresh OPEN row for a newly opened position, or updating the
+  // existing one (qty/avgEntryPrice/leverage move as the position is added to or partially
+  // closed). Spot has no equivalent "position" concept on Bybit, so this only covers linear.
+  private async syncOpenPositions(account: ExchangeAccount, creds: BybitCredentials) {
+    let cursor: string | undefined;
+    do {
+      const page = await this.bybit.getOpenPositions(creds, {
+        category: PNL_CATEGORY,
+        settleCoin: 'USDT',
+        cursor,
+      });
+      for (const rec of page.list) {
+        if (Number(rec.size) <= 0) continue; // Bybit lists flat/zero-size slots too
+
+        const data = {
+          userId: account.userId,
+          category: PNL_CATEGORY,
+          status: 'OPEN' as const,
+          // Flip: Bybit reports the position's own direction here, but Position.side is always
+          // the side that closes it (see side.util.ts).
+          side: flipSide(rec.side),
+          qty: rec.size,
+          avgEntryPrice: rec.avgPrice,
+          leverage: rec.leverage || null,
+          openedAt: new Date(Number(rec.createdTime)),
+          raw: rec as Prisma.InputJsonValue,
+        };
+
+        const existing = await this.prisma.position.findFirst({
+          where: {
+            accountId: account.id,
+            symbol: rec.symbol,
+            category: PNL_CATEGORY,
+            status: 'OPEN',
+          },
+        });
+        if (existing) {
+          await this.prisma.position.update({ where: { id: existing.id }, data });
+        } else {
+          await this.prisma.position.create({
+            data: { accountId: account.id, symbol: rec.symbol, ...data },
+          });
+        }
+      }
+      cursor = page.nextPageCursor || undefined;
+    } while (cursor);
   }
 
   // Bybit's Closed PnL records carry no open time for linear (derivatives) positions. Derived
@@ -226,12 +327,16 @@ export class InvestingSyncService {
         where: { accountId: account.id, category: 'linear', execType: { not: 'Funding' } },
         select: { symbol: true, side: true, qty: true, execTime: true, raw: true },
       }),
-      this.prisma.closedPosition.findMany({
-        where: { accountId: account.id, category: 'linear' },
+      this.prisma.position.findMany({
+        where: { accountId: account.id, category: 'linear', status: 'CLOSED' },
         select: { id: true, symbol: true, side: true, qty: true, closedAt: true },
       }),
     ]);
-    if (!fills.length || !positions.length) return;
+    // The status: 'CLOSED' filter above guarantees closedAt, but Prisma's type keeps it nullable.
+    const closedPositions = positions.filter(
+      (p): p is typeof p & { closedAt: Date } => p.closedAt !== null,
+    );
+    if (!fills.length || !closedPositions.length) return;
 
     const openedAtById = deriveLinearOpenedAt(
       fills.map((f) => ({
@@ -241,7 +346,7 @@ export class InvestingSyncService {
         closedSize: Number((f.raw as Record<string, unknown> | null)?.closedSize ?? 0),
         execTime: f.execTime,
       })),
-      positions.map((p) => ({
+      closedPositions.map((p) => ({
         id: p.id,
         symbol: p.symbol,
         side: p.side,
@@ -251,10 +356,10 @@ export class InvestingSyncService {
     );
 
     await Promise.all(
-      positions
+      closedPositions
         .filter((p) => openedAtById.has(p.id))
         .map((p) =>
-          this.prisma.closedPosition.update({
+          this.prisma.position.update({
             where: { id: p.id },
             data: { openedAt: openedAtById.get(p.id) },
           }),

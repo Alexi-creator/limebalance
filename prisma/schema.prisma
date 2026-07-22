@@ -79,7 +79,8 @@ model User {
   goalContributions       GoalContribution[]
   exchangeAccounts        ExchangeAccount[]
   tradeExecutions         TradeExecution[]
-  closedPositions         ClosedPosition[]
+  positions               Position[]
+  positionNotes           PositionNote[]
   holdings                Holding[]
 
   @@map("users")
@@ -296,7 +297,7 @@ model ExchangeAccount {
 
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   executions TradeExecution[]
-  positions  ClosedPosition[]
+  positions  Position[]
 
   @@index([userId])
   @@index([status])
@@ -337,42 +338,78 @@ model TradeExecution {
   @@map("trade_executions")
 }
 
-// A closed position with realized PnL — the diary's main entity. Comes either from an exchange
-// sync (source=bybit, immutable via the API) or entered by hand (source=manual, full CRUD).
-model ClosedPosition {
+enum PositionStatus {
+  OPEN
+  CLOSED
+}
+
+// A trade in the diary, open or closed. Comes either from an exchange sync (source=bybit,
+// core trade fields immutable via the API) or entered by hand (source=manual, full CRUD).
+// Synced positions are created OPEN (from Bybit's live position list) and the same row is
+// updated in place when Bybit later reports it closed — never a separate row per state.
+// Journal notes (entry reason, updates, exit reason, screenshots) live on PositionNote and can
+// be added regardless of source or status — that's the part meant to survive the whole trade.
+model Position {
   id String @id @default(uuid())
   // NULL for manual entries — they don't belong to any exchange account.
   accountId String? @map("account_id")
   userId    String  @map("user_id")
   source    String  @default("bybit") // bybit | manual
-  // Bybit id of the closing order — the dedupe key for closed-pnl records. NULL for manual entries.
+  status    PositionStatus @default(CLOSED)
+  // Bybit id of the closing order — the dedupe key for closed-pnl records. NULL while open and
+  // for manual entries.
   orderId  String? @map("order_id")
   symbol   String
   category String
-  // Side of the CLOSING order: Sell closes a long, Buy closes a short (manual entries are
-  // stored with the same convention so all rows read uniformly).
+  // Side of the CLOSING order: Sell closes a long, Buy closes a short (manual entries and open
+  // positions are stored with the same convention so all rows read uniformly).
   side          String
   qty           Decimal  @db.Decimal(30, 12)
   avgEntryPrice Decimal  @map("avg_entry_price") @db.Decimal(30, 12)
-  avgExitPrice  Decimal  @map("avg_exit_price") @db.Decimal(30, 12)
-  // Realized PnL in the settlement currency (USDT for linear), fees included by Bybit.
-  closedPnl Decimal  @map("closed_pnl") @db.Decimal(30, 12)
+  // NULL while the position is open.
+  avgExitPrice  Decimal? @map("avg_exit_price") @db.Decimal(30, 12)
+  // Realized PnL in the settlement currency (USDT for linear), fees included by Bybit. NULL
+  // while open.
+  closedPnl Decimal?  @map("closed_pnl") @db.Decimal(30, 12)
   leverage  Decimal? @db.Decimal(10, 2)
   // Bybit's closed-pnl records carry no open time. Spot is derived by FIFO over the fills
   // (spot-fifo.util), linear by matching closing qty against opening fills (linear-fifo.util) —
   // NULL there only when the opening fills predate the synced history. Manual entries may set it.
+  // Synced OPEN positions get it straight from Bybit's position list (createdTime).
   openedAt  DateTime? @map("opened_at")
-  closedAt  DateTime  @map("closed_at")
+  // NULL while open.
+  closedAt  DateTime? @map("closed_at")
   raw       Json?
   createdAt DateTime  @default(now()) @map("created_at")
 
   account ExchangeAccount? @relation(fields: [accountId], references: [id], onDelete: Cascade)
   user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes   PositionNote[]
 
   @@unique([accountId, orderId])
   @@index([userId, closedAt])
   @@index([accountId, symbol, closedAt])
-  @@map("closed_positions")
+  @@index([accountId, symbol, category, status])
+  @@map("positions")
+}
+
+// A free-form journal entry attached to a position — entry reason, a later update, the exit
+// reason, a screenshot. Independent of the position's source/status: notes can be added to a
+// synced trade just as freely as a manual one, and to an open position just as a closed one.
+model PositionNote {
+  id         String   @id @default(uuid())
+  positionId String   @map("position_id")
+  userId     String   @map("user_id")
+  body       String
+  // External image URL (chart screenshot, etc.) — no upload/storage of our own, just a link.
+  imageUrl   String?  @map("image_url")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  position Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([positionId, createdAt])
+  @@map("position_notes")
 }
 
 // A manually tracked asset holding ("0.5 BTC in a cold wallet") — the portfolio view, independent

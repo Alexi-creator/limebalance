@@ -32,6 +32,8 @@ describe('GoalsService', () => {
       groupBy: jest.Mock;
       create: jest.Mock;
       findMany: jest.Mock;
+      findFirst: jest.Mock;
+      update: jest.Mock;
       deleteMany: jest.Mock;
     };
     user: { findUnique: jest.Mock };
@@ -52,6 +54,8 @@ describe('GoalsService', () => {
         groupBy: jest.fn().mockResolvedValue([]),
         create: jest.fn().mockResolvedValue({}),
         findMany: jest.fn(),
+        findFirst: jest.fn(),
+        update: jest.fn().mockResolvedValue({}),
         deleteMany: jest.fn(),
       },
       user: { findUnique: jest.fn().mockResolvedValue({ currency: 'THB' }) },
@@ -237,6 +241,90 @@ describe('GoalsService', () => {
       await expect(service.removeContribution('u1', 'g1', 'cX')).rejects.toBeInstanceOf(
         NotFoundException,
       );
+    });
+  });
+
+  describe('updateContribution', () => {
+    beforeEach(() => {
+      prisma.goal.findFirst.mockResolvedValue(goalRow({ targetAmount: 100, completedAt: null }));
+    });
+
+    it("throws NotFound when the contribution doesn't belong to the goal/user", async () => {
+      prisma.goalContribution.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.updateContribution('u1', 'g1', 'cX', { amount: 10 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.goalContribution.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects an edit that would exceed the target', async () => {
+      prisma.goalContribution.findFirst.mockResolvedValue({ id: 'c1', amount: 20, note: null });
+      prisma.goalContribution.groupBy.mockResolvedValue([{ goalId: 'g1', _sum: { amount: 80 } }]);
+
+      await expect(
+        service.updateContribution('u1', 'g1', 'c1', { amount: 50 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.goalContribution.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects an edit that would go negative', async () => {
+      prisma.goalContribution.findFirst.mockResolvedValue({ id: 'c1', amount: 80, note: null });
+      prisma.goalContribution.groupBy.mockResolvedValue([{ goalId: 'g1', _sum: { amount: 80 } }]);
+
+      await expect(
+        service.updateContribution('u1', 'g1', 'c1', { amount: -10 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects a zero amount', async () => {
+      prisma.goalContribution.findFirst.mockResolvedValue({ id: 'c1', amount: 20, note: null });
+      prisma.goalContribution.groupBy.mockResolvedValue([{ goalId: 'g1', _sum: { amount: 80 } }]);
+
+      await expect(
+        service.updateContribution('u1', 'g1', 'c1', { amount: 0 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('updates amount/note/date and recomputes the goal without double-counting the old amount', async () => {
+      prisma.goalContribution.findFirst.mockResolvedValue({
+        id: 'c1',
+        amount: 20,
+        note: 'old note',
+        date: new Date('2026-06-01'),
+      });
+      prisma.goalContribution.groupBy.mockResolvedValue([{ goalId: 'g1', _sum: { amount: 70 } }]);
+
+      const newDate = new Date('2026-06-15');
+      const dto = await service.updateContribution('u1', 'g1', 'c1', {
+        amount: 30,
+        note: 'new note',
+        date: newDate,
+      });
+
+      expect(prisma.goalContribution.update).toHaveBeenCalledWith({
+        where: { id: 'c1' },
+        data: { amount: 30, note: 'new note', date: newDate },
+      });
+      // before=70 (includes old 20) -> after = 70 - 20 + 30 = 80
+      expect(dto.currentAmount).toBe(80);
+      expect(prisma.goal.update).not.toHaveBeenCalled();
+      expect(prisma.notification.upsert).not.toHaveBeenCalled();
+    });
+
+    it('completes the goal and notifies when the edit pushes current to target', async () => {
+      prisma.goalContribution.findFirst.mockResolvedValue({ id: 'c1', amount: 20, note: null });
+      prisma.goalContribution.groupBy.mockResolvedValue([{ goalId: 'g1', _sum: { amount: 80 } }]);
+      prisma.goal.update.mockResolvedValue(
+        goalRow({ targetAmount: 100, completedAt: new Date('2026-06-21') }),
+      );
+
+      const dto = await service.updateContribution('u1', 'g1', 'c1', { amount: 40 });
+
+      expect(prisma.goal.update).toHaveBeenCalled();
+      expect(prisma.notification.upsert).toHaveBeenCalled();
+      expect(dto.currentAmount).toBe(100);
+      expect(dto.isCompleted).toBe(true);
     });
   });
 });

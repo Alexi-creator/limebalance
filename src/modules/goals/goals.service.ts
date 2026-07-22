@@ -10,6 +10,7 @@ import {
   GoalsResponseDto,
   GoalsSummaryDto,
 } from './dto/goal-response.dto';
+import { UpdateContributionDto } from './dto/update-contribution.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -145,6 +146,58 @@ export class GoalsService {
     });
     if (deleted.count === 0) throw new NotFoundException('Contribution not found');
     return { success: true };
+  }
+
+  /** Edit a past contribution's amount/note/date (history correction). */
+  async updateContribution(
+    userId: string,
+    goalId: string,
+    contributionId: string,
+    dto: UpdateContributionDto,
+  ): Promise<GoalDto> {
+    const goal = await this.ownedGoal(userId, goalId);
+    const target = Number(goal.targetAmount);
+
+    const existing = await this.prisma.goalContribution.findFirst({
+      where: { id: contributionId, goalId, userId },
+    });
+    if (!existing) throw new NotFoundException('Contribution not found');
+
+    const newAmount = dto.amount ?? Number(existing.amount);
+    if (newAmount === 0) {
+      throw new BadRequestException('amount must not be zero');
+    }
+
+    const before = (await this.sumByGoal(userId, goalId)).get(goalId) ?? 0;
+    const after = round2(before - Number(existing.amount) + newAmount);
+
+    // Same invariant as contribute(): 0 <= currentAmount <= targetAmount.
+    if (after < 0) {
+      throw new BadRequestException('Withdrawal exceeds the goal balance');
+    }
+    if (after > target) {
+      throw new BadRequestException('Contribution would exceed the goal target');
+    }
+
+    await this.prisma.goalContribution.update({
+      where: { id: contributionId },
+      data: {
+        amount: newAmount,
+        note: dto.note !== undefined ? dto.note : existing.note,
+        date: dto.date ?? existing.date,
+      },
+    });
+
+    let completedGoal = goal;
+    if (!goal.completedAt && after >= target) {
+      completedGoal = await this.prisma.goal.update({
+        where: { id: goalId },
+        data: { completedAt: new Date() },
+      });
+      await this.notifyCompleted(userId, goal);
+    }
+
+    return this.toDto(completedGoal, after, new Date());
   }
 
   /**

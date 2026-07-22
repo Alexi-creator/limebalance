@@ -39,12 +39,36 @@ export type BybitExecutionRecord = {
   [key: string]: unknown;
 };
 
+// A currently open derivatives position. `side` here is the position's own direction (Buy =
+// long, Sell = short) — the OPPOSITE convention from BybitClosedPnlRecord.side (closing order),
+// so callers must flip it when storing into Position.side for a uniform read across rows.
+export type BybitPositionRecord = {
+  symbol: string;
+  side: string;
+  size: string;
+  avgPrice: string;
+  leverage: string;
+  createdTime: string;
+  updatedTime: string;
+  [key: string]: unknown;
+};
+
 type Page<T> = { list: T[]; nextPageCursor: string };
 
 type RangeParams = {
   category: string;
   startTime: number;
   endTime: number;
+  cursor?: string;
+  limit?: number;
+};
+
+// /v5/position/list requires symbol or settleCoin for linear/inverse — no time window (it's a
+// live snapshot, not history).
+type OpenPositionsParams = {
+  category: string;
+  settleCoin?: string;
+  symbol?: string;
   cursor?: string;
   limit?: number;
 };
@@ -83,6 +107,15 @@ export class BybitClient {
   // Individual fills. Window ≤ 7 days, cursor pagination.
   getExecutions(creds: BybitCredentials, params: RangeParams): Promise<Page<BybitExecutionRecord>> {
     return this.get(creds, '/v5/execution/list', { limit: 100, ...params });
+  }
+
+  // Currently open derivatives positions — a live snapshot, not history. Spot has no equivalent
+  // endpoint (spot "positions" are just balances), so this only ever covers linear/inverse.
+  getOpenPositions(
+    creds: BybitCredentials,
+    params: OpenPositionsParams,
+  ): Promise<Page<BybitPositionRecord>> {
+    return this.get(creds, '/v5/position/list', { limit: 200, ...params });
   }
 
   // Public market data — no API key needed. Used to value manual holdings.

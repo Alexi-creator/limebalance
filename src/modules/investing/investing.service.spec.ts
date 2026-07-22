@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   NotFoundException,
   ServiceUnavailableException,
@@ -25,13 +26,21 @@ describe('InvestingService', () => {
       update: jest.Mock;
       delete: jest.Mock;
     };
-    closedPosition: {
+    position: {
       findMany: jest.Mock;
       count: jest.Mock;
       create: jest.Mock;
       findFirst: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
+      aggregate: jest.Mock;
+      groupBy: jest.Mock;
+    };
+    positionNote: {
+      create: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+      findFirst: jest.Mock;
     };
     tradeExecution: { findMany: jest.Mock; count: jest.Mock; aggregate: jest.Mock };
     holding: {
@@ -57,13 +66,21 @@ describe('InvestingService', () => {
         update: jest.fn(),
         delete: jest.fn(),
       },
-      closedPosition: {
+      position: {
         findMany: jest.fn(),
         count: jest.fn(),
         create: jest.fn(),
         findFirst: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
+        aggregate: jest.fn(),
+        groupBy: jest.fn(),
+      },
+      positionNote: {
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+        findFirst: jest.fn(),
       },
       tradeExecution: { findMany: jest.fn(), count: jest.fn(), aggregate: jest.fn() },
       holding: {
@@ -181,26 +198,75 @@ describe('InvestingService', () => {
 
     it('404s on a foreign or missing account', async () => {
       prisma.exchangeAccount.findFirst.mockResolvedValue(null);
-      await expect(
-        service.renameAccount('u1', 'other', { label: 'x' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.renameAccount('u1', 'other', { label: 'x' })).rejects.toThrow(
+        NotFoundException,
+      );
       expect(prisma.exchangeAccount.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('syncNow', () => {
+    it('returns the refreshed account on a successful sync', async () => {
+      prisma.exchangeAccount.findFirst.mockResolvedValue({ id: 'acc-1' });
+      sync.syncAccount.mockResolvedValue(undefined);
+      prisma.exchangeAccount.findUniqueOrThrow.mockResolvedValue({
+        id: 'acc-1',
+        exchange: 'bybit',
+        label: 'Main',
+        apiKey: 'irrelevant-here',
+        status: 'ACTIVE',
+        lastError: null,
+      });
+
+      const result = await service.syncNow('u1', 'acc-1');
+
+      expect(sync.syncAccount).toHaveBeenCalledWith({ id: 'acc-1' });
+      expect(result.status).toBe('ACTIVE');
+    });
+
+    it('surfaces a sync failure (e.g. Bybit IP-whitelist rejection) as 502, not a bare 500', async () => {
+      prisma.exchangeAccount.findFirst.mockResolvedValue({ id: 'acc-1' });
+      sync.syncAccount.mockRejectedValue(
+        new Error("Bybit error 10010: Unmatched IP, please check your API key's bound IP addresses."),
+      );
+
+      await expect(service.syncNow('u1', 'acc-1')).rejects.toThrow(BadGatewayException);
+      await expect(service.syncNow('u1', 'acc-1')).rejects.toThrow(/Unmatched IP/);
+      expect(prisma.exchangeAccount.findUniqueOrThrow).not.toHaveBeenCalled();
+    });
+
+    it('404s on a foreign or missing account', async () => {
+      prisma.exchangeAccount.findFirst.mockResolvedValue(null);
+      await expect(service.syncNow('u1', 'other')).rejects.toThrow(NotFoundException);
+      expect(sync.syncAccount).not.toHaveBeenCalled();
     });
   });
 
   describe('getPositions', () => {
     it('filters by symbol (uppercased) and date range, returns items with total', async () => {
-      prisma.closedPosition.findMany.mockResolvedValue([
-        { id: 'p1', source: 'manual', accountId: null, qty: 1, avgEntryPrice: 65000, leverage: null },
+      prisma.position.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          source: 'manual',
+          accountId: null,
+          qty: 1,
+          avgEntryPrice: 65000,
+          leverage: null,
+        },
       ]);
-      prisma.closedPosition.count.mockResolvedValue(42);
+      prisma.position.count.mockResolvedValue(42);
       const from = new Date('2026-07-01');
 
       const result = await service.getPositions('u1', { symbol: 'btcusdt', from, limit: 10 });
 
-      expect(prisma.closedPosition.findMany).toHaveBeenCalledWith({
-        where: { userId: 'u1', symbol: 'BTCUSDT', closedAt: { gte: from, lte: undefined } },
-        orderBy: { closedAt: 'desc' },
+      expect(prisma.position.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'u1',
+          symbol: 'BTCUSDT',
+          OR: [{ status: 'OPEN' }, { closedAt: { gte: from, lte: undefined } }],
+        },
+        orderBy: [{ status: 'asc' }, { closedAt: 'desc' }, { openedAt: 'desc' }],
+        include: { notes: { orderBy: { createdAt: 'asc' } } },
         take: 10,
         skip: 0,
       });
@@ -209,10 +275,71 @@ describe('InvestingService', () => {
       expect(result.items[0]).toMatchObject({ id: 'p1', entryVolumeUsd: 65000, totalFeeUsd: null });
     });
 
+    it('keeps a date filter from hiding OPEN positions, which have no closedAt', async () => {
+      prisma.position.findMany.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+      const from = new Date('2026-07-20');
+      const to = new Date('2026-07-21');
+
+      await service.getPositions('u1', { from, to });
+
+      expect(prisma.position.findMany.mock.calls[0][0].where).toEqual({
+        userId: 'u1',
+        OR: [{ status: 'OPEN' }, { closedAt: { gte: from, lte: to } }],
+      });
+    });
+
+    it('omits the OR entirely with no date filter (no accidental status restriction)', async () => {
+      prisma.position.findMany.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+
+      await service.getPositions('u1', {});
+
+      expect(prisma.position.findMany.mock.calls[0][0].where).toEqual({ userId: 'u1' });
+    });
+
+    it('filters by status alone', async () => {
+      prisma.position.findMany.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+
+      await service.getPositions('u1', { status: 'OPEN' });
+
+      expect(prisma.position.findMany.mock.calls[0][0].where).toEqual({
+        userId: 'u1',
+        status: 'OPEN',
+      });
+    });
+
+    it('filters by category', async () => {
+      prisma.position.findMany.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+
+      await service.getPositions('u1', { category: 'spot' });
+
+      expect(prisma.position.findMany.mock.calls[0][0].where).toEqual({
+        userId: 'u1',
+        category: 'spot',
+      });
+    });
+
+    it('combines status=CLOSED with a date range (the OR collapses to just the range)', async () => {
+      prisma.position.findMany.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+      const from = new Date('2026-07-01');
+
+      await service.getPositions('u1', { status: 'CLOSED', from });
+
+      expect(prisma.position.findMany.mock.calls[0][0].where).toEqual({
+        userId: 'u1',
+        status: 'CLOSED',
+        OR: [{ status: 'OPEN' }, { closedAt: { gte: from, lte: undefined } }],
+      });
+    });
+
     it('divides entry volume by leverage and sums fees over the position window for synced trades', async () => {
       const openedAt = new Date('2026-07-01T00:00:00Z');
       const closedAt = new Date('2026-07-02T00:00:00Z');
-      prisma.closedPosition.findMany.mockResolvedValue([
+      prisma.position.findMany.mockResolvedValue([
         {
           id: 'p1',
           source: 'bybit',
@@ -226,20 +353,25 @@ describe('InvestingService', () => {
           closedAt,
         },
       ]);
-      prisma.closedPosition.count.mockResolvedValue(1);
+      prisma.position.count.mockResolvedValue(1);
       prisma.tradeExecution.aggregate.mockResolvedValue({ _sum: { fee: -12.345 } });
 
       const result = await service.getPositions('u1', {});
 
       expect(prisma.tradeExecution.aggregate).toHaveBeenCalledWith({
-        where: { accountId: 'acc-1', symbol: 'BTCUSDT', category: 'linear', execTime: { gte: openedAt, lte: closedAt } },
+        where: {
+          accountId: 'acc-1',
+          symbol: 'BTCUSDT',
+          category: 'linear',
+          execTime: { gte: openedAt, lte: closedAt },
+        },
         _sum: { fee: true },
       });
       expect(result.items[0]).toMatchObject({ entryVolumeUsd: 6500, totalFeeUsd: -12.34 });
     });
 
     it('leaves totalFeeUsd null for a synced position with no known open time', async () => {
-      prisma.closedPosition.findMany.mockResolvedValue([
+      prisma.position.findMany.mockResolvedValue([
         {
           id: 'p1',
           source: 'bybit',
@@ -253,7 +385,7 @@ describe('InvestingService', () => {
           closedAt: new Date(),
         },
       ]);
-      prisma.closedPosition.count.mockResolvedValue(1);
+      prisma.position.count.mockResolvedValue(1);
 
       const result = await service.getPositions('u1', {});
 
@@ -262,12 +394,149 @@ describe('InvestingService', () => {
     });
 
     it('caps the page size', async () => {
-      prisma.closedPosition.findMany.mockResolvedValue([]);
-      prisma.closedPosition.count.mockResolvedValue(0);
+      prisma.position.findMany.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
 
       await service.getPositions('u1', { limit: 10_000 });
 
-      expect(prisma.closedPosition.findMany.mock.calls[0][0].take).toBe(200);
+      expect(prisma.position.findMany.mock.calls[0][0].take).toBe(200);
+    });
+  });
+
+  describe('getPositionsSummary', () => {
+    it('sums closedPnl and the win/loss/breakeven split across the full filtered history', async () => {
+      prisma.position.aggregate.mockResolvedValue({ _sum: { closedPnl: 4820.555 } });
+      prisma.position.groupBy.mockResolvedValue([
+        { status: 'OPEN', _count: 3 },
+        { status: 'CLOSED', _count: 142 },
+      ]);
+      prisma.position.count.mockResolvedValueOnce(88).mockResolvedValueOnce(51);
+
+      const result = await service.getPositionsSummary('u1', {});
+
+      expect(prisma.position.aggregate).toHaveBeenCalledWith({
+        where: { userId: 'u1' },
+        _sum: { closedPnl: true },
+      });
+      expect(prisma.position.groupBy).toHaveBeenCalledWith({
+        by: ['status'],
+        where: { userId: 'u1' },
+        _count: true,
+      });
+      expect(prisma.position.count).toHaveBeenNthCalledWith(1, {
+        where: { userId: 'u1', status: 'CLOSED', closedPnl: { gt: 0 } },
+      });
+      expect(prisma.position.count).toHaveBeenNthCalledWith(2, {
+        where: { userId: 'u1', status: 'CLOSED', closedPnl: { lt: 0 } },
+      });
+      expect(result).toEqual({
+        totalPnl: 4820.56,
+        openCount: 3,
+        closedCount: 142,
+        winCount: 88,
+        lossCount: 51,
+        breakevenCount: 3, // 142 - 88 - 51
+      });
+    });
+
+    it('reuses the same filter (symbol/date/status/category) as getPositions', async () => {
+      prisma.position.aggregate.mockResolvedValue({ _sum: { closedPnl: 100 } });
+      prisma.position.groupBy.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+      const from = new Date('2026-07-01');
+
+      await service.getPositionsSummary('u1', {
+        symbol: 'btcusdt',
+        status: 'CLOSED',
+        category: 'linear',
+        from,
+      });
+
+      const expectedWhere = {
+        userId: 'u1',
+        symbol: 'BTCUSDT',
+        status: 'CLOSED',
+        category: 'linear',
+        OR: [{ status: 'OPEN' }, { closedAt: { gte: from, lte: undefined } }],
+      };
+      expect(prisma.position.aggregate).toHaveBeenCalledWith({
+        where: expectedWhere,
+        _sum: { closedPnl: true },
+      });
+      expect(prisma.position.groupBy).toHaveBeenCalledWith({
+        by: ['status'],
+        where: expectedWhere,
+        _count: true,
+      });
+      expect(prisma.position.count).toHaveBeenNthCalledWith(1, {
+        where: { ...expectedWhere, status: 'CLOSED', closedPnl: { gt: 0 } },
+      });
+    });
+
+    it('returns zero counts/pnl when nothing matches', async () => {
+      prisma.position.aggregate.mockResolvedValue({ _sum: { closedPnl: null } });
+      prisma.position.groupBy.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+
+      const result = await service.getPositionsSummary('u1', {});
+
+      expect(result).toEqual({
+        totalPnl: 0,
+        openCount: 0,
+        closedCount: 0,
+        winCount: 0,
+        lossCount: 0,
+        breakevenCount: 0,
+      });
+    });
+  });
+
+  describe('getEquityCurve', () => {
+    it('returns closedAt/closedPnl pairs, oldest first, with no take limit', async () => {
+      const d1 = new Date('2026-06-01');
+      const d2 = new Date('2026-06-15');
+      prisma.position.findMany.mockResolvedValue([
+        { closedAt: d1, closedPnl: 120.5 },
+        { closedAt: d2, closedPnl: -30 },
+      ]);
+
+      const result = await service.getEquityCurve('u1', {});
+
+      expect(prisma.position.findMany).toHaveBeenCalledWith({
+        where: { userId: 'u1', status: 'CLOSED' },
+        select: { closedAt: true, closedPnl: true },
+        orderBy: { closedAt: 'asc' },
+      });
+      expect(prisma.position.findMany.mock.calls[0][0].take).toBeUndefined();
+      expect(result).toEqual({
+        items: [
+          { closedAt: d1, closedPnl: 120.5 },
+          { closedAt: d2, closedPnl: -30 },
+        ],
+      });
+    });
+
+    it('forces status=CLOSED and applies the same symbol/category/date filters', async () => {
+      prisma.position.findMany.mockResolvedValue([]);
+      const from = new Date('2026-07-01');
+
+      await service.getEquityCurve('u1', { symbol: 'btcusdt', category: 'linear', from });
+
+      expect(prisma.position.findMany.mock.calls[0][0].where).toEqual({
+        userId: 'u1',
+        symbol: 'BTCUSDT',
+        category: 'linear',
+        status: 'CLOSED',
+        OR: [{ status: 'OPEN' }, { closedAt: { gte: from, lte: undefined } }],
+      });
+    });
+
+    it('defaults a null closedPnl to 0', async () => {
+      prisma.position.findMany.mockResolvedValue([{ closedAt: new Date(), closedPnl: null }]);
+
+      const result = await service.getEquityCurve('u1', {});
+
+      expect(result.items[0].closedPnl).toBe(0);
     });
   });
 
@@ -310,7 +579,7 @@ describe('InvestingService', () => {
 
   describe('manual positions', () => {
     it('creates a long with computed PnL and the exchange side convention', async () => {
-      prisma.closedPosition.create.mockResolvedValue({ id: 'p1' });
+      prisma.position.create.mockResolvedValue({ id: 'p1' });
 
       await service.addManualPosition('u1', {
         symbol: 'btcusdt',
@@ -322,7 +591,7 @@ describe('InvestingService', () => {
         venue: 'MEXC',
       });
 
-      const { data } = prisma.closedPosition.create.mock.calls[0][0];
+      const { data } = prisma.position.create.mock.calls[0][0];
       expect(data).toMatchObject({
         userId: 'u1',
         source: 'manual',
@@ -334,7 +603,7 @@ describe('InvestingService', () => {
     });
 
     it('computes short PnL with the inverted sign and prefers an explicit value', async () => {
-      prisma.closedPosition.create.mockResolvedValue({});
+      prisma.position.create.mockResolvedValue({});
 
       await service.addManualPosition('u1', {
         symbol: 'ETHUSDT',
@@ -344,7 +613,7 @@ describe('InvestingService', () => {
         exitPrice: 3400,
         closedAt: new Date(),
       });
-      expect(prisma.closedPosition.create.mock.calls[0][0].data.closedPnl).toBe(200);
+      expect(prisma.position.create.mock.calls[0][0].data.closedPnl).toBe(200);
 
       await service.addManualPosition('u1', {
         symbol: 'ETHUSDT',
@@ -355,42 +624,185 @@ describe('InvestingService', () => {
         closedPnl: 185.5, // fees accounted by the user
         closedAt: new Date(),
       });
-      expect(prisma.closedPosition.create.mock.calls[1][0].data.closedPnl).toBe(185.5);
+      expect(prisma.position.create.mock.calls[1][0].data.closedPnl).toBe(185.5);
     });
 
     it('recomputes PnL on update only when trade inputs change', async () => {
-      prisma.closedPosition.findFirst.mockResolvedValue({
+      prisma.position.findFirst.mockResolvedValue({
         id: 'p1',
         source: 'manual',
+        status: 'CLOSED',
         side: 'Sell',
         qty: 1,
         avgEntryPrice: 100,
         avgExitPrice: 110,
+        closedAt: new Date('2026-07-10T00:00:00Z'),
       });
-      prisma.closedPosition.update.mockResolvedValue({});
+      prisma.position.update.mockResolvedValue({});
 
       // Date-only edit: the stored (possibly hand-adjusted) PnL must survive.
       await service.updateManualPosition('u1', 'p1', { closedAt: new Date() });
-      expect(prisma.closedPosition.update.mock.calls[0][0].data).not.toHaveProperty('closedPnl');
+      expect(prisma.position.update.mock.calls[0][0].data).not.toHaveProperty('closedPnl');
 
       // Price edit: PnL follows.
       await service.updateManualPosition('u1', 'p1', { exitPrice: 130 });
-      expect(prisma.closedPosition.update.mock.calls[1][0].data.closedPnl).toBe(30);
+      expect(prisma.position.update.mock.calls[1][0].data.closedPnl).toBe(30);
     });
 
     it('refuses to edit or delete synced positions', async () => {
-      prisma.closedPosition.findFirst.mockResolvedValue({ id: 'p1', source: 'bybit' });
+      prisma.position.findFirst.mockResolvedValue({ id: 'p1', source: 'bybit' });
 
       await expect(service.updateManualPosition('u1', 'p1', { qty: 1 })).rejects.toThrow(
         BadRequestException,
       );
       await expect(service.removeManualPosition('u1', 'p1')).rejects.toThrow(BadRequestException);
-      expect(prisma.closedPosition.delete).not.toHaveBeenCalled();
+      expect(prisma.position.delete).not.toHaveBeenCalled();
     });
 
     it('404s on a foreign position', async () => {
-      prisma.closedPosition.findFirst.mockResolvedValue(null);
+      prisma.position.findFirst.mockResolvedValue(null);
       await expect(service.removeManualPosition('u1', 'x')).rejects.toThrow(NotFoundException);
+    });
+
+    it('logs a still-open trade when exitPrice/closedAt are omitted, optionally with an entry note', async () => {
+      prisma.position.create.mockResolvedValue({ id: 'p1' });
+
+      await service.addManualPosition('u1', {
+        symbol: 'btcusdt',
+        direction: 'long',
+        qty: 0.5,
+        entryPrice: 64000,
+        note: 'Entered on the breakout above 65k.',
+        noteImageUrl: 'https://i.imgur.com/chart123.png',
+      });
+
+      const { data } = prisma.position.create.mock.calls[0][0];
+      expect(data).toMatchObject({
+        status: 'OPEN',
+        avgExitPrice: null,
+        closedPnl: null,
+        closedAt: null,
+        notes: {
+          create: {
+            userId: 'u1',
+            body: 'Entered on the breakout above 65k.',
+            imageUrl: 'https://i.imgur.com/chart123.png',
+          },
+        },
+      });
+    });
+
+    it('rejects exitPrice without closedAt (and vice versa) on create', async () => {
+      await expect(
+        service.addManualPosition('u1', {
+          symbol: 'BTCUSDT',
+          direction: 'long',
+          qty: 1,
+          entryPrice: 100,
+          exitPrice: 110,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.position.create).not.toHaveBeenCalled();
+    });
+
+    it('closes a still-open manual position when exitPrice and closedAt are supplied', async () => {
+      prisma.position.findFirst.mockResolvedValue({
+        id: 'p1',
+        source: 'manual',
+        status: 'OPEN',
+        side: 'Sell',
+        qty: 1,
+        avgEntryPrice: 100,
+        avgExitPrice: null,
+        closedAt: null,
+      });
+      prisma.position.update.mockResolvedValue({});
+
+      await service.updateManualPosition('u1', 'p1', { exitPrice: 120, closedAt: new Date() });
+
+      expect(prisma.position.update.mock.calls[0][0].data).toMatchObject({
+        avgExitPrice: 120,
+        closedPnl: 20,
+        status: 'CLOSED',
+      });
+    });
+
+    it('rejects supplying only exitPrice on a still-open position (closedAt still unresolved)', async () => {
+      prisma.position.findFirst.mockResolvedValue({
+        id: 'p1',
+        source: 'manual',
+        status: 'OPEN',
+        side: 'Sell',
+        qty: 1,
+        avgEntryPrice: 100,
+        avgExitPrice: null,
+        closedAt: null,
+      });
+
+      await expect(service.updateManualPosition('u1', 'p1', { exitPrice: 120 })).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.position.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('position notes', () => {
+    it('adds a note to any owned position regardless of source/status', async () => {
+      prisma.position.findFirst.mockResolvedValue({ id: 'p1', userId: 'u1', source: 'bybit' });
+      prisma.positionNote.create.mockResolvedValue({ id: 'n1' });
+
+      await service.addPositionNote('u1', 'p1', { body: 'Still holding, thesis intact.' });
+
+      expect(prisma.positionNote.create).toHaveBeenCalledWith({
+        data: {
+          positionId: 'p1',
+          userId: 'u1',
+          body: 'Still holding, thesis intact.',
+          imageUrl: null,
+        },
+      });
+    });
+
+    it('404s adding a note to a foreign position', async () => {
+      prisma.position.findFirst.mockResolvedValue(null);
+      await expect(service.addPositionNote('u1', 'p1', { body: 'x' })).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.positionNote.create).not.toHaveBeenCalled();
+    });
+
+    it('edits an owned note', async () => {
+      prisma.position.findFirst.mockResolvedValue({ id: 'p1' });
+      prisma.positionNote.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.positionNote.update.mockResolvedValue({});
+
+      await service.updatePositionNote('u1', 'p1', 'n1', { body: 'Edited reason.' });
+
+      expect(prisma.positionNote.update).toHaveBeenCalledWith({
+        where: { id: 'n1' },
+        data: { body: 'Edited reason.' },
+      });
+    });
+
+    it('404s editing or deleting a foreign/missing note', async () => {
+      prisma.position.findFirst.mockResolvedValue({ id: 'p1' });
+      prisma.positionNote.findFirst.mockResolvedValue(null);
+
+      await expect(service.updatePositionNote('u1', 'p1', 'n1', { body: 'x' })).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.removePositionNote('u1', 'p1', 'n1')).rejects.toThrow(NotFoundException);
+      expect(prisma.positionNote.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes an owned note', async () => {
+      prisma.position.findFirst.mockResolvedValue({ id: 'p1' });
+      prisma.positionNote.findFirst.mockResolvedValue({ id: 'n1' });
+
+      await expect(service.removePositionNote('u1', 'p1', 'n1')).resolves.toEqual({
+        deleted: true,
+      });
+      expect(prisma.positionNote.delete).toHaveBeenCalledWith({ where: { id: 'n1' } });
     });
   });
 

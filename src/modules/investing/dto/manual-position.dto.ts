@@ -31,10 +31,15 @@ export class CreateManualPositionDto {
   @IsPositive()
   entryPrice: number;
 
-  @ApiProperty({ example: 65200, description: 'Average exit price' })
+  @ApiPropertyOptional({
+    example: 65200,
+    description:
+      'Average exit price. Omit to log the trade as still open — add it later to close it.',
+  })
+  @IsOptional()
   @IsNumber()
   @IsPositive()
-  exitPrice: number;
+  exitPrice?: number;
 
   @ApiPropertyOptional({
     example: 580.5,
@@ -60,16 +65,35 @@ export class CreateManualPositionDto {
   @Type(() => Date)
   openedAt?: Date;
 
-  @ApiProperty({ example: '2026-07-12T15:30:00Z', description: 'When the position was closed' })
+  @ApiPropertyOptional({
+    example: '2026-07-12T15:30:00Z',
+    description: 'When the position was closed. Omit to log the trade as still open.',
+  })
+  @IsOptional()
   @IsDate()
   @Type(() => Date)
-  closedAt: Date;
+  closedAt?: Date;
 
   @ApiPropertyOptional({ example: 'MEXC', description: 'Where the trade happened (free-form)' })
   @IsOptional()
   @IsString()
   @MaxLength(64)
   venue?: string;
+
+  @ApiPropertyOptional({
+    example: 'Entered on the breakout above 65k, tight stop below the range.',
+    description: 'Optional journal note created together with the trade (e.g. the entry reason)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  note?: string;
+
+  @ApiPropertyOptional({ example: 'https://i.imgur.com/chart123.png' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  noteImageUrl?: string;
 }
 
 export class UpdateManualPositionDto {

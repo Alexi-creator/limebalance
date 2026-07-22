@@ -4,6 +4,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateContributionDto } from './dto/create-contribution.dto';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { GoalDto, GoalsResponseDto } from './dto/goal-response.dto';
+import { UpdateContributionDto } from './dto/update-contribution.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { GoalsService } from './goals.service';
 
@@ -74,5 +75,17 @@ export class GoalsController {
     @Param('contributionId') contributionId: string,
   ) {
     return this.goalsService.removeContribution(user.id, id, contributionId);
+  }
+
+  @Patch(':id/contributions/:contributionId')
+  @ApiOperation({ summary: 'Edit a single contribution (history correction)' })
+  @ApiOkResponse({ type: GoalDto })
+  updateContribution(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Param('contributionId') contributionId: string,
+    @Body() dto: UpdateContributionDto,
+  ) {
+    return this.goalsService.updateContribution(user.id, id, contributionId, dto);
   }
 }

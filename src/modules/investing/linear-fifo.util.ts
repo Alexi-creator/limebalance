@@ -19,7 +19,7 @@ export type LinearFill = {
 export type LinearPosition = {
   id: string;
   symbol: string;
-  // Side of the CLOSING order — same convention as ClosedPosition.
+  // Side of the CLOSING order — same convention as Position.side.
   side: string; // Buy | Sell
   qty: number;
   closedAt: Date;

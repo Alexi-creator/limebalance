@@ -55,28 +55,48 @@ const pnlRecord = (over: Record<string, string> = {}) => ({
   ...over,
 });
 
+const openPositionRecord = (over: Record<string, string> = {}) => ({
+  symbol: 'BTCUSDT',
+  side: 'Buy', // position's own direction (long) — the opposite of pnlRecord's closing-side convention
+  size: '0.5',
+  avgPrice: '64000',
+  leverage: '10',
+  createdTime: '1750000000000',
+  updatedTime: '1750000000000',
+  ...over,
+});
+
 describe('InvestingSyncService', () => {
   let service: InvestingSyncService;
   let prisma: {
     exchangeAccount: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
-    closedPosition: { upsert: jest.Mock; findMany: jest.Mock; update: jest.Mock };
+    position: {
+      upsert: jest.Mock;
+      findMany: jest.Mock;
+      findFirst: jest.Mock;
+      update: jest.Mock;
+      create: jest.Mock;
+    };
     tradeExecution: { upsert: jest.Mock; findMany: jest.Mock };
   };
-  let bybit: { getClosedPnl: jest.Mock; getExecutions: jest.Mock };
+  let bybit: { getClosedPnl: jest.Mock; getExecutions: jest.Mock; getOpenPositions: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
       exchangeAccount: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-      closedPosition: {
+      position: {
         upsert: jest.fn(),
         findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn().mockResolvedValue(null),
         update: jest.fn(),
+        create: jest.fn(),
       },
       tradeExecution: { upsert: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
     };
     bybit = {
       getClosedPnl: jest.fn().mockResolvedValue({ list: [], nextPageCursor: '' }),
       getExecutions: jest.fn().mockResolvedValue({ list: [], nextPageCursor: '' }),
+      getOpenPositions: jest.fn().mockResolvedValue({ list: [], nextPageCursor: '' }),
     };
 
     const module = await Test.createTestingModule({
@@ -125,7 +145,7 @@ describe('InvestingSyncService', () => {
 
     await service.syncAccount(makeAccount());
 
-    expect(prisma.closedPosition.upsert).toHaveBeenCalledWith(
+    expect(prisma.position.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { accountId_orderId: { accountId: 'acc-1', orderId: 'o1' } },
         create: expect.objectContaining({ symbol: 'BTCUSDT', closedPnl: '500', userId: 'u1' }),
@@ -147,7 +167,73 @@ describe('InvestingSyncService', () => {
 
     expect(bybit.getClosedPnl).toHaveBeenCalledTimes(2);
     expect(bybit.getClosedPnl.mock.calls[1][1].cursor).toBe('page2');
-    expect(prisma.closedPosition.upsert).toHaveBeenCalledTimes(2);
+    expect(prisma.position.upsert).toHaveBeenCalledTimes(2);
+  });
+
+  it('flips a tracked OPEN row to CLOSED in place instead of creating a new row', async () => {
+    prisma.position.findFirst.mockResolvedValue({ id: 'open-row-1' });
+    bybit.getClosedPnl
+      .mockResolvedValueOnce({ list: [pnlRecord()], nextPageCursor: '' })
+      .mockResolvedValue({ list: [], nextPageCursor: '' });
+
+    await service.syncAccount(makeAccount());
+
+    expect(prisma.position.update).toHaveBeenCalledWith({
+      where: { id: 'open-row-1' },
+      data: expect.objectContaining({ status: 'CLOSED', orderId: 'o1', closedPnl: '500' }),
+    });
+    expect(prisma.position.upsert).not.toHaveBeenCalled();
+  });
+
+  it("creates an OPEN position from Bybit's live position list", async () => {
+    bybit.getOpenPositions.mockResolvedValue({ list: [openPositionRecord()], nextPageCursor: '' });
+
+    await service.syncAccount(makeAccount());
+
+    expect(bybit.getOpenPositions).toHaveBeenCalledWith(
+      { apiKey: 'k', apiSecret: 's' },
+      expect.objectContaining({ category: 'linear', settleCoin: 'USDT' }),
+    );
+    expect(prisma.position.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        accountId: 'acc-1',
+        symbol: 'BTCUSDT',
+        category: 'linear',
+        status: 'OPEN',
+        // Bybit's Buy (long position) flips to the closing-order convention: Sell.
+        side: 'Sell',
+        qty: '0.5',
+        avgEntryPrice: '64000',
+      }),
+    });
+  });
+
+  it('updates the existing OPEN row for a symbol instead of duplicating it', async () => {
+    prisma.position.findFirst.mockResolvedValue({ id: 'open-row-1' });
+    bybit.getOpenPositions.mockResolvedValue({
+      list: [openPositionRecord({ size: '0.8' })],
+      nextPageCursor: '',
+    });
+
+    await service.syncAccount(makeAccount());
+
+    expect(prisma.position.update).toHaveBeenCalledWith({
+      where: { id: 'open-row-1' },
+      data: expect.objectContaining({ qty: '0.8' }),
+    });
+    expect(prisma.position.create).not.toHaveBeenCalled();
+  });
+
+  it('skips zero-size position slots from the open-positions sync', async () => {
+    bybit.getOpenPositions.mockResolvedValue({
+      list: [openPositionRecord({ size: '0' })],
+      nextPageCursor: '',
+    });
+
+    await service.syncAccount(makeAccount());
+
+    expect(prisma.position.create).not.toHaveBeenCalled();
+    expect(prisma.position.update).not.toHaveBeenCalled();
   });
 
   it('stores execType from the exchange record, defaulting to Trade when absent', async () => {
@@ -201,11 +287,11 @@ describe('InvestingSyncService', () => {
       ({ where }: { where: { category: string } }) =>
         Promise.resolve(where.category === 'linear' ? [openFill] : []),
     );
-    prisma.closedPosition.findMany.mockResolvedValue([closedPos]);
+    prisma.position.findMany.mockResolvedValue([closedPos]);
 
     await service.syncAccount(makeAccount());
 
-    expect(prisma.closedPosition.update).toHaveBeenCalledWith({
+    expect(prisma.position.update).toHaveBeenCalledWith({
       where: { id: 'pos-1' },
       data: { openedAt: openFill.execTime },
     });
@@ -213,14 +299,14 @@ describe('InvestingSyncService', () => {
 
   it('skips the linear openedAt rebuild when there are no fills or no linear positions', async () => {
     prisma.tradeExecution.findMany.mockResolvedValue([]);
-    prisma.closedPosition.findMany.mockResolvedValue([]);
+    prisma.position.findMany.mockResolvedValue([]);
 
     await service.syncAccount(makeAccount());
 
-    expect(prisma.closedPosition.update).not.toHaveBeenCalled();
+    expect(prisma.position.update).not.toHaveBeenCalled();
   });
 
-  it('derives closed spot trades from the stored fills (FIFO) after the sync', async () => {
+  it('closes a fully-sold lot in place (same orderId whether open or closed), so notes survive', async () => {
     const buy = {
       execId: 'b1',
       symbol: 'BTCUSDT',
@@ -245,16 +331,96 @@ describe('InvestingSyncService', () => {
     expect(prisma.tradeExecution.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { accountId: 'acc-1', category: 'spot' } }),
     );
-    expect(prisma.closedPosition.upsert).toHaveBeenCalledWith(
+    expect(prisma.position.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { accountId_orderId: { accountId: 'acc-1', orderId: 'spot:s1' } },
+        where: { accountId_orderId: { accountId: 'acc-1', orderId: 'spot-open:b1' } },
         create: expect.objectContaining({
           category: 'spot',
+          status: 'CLOSED',
           side: 'Sell',
           closedPnl: 50,
           openedAt: buy.execTime,
           closedAt: sell.execTime,
         }),
+      }),
+    );
+    // No separate row for the closing sell — it reuses the lot's own orderId.
+    expect(prisma.position.upsert).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          accountId_orderId: { accountId: 'acc-1', orderId: expect.stringContaining('s1') },
+        },
+      }),
+    );
+  });
+
+  it('creates one OPEN row per unsold buy, since Bybit has no live spot position endpoint', async () => {
+    const buy1 = {
+      execId: 'b1',
+      symbol: 'BTCUSDT',
+      side: 'Buy',
+      price: 100,
+      qty: 1,
+      fee: 0,
+      feeCurrency: null,
+      execTime: new Date('2026-07-01T00:00:00Z'),
+    };
+    const buy2 = { ...buy1, execId: 'b2', price: 200, execTime: new Date('2026-07-05T00:00:00Z') };
+    prisma.tradeExecution.findMany.mockResolvedValue([buy1, buy2]);
+
+    await service.syncAccount(makeAccount());
+
+    // Two separate purchases stay two separate open diary entries — not merged/averaged.
+    expect(prisma.position.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { accountId_orderId: { accountId: 'acc-1', orderId: 'spot-open:b1' } },
+        create: expect.objectContaining({ status: 'OPEN', qty: 1, avgEntryPrice: 100 }),
+      }),
+    );
+    expect(prisma.position.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { accountId_orderId: { accountId: 'acc-1', orderId: 'spot-open:b2' } },
+        create: expect.objectContaining({ status: 'OPEN', qty: 1, avgEntryPrice: 200 }),
+      }),
+    );
+  });
+
+  it('shrinks a lot in place on a partial sell, recording the nibble as its own closed row', async () => {
+    const buy = {
+      execId: 'b1',
+      symbol: 'BTCUSDT',
+      side: 'Buy',
+      price: 100,
+      qty: 2,
+      fee: 0,
+      feeCurrency: null,
+      execTime: new Date('2026-07-01T00:00:00Z'),
+    };
+    const partialSell = {
+      ...buy,
+      execId: 's1',
+      side: 'Sell',
+      qty: 0.5,
+      price: 110,
+      execTime: new Date('2026-07-02T00:00:00Z'),
+    };
+    prisma.tradeExecution.findMany.mockResolvedValue([buy, partialSell]);
+
+    await service.syncAccount(makeAccount());
+
+    // The nibble is its own historical row (the lot itself isn't closed) — dedupe key combines
+    // the lot and the sell.
+    expect(prisma.position.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { accountId_orderId: { accountId: 'acc-1', orderId: 'spot:b1:s1' } },
+        create: expect.objectContaining({ status: 'CLOSED', qty: 0.5, closedPnl: 5 }),
+      }),
+    );
+    // The lot's own row stays open, shrunk to what's left, same orderId as before.
+    expect(prisma.position.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { accountId_orderId: { accountId: 'acc-1', orderId: 'spot-open:b1' } },
+        update: expect.objectContaining({ status: 'OPEN', qty: 1.5 }),
       }),
     );
   });

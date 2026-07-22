@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Injectable,
   Logger,
@@ -13,6 +14,7 @@ import { decryptSecret, encryptSecret } from './crypto.util';
 import type { CreateExchangeAccountDto } from './dto/create-exchange-account.dto';
 import type { CreateHoldingDto, UpdateHoldingDto } from './dto/holding.dto';
 import type { CreateManualPositionDto, UpdateManualPositionDto } from './dto/manual-position.dto';
+import type { CreatePositionNoteDto, UpdatePositionNoteDto } from './dto/position-note.dto';
 import type { UpdateExchangeAccountDto } from './dto/update-exchange-account.dto';
 import { InvestingSyncService } from './investing-sync.service';
 import { PriceService } from './price.service';
@@ -36,6 +38,8 @@ const computePnl = (direction: 'long' | 'short', qty: number, entry: number, exi
 type ListQuery = {
   accountId?: string;
   symbol?: string;
+  status?: 'OPEN' | 'CLOSED';
+  category?: string;
   from?: Date;
   to?: Date;
   limit?: number;
@@ -124,20 +128,30 @@ export class InvestingService {
 
   async syncNow(userId: string, id: string) {
     const account = await this.findOwnAccount(userId, id);
-    await this.sync.syncAccount(account);
+    try {
+      await this.sync.syncAccount(account);
+    } catch (err) {
+      // syncAccount already persisted status=ERROR/lastError before rethrowing — surface that
+      // same reason (e.g. Bybit's IP-whitelist rejection) instead of a bare, unexplained 500.
+      throw new BadGatewayException(err instanceof Error ? err.message : 'Sync failed');
+    }
     return this.sanitize(await this.prisma.exchangeAccount.findUniqueOrThrow({ where: { id } }));
   }
 
   async getPositions(userId: string, query: ListQuery) {
-    const where = this.buildWhere(userId, query, 'closedAt');
+    const where = this.buildPositionsWhere(userId, query);
     const [rows, total] = await Promise.all([
-      this.prisma.closedPosition.findMany({
+      this.prisma.position.findMany({
         where,
-        orderBy: { closedAt: 'desc' },
+        // Open trades first (regardless of recency), then closed ones newest-first — an open
+        // position is the one thing in the diary still actionable, so it shouldn't scroll off
+        // under months of closed history.
+        orderBy: [{ status: 'asc' }, { closedAt: 'desc' }, { openedAt: 'desc' }],
+        include: { notes: { orderBy: { createdAt: 'asc' } } },
         take: Math.min(query.limit ?? 50, MAX_PAGE),
         skip: query.offset ?? 0,
       }),
-      this.prisma.closedPosition.count({ where }),
+      this.prisma.position.count({ where }),
     ]);
 
     const items = await Promise.all(
@@ -156,18 +170,83 @@ export class InvestingService {
     return { items, total };
   }
 
+  private buildPositionsWhere(userId: string, query: ListQuery) {
+    return {
+      userId,
+      ...(query.accountId ? { accountId: query.accountId } : {}),
+      ...(query.symbol ? { symbol: query.symbol.toUpperCase() } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.category ? { category: query.category } : {}),
+      // A closing-date filter is meaningless for an OPEN position (closedAt is null) — rather
+      // than silently hiding whatever's still open, it stays visible regardless of the range;
+      // only CLOSED rows are actually filtered by it. (When status is filtered explicitly above,
+      // this OR is either redundant with it — CLOSED — or trivially satisfied by it — OPEN —
+      // so it never changes the outcome; no special-casing needed.)
+      ...(query.from || query.to
+        ? {
+            OR: [{ status: 'OPEN' as const }, { closedAt: { gte: query.from, lte: query.to } }],
+          }
+        : {}),
+    };
+  }
+
+  // Total realized profit + win/loss breakdown across the FULL filtered history (no MAX_PAGE
+  // cap) — getPositions' `items` is paginated for display and must never be summed/counted
+  // client-side for "total profit" or "winrate".
+  async getPositionsSummary(userId: string, query: Omit<ListQuery, 'limit' | 'offset'>) {
+    const where = this.buildPositionsWhere(userId, query);
+    const closedWhere = { ...where, status: 'CLOSED' as const };
+    const [pnlAgg, statusCounts, winCount, lossCount] = await Promise.all([
+      this.prisma.position.aggregate({ where, _sum: { closedPnl: true } }),
+      this.prisma.position.groupBy({ by: ['status'], where, _count: true }),
+      this.prisma.position.count({ where: { ...closedWhere, closedPnl: { gt: 0 } } }),
+      this.prisma.position.count({ where: { ...closedWhere, closedPnl: { lt: 0 } } }),
+    ]);
+    const openCount = statusCounts.find((s) => s.status === 'OPEN')?._count ?? 0;
+    const closedCount = statusCounts.find((s) => s.status === 'CLOSED')?._count ?? 0;
+
+    return {
+      totalPnl: pnlAgg._sum.closedPnl ? round2(Number(pnlAgg._sum.closedPnl)) : 0,
+      openCount,
+      closedCount,
+      winCount,
+      lossCount,
+      // closedPnl === 0 exactly — neither a win nor a loss.
+      breakevenCount: Math.max(closedCount - winCount - lossCount, 0),
+    };
+  }
+
+  // Ordered (closedAt, closedPnl) pairs for the cumulative-PnL chart — the FULL closed history,
+  // no MAX_PAGE cap. Deliberately narrow (two fields only): getPositions' `items` is paginated
+  // for the diary table and must never be the source for a chart spanning the whole history.
+  async getEquityCurve(userId: string, query: Omit<ListQuery, 'status' | 'limit' | 'offset'>) {
+    const where = this.buildPositionsWhere(userId, { ...query, status: 'CLOSED' });
+    const rows = await this.prisma.position.findMany({
+      where,
+      select: { closedAt: true, closedPnl: true },
+      orderBy: { closedAt: 'asc' },
+    });
+    return {
+      items: rows.map((r) => ({
+        closedAt: r.closedAt as Date,
+        closedPnl: r.closedPnl ? Number(r.closedPnl) : 0,
+      })),
+    };
+  }
+
   // Every fee (trading + funding) charged over the position's life, signed as Bybit reports it
   // (positive = paid, negative = rebate) — a plain sum reads as "net cost". Only computable for
-  // synced positions with a known open time; manual entries and undated linear ones get null.
+  // synced, closed positions with a known open time; manual entries, still-open positions and
+  // undated linear ones get null.
   private async sumFees(p: {
     source: string;
     accountId: string | null;
     symbol: string;
     category: string;
     openedAt: Date | null;
-    closedAt: Date;
+    closedAt: Date | null;
   }): Promise<number | null> {
-    if (p.source !== 'bybit' || !p.accountId || !p.openedAt) return null;
+    if (p.source !== 'bybit' || !p.accountId || !p.openedAt || !p.closedAt) return null;
     const agg = await this.prisma.tradeExecution.aggregate({
       where: {
         accountId: p.accountId,
@@ -216,23 +295,38 @@ export class InvestingService {
   // ─── Manual diary entries (trades outside connected exchanges) ───
 
   async addManualPosition(userId: string, dto: CreateManualPositionDto) {
-    return this.prisma.closedPosition.create({
+    if ((dto.exitPrice === undefined) !== (dto.closedAt === undefined)) {
+      throw new BadRequestException(
+        'exitPrice and closedAt must be given together, or both omitted to log the trade as still open',
+      );
+    }
+    const exitPrice = dto.exitPrice;
+    const closedAt = dto.closedAt;
+
+    return this.prisma.position.create({
       data: {
         userId,
         source: 'manual',
+        status: exitPrice !== undefined && closedAt !== undefined ? 'CLOSED' : 'OPEN',
         symbol: dto.symbol.toUpperCase(),
         category: 'manual',
         side: directionToSide(dto.direction),
         qty: dto.qty,
         avgEntryPrice: dto.entryPrice,
-        avgExitPrice: dto.exitPrice,
+        avgExitPrice: exitPrice ?? null,
         closedPnl:
-          dto.closedPnl ?? computePnl(dto.direction, dto.qty, dto.entryPrice, dto.exitPrice),
+          exitPrice !== undefined && closedAt !== undefined
+            ? (dto.closedPnl ?? computePnl(dto.direction, dto.qty, dto.entryPrice, exitPrice))
+            : null,
         leverage: dto.leverage ?? null,
         openedAt: dto.openedAt ?? null,
-        closedAt: dto.closedAt,
+        closedAt: closedAt ?? null,
         raw: dto.venue ? { venue: dto.venue } : undefined,
+        notes: dto.note
+          ? { create: { userId, body: dto.note, imageUrl: dto.noteImageUrl ?? null } }
+          : undefined,
       },
+      include: { notes: true },
     });
   }
 
@@ -242,18 +336,35 @@ export class InvestingService {
     const direction = dto.direction ?? sideToDirection(existing.side);
     const qty = dto.qty ?? Number(existing.qty);
     const entry = dto.entryPrice ?? Number(existing.avgEntryPrice);
-    const exit = dto.exitPrice ?? Number(existing.avgExitPrice);
-    // Explicit PnL wins; otherwise recompute only when an input actually changed —
-    // an untouched trade must keep its (possibly hand-adjusted) PnL.
+    const resultExit =
+      dto.exitPrice ?? (existing.avgExitPrice !== null ? Number(existing.avgExitPrice) : undefined);
+    const resultClosedAt = dto.closedAt ?? existing.closedAt ?? undefined;
+
+    // Touching either closing field without the other being resolvable (from this edit or the
+    // existing row) would leave a half-closed trade — reject rather than guess.
+    if ((resultExit === undefined) !== (resultClosedAt === undefined)) {
+      throw new BadRequestException(
+        'exitPrice and closedAt must both end up set (or both stay unset) — provide the missing one together with this edit',
+      );
+    }
+
+    // Explicit PnL wins; otherwise recompute only when an input actually changed — an untouched
+    // trade must keep its (possibly hand-adjusted) PnL. Still-open trades have no PnL yet.
     const inputsChanged =
       dto.direction !== undefined ||
       dto.qty !== undefined ||
       dto.entryPrice !== undefined ||
       dto.exitPrice !== undefined;
-    const closedPnl =
-      dto.closedPnl ?? (inputsChanged ? computePnl(direction, qty, entry, exit) : undefined);
+    let closedPnl: number | null | undefined;
+    if (resultExit === undefined) {
+      closedPnl = null;
+    } else if (dto.closedPnl !== undefined) {
+      closedPnl = dto.closedPnl;
+    } else if (inputsChanged) {
+      closedPnl = computePnl(direction, qty, entry, resultExit);
+    }
 
-    return this.prisma.closedPosition.update({
+    return this.prisma.position.update({
       where: { id },
       data: {
         ...(dto.symbol !== undefined ? { symbol: dto.symbol.toUpperCase() } : {}),
@@ -265,18 +376,23 @@ export class InvestingService {
         ...(dto.leverage !== undefined ? { leverage: dto.leverage } : {}),
         ...(dto.openedAt !== undefined ? { openedAt: dto.openedAt } : {}),
         ...(dto.closedAt !== undefined ? { closedAt: dto.closedAt } : {}),
+        // A still-open manual entry flips to CLOSED the moment both closing fields resolve;
+        // there's no path back from CLOSED to OPEN through this DTO.
+        ...(existing.status === 'OPEN' && resultExit !== undefined
+          ? { status: 'CLOSED' as const }
+          : {}),
       },
     });
   }
 
   async removeManualPosition(userId: string, id: string) {
     await this.findOwnManualPosition(userId, id);
-    await this.prisma.closedPosition.delete({ where: { id } });
+    await this.prisma.position.delete({ where: { id } });
     return { deleted: true };
   }
 
   private async findOwnManualPosition(userId: string, id: string) {
-    const position = await this.prisma.closedPosition.findFirst({ where: { id, userId } });
+    const position = await this.prisma.position.findFirst({ where: { id, userId } });
     if (!position) throw new NotFoundException(`Position ${id} not found`);
     if (position.source !== 'manual') {
       throw new BadRequestException(
@@ -284,6 +400,53 @@ export class InvestingService {
       );
     }
     return position;
+  }
+
+  // ─── Journal notes (entry reason, updates, exit reason — on any position, any source/status) ───
+
+  async addPositionNote(userId: string, positionId: string, dto: CreatePositionNoteDto) {
+    await this.findOwnPosition(userId, positionId);
+    return this.prisma.positionNote.create({
+      data: { positionId, userId, body: dto.body, imageUrl: dto.imageUrl ?? null },
+    });
+  }
+
+  async updatePositionNote(
+    userId: string,
+    positionId: string,
+    noteId: string,
+    dto: UpdatePositionNoteDto,
+  ) {
+    await this.findOwnPosition(userId, positionId);
+    await this.findOwnNote(userId, positionId, noteId);
+    return this.prisma.positionNote.update({
+      where: { id: noteId },
+      data: {
+        ...(dto.body !== undefined ? { body: dto.body } : {}),
+        ...(dto.imageUrl !== undefined ? { imageUrl: dto.imageUrl } : {}),
+      },
+    });
+  }
+
+  async removePositionNote(userId: string, positionId: string, noteId: string) {
+    await this.findOwnPosition(userId, positionId);
+    await this.findOwnNote(userId, positionId, noteId);
+    await this.prisma.positionNote.delete({ where: { id: noteId } });
+    return { deleted: true };
+  }
+
+  private async findOwnPosition(userId: string, id: string) {
+    const position = await this.prisma.position.findFirst({ where: { id, userId } });
+    if (!position) throw new NotFoundException(`Position ${id} not found`);
+    return position;
+  }
+
+  private async findOwnNote(userId: string, positionId: string, noteId: string) {
+    const note = await this.prisma.positionNote.findFirst({
+      where: { id: noteId, positionId, userId },
+    });
+    if (!note) throw new NotFoundException(`Note ${noteId} not found`);
+    return note;
   }
 
   // ─── Holdings (manually tracked portfolio) ───

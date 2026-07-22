@@ -48,7 +48,24 @@ export class ExchangeAccountResponseDto {
   readOnly?: boolean;
 }
 
-export class ClosedPositionResponseDto {
+export class PositionNoteResponseDto {
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440070' })
+  id: string;
+
+  @ApiProperty({
+    example: 'Entered on the breakout above 65k, tight stop below the range.',
+    description: 'Entry reason, a mid-trade update, the exit reason — whatever, at any time',
+  })
+  body: string;
+
+  @ApiProperty({ example: 'https://i.imgur.com/chart123.png', nullable: true })
+  imageUrl: string | null;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt: Date;
+}
+
+export class PositionResponseDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440040' })
   id: string;
 
@@ -62,6 +79,15 @@ export class ClosedPositionResponseDto {
   @ApiProperty({ enum: ['bybit', 'manual'], example: 'bybit' })
   source: string;
 
+  @ApiProperty({
+    enum: ['OPEN', 'CLOSED'],
+    example: 'CLOSED',
+    description:
+      'OPEN positions have no avgExitPrice/closedPnl/closedAt yet. Synced OPEN rows come from ' +
+      "Bybit's live position list and flip to CLOSED in place once the exchange reports the close.",
+  })
+  status: 'OPEN' | 'CLOSED';
+
   @ApiProperty({ example: 'BTCUSDT' })
   symbol: string;
 
@@ -72,7 +98,7 @@ export class ClosedPositionResponseDto {
   })
   category: string;
 
-  @ApiProperty({ example: 'Sell', description: 'Side of the closing order: Sell = long closed' })
+  @ApiProperty({ example: 'Sell', description: 'Side of the closing order: Sell = long' })
   side: string;
 
   @ApiProperty({ type: String, example: '0.5', description: 'Decimal as string' })
@@ -81,11 +107,16 @@ export class ClosedPositionResponseDto {
   @ApiProperty({ type: String, example: '64000.5' })
   avgEntryPrice: string;
 
-  @ApiProperty({ type: String, example: '65200' })
-  avgExitPrice: string;
+  @ApiProperty({ type: String, example: '65200', nullable: true, description: 'null while open' })
+  avgExitPrice: string | null;
 
-  @ApiProperty({ type: String, example: '599.75', description: 'Realized PnL in USDT' })
-  closedPnl: string;
+  @ApiProperty({
+    type: String,
+    example: '599.75',
+    nullable: true,
+    description: 'Realized PnL in USDT; null while open',
+  })
+  closedPnl: string | null;
 
   @ApiProperty({ type: String, example: '10', nullable: true })
   leverage: string | null;
@@ -96,12 +127,18 @@ export class ClosedPositionResponseDto {
     nullable: true,
     description:
       'Open time. For spot/manual, exact; for linear, derived from fills via FIFO — null when ' +
-      'the opening fills predate the synced history.',
+      'the opening fills predate the synced history. Synced OPEN positions get it directly from ' +
+      "Bybit's live position list.",
   })
   openedAt: Date | null;
 
-  @ApiProperty({ type: String, format: 'date-time' })
-  closedAt: Date;
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description: 'null while open',
+  })
+  closedAt: Date | null;
 
   @ApiProperty({
     example: 580,
@@ -117,17 +154,66 @@ export class ClosedPositionResponseDto {
       'Every fee (trading + funding) over the position’s life, signed as Bybit reports it ' +
       '(positive = paid, negative = rebate). Trading fees are already netted into closedPnl for ' +
       'bybit positions — this is for transparency, not to subtract again. Null for manual ' +
-      'entries and undated linear positions.',
+      'entries, still-open positions and undated linear positions.',
   })
   totalFeeUsd: number | null;
+
+  @ApiProperty({
+    type: [PositionNoteResponseDto],
+    description: 'Journal notes, oldest first — addable regardless of source or status',
+  })
+  notes: PositionNoteResponseDto[];
 }
 
-export class ClosedPositionListResponseDto {
-  @ApiProperty({ type: [ClosedPositionResponseDto] })
-  items: ClosedPositionResponseDto[];
+export class PositionListResponseDto {
+  @ApiProperty({ type: [PositionResponseDto] })
+  items: PositionResponseDto[];
 
   @ApiProperty({ example: 128, description: 'Total records matching the filter (for pagination)' })
   total: number;
+}
+
+export class PositionsSummaryResponseDto {
+  @ApiProperty({
+    example: 4820.55,
+    description:
+      'Sum of closedPnl across ALL positions matching the filter (not just one page) — realized ' +
+      'profit for the full period, in USDT.',
+  })
+  totalPnl: number;
+
+  @ApiProperty({ example: 3, description: 'Count of still-open positions matching the filter' })
+  openCount: number;
+
+  @ApiProperty({ example: 142, description: 'Count of closed positions matching the filter' })
+  closedCount: number;
+
+  @ApiProperty({ example: 88, description: 'Closed positions with closedPnl > 0 — for winrate' })
+  winCount: number;
+
+  @ApiProperty({ example: 51, description: 'Closed positions with closedPnl < 0 — for winrate' })
+  lossCount: number;
+
+  @ApiProperty({ example: 3, description: 'Closed positions with closedPnl exactly 0' })
+  breakevenCount: number;
+}
+
+export class EquityCurvePointDto {
+  @ApiProperty({ type: String, format: 'date-time' })
+  closedAt: Date;
+
+  @ApiProperty({ example: 599.75, description: 'Realized PnL of this single closed position' })
+  closedPnl: number;
+}
+
+export class EquityCurveResponseDto {
+  @ApiProperty({
+    type: [EquityCurvePointDto],
+    description:
+      'One point per closed position, oldest first — the FULL filtered history (no page cap). ' +
+      'Build the cumulative curve by running a prefix sum over closedPnl in order.',
+  })
+  items: EquityCurvePointDto[];
 }
 
 export class TradeExecutionResponseDto {
@@ -171,7 +257,10 @@ export class TradeFundingSummaryDto {
 }
 
 export class TradeExecutionListResponseDto {
-  @ApiProperty({ type: [TradeExecutionResponseDto], description: 'Real fills only — execType=Trade' })
+  @ApiProperty({
+    type: [TradeExecutionResponseDto],
+    description: 'Real fills only — execType=Trade',
+  })
   items: TradeExecutionResponseDto[];
 
   @ApiProperty({ example: 512, description: 'Count of items (fills), not including funding rows' })
