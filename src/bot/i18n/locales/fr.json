@@ -65,5 +65,29 @@
       "income": "Revenus (détaillés) :"
     },
     "total": "Total"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Position clôturée : {{symbol}} ({{side}})",
+      "pnl": "PnL : {{pnl}}",
+      "roi": "ROI : {{roi}}",
+      "duration": "Durée : {{duration}}",
+      "entryExit": "Entrée : {{entry}} → Sortie : {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Bilan du mois — {{period}}",
+      "income": "Revenus",
+      "expense": "Dépenses",
+      "net": "Solde",
+      "savingsRate": "Épargné sur le revenu",
+      "vsPrevMonth": "vs mois précédent",
+      "topCategory": "Plus grosse catégorie de dépenses",
+      "biggestExpense": "Plus grosse dépense unique",
+      "goalsContributed": "Versé vers les objectifs",
+      "goalsCompleted": "Objectifs atteints",
+      "investingPnl": "Résultat de trading"
+    }
   }
 }

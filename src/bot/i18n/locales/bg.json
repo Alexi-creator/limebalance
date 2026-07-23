@@ -65,5 +65,29 @@
       "income": "Приходи (подробно):"
     },
     "total": "Общо"
+  },
+  "push": {
+    "trade": {
+      "long": "Лонг",
+      "short": "Шорт",
+      "heading": "{{emoji}} Сделката е затворена: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Продължителност: {{duration}}",
+      "entryExit": "Вход: {{entry}} → Изход: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Обобщение на месеца — {{period}}",
+      "income": "Приход",
+      "expense": "Разход",
+      "net": "Баланс",
+      "savingsRate": "Спестено от прихода",
+      "vsPrevMonth": "спрямо предходния месец",
+      "topCategory": "Категория с най-големи разходи",
+      "biggestExpense": "Най-голям единичен разход",
+      "goalsContributed": "Заделено за цели",
+      "goalsCompleted": "Постигнати цели",
+      "investingPnl": "Резултат от търговията"
+    }
   }
 }

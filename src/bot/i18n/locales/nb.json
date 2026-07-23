@@ -65,5 +65,29 @@
       "income": "Inntekter (detaljert):"
     },
     "total": "Totalt"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Posisjon lukket: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Varighet: {{duration}}",
+      "entryExit": "Inngang: {{entry}} → Utgang: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Månedsoppsummering — {{period}}",
+      "income": "Inntekt",
+      "expense": "Utgift",
+      "net": "Saldo",
+      "savingsRate": "Spart av inntekt",
+      "vsPrevMonth": "sammenlignet med forrige måned",
+      "topCategory": "Største utgiftskategori",
+      "biggestExpense": "Største enkeltutgift",
+      "goalsContributed": "Satt av til mål",
+      "goalsCompleted": "Fullførte mål",
+      "investingPnl": "Handelsresultat"
+    }
   }
 }

@@ -1,8 +1,16 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import {
+  BotNotificationPreferenceDto,
+  UpdateBotNotificationPreferenceDto,
+} from './dto/bot-notification-preference.dto';
 import { NotificationsResponseDto } from './dto/notification-response.dto';
-import { NotificationsService } from './notifications.service';
+import {
+  BOT_NOTIFICATION_TYPES,
+  BotNotificationType,
+  NotificationsService,
+} from './notifications.service';
 
 @ApiTags('notifications')
 @Controller('notifications')
@@ -38,5 +46,37 @@ export class NotificationsController {
   })
   markAllRead(@CurrentUser() user: { id: string }) {
     return this.notificationsService.markAllRead(user.id);
+  }
+
+  @Get('preferences')
+  @ApiOperation({
+    summary: 'Bot push preferences',
+    description:
+      'Every known proactive Telegram notification type for this user, with its current on/off ' +
+      'state (a type with no stored override defaults to enabled).',
+  })
+  @ApiOkResponse({ type: [BotNotificationPreferenceDto] })
+  listPreferences(@CurrentUser() user: { id: string }) {
+    return this.notificationsService.listBotNotificationPreferences(user.id);
+  }
+
+  @Patch('preferences/:type')
+  @ApiOperation({
+    summary: 'Toggle a bot push type',
+    description: 'Enables or disables one proactive Telegram notification type for this user.',
+  })
+  setPreference(
+    @CurrentUser() user: { id: string },
+    @Param('type') type: string,
+    @Body() dto: UpdateBotNotificationPreferenceDto,
+  ) {
+    if (!BOT_NOTIFICATION_TYPES.includes(type as BotNotificationType)) {
+      throw new BadRequestException(`Unknown notification type: ${type}`);
+    }
+    return this.notificationsService.setBotNotificationPreference(
+      user.id,
+      type as BotNotificationType,
+      dto.enabled,
+    );
   }
 }

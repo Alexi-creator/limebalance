@@ -16,6 +16,11 @@ describe('NotificationsService', () => {
       updateMany: jest.Mock;
       count: jest.Mock;
     };
+    botNotificationPreference: {
+      findUnique: jest.Mock;
+      findMany: jest.Mock;
+      upsert: jest.Mock;
+    };
   };
   let currency: { getRates: jest.Mock; approxTotalInBase: jest.Mock };
 
@@ -30,6 +35,11 @@ describe('NotificationsService', () => {
         upsert: jest.fn().mockResolvedValue({}),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         count: jest.fn().mockResolvedValue(0),
+      },
+      botNotificationPreference: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
+        upsert: jest.fn().mockResolvedValue({}),
       },
     };
     currency = { getRates: jest.fn().mockResolvedValue({}), approxTotalInBase: jest.fn() };
@@ -111,6 +121,40 @@ describe('NotificationsService', () => {
         data: expect.objectContaining({ isRead: true }),
       });
       expect(res).toEqual({ unreadCount: 0 });
+    });
+  });
+
+  describe('bot notification preferences', () => {
+    it('defaults to enabled when no row is stored', async () => {
+      await expect(service.isBotPushEnabled('u1', 'trade_closed')).resolves.toBe(true);
+    });
+
+    it('respects a stored opt-out', async () => {
+      prisma.botNotificationPreference.findUnique.mockResolvedValue({ enabled: false });
+      await expect(service.isBotPushEnabled('u1', 'trade_closed')).resolves.toBe(false);
+    });
+
+    it('lists every known type, merging stored overrides with the enabled-by-default fallback', async () => {
+      prisma.botNotificationPreference.findMany.mockResolvedValue([
+        { type: 'trade_closed', enabled: false },
+      ]);
+
+      const prefs = await service.listBotNotificationPreferences('u1');
+
+      expect(prefs).toEqual([
+        { type: 'monthly_digest', enabled: true },
+        { type: 'trade_closed', enabled: false },
+      ]);
+    });
+
+    it('upserts the toggle by (userId, type)', async () => {
+      await service.setBotNotificationPreference('u1', 'monthly_digest', false);
+
+      expect(prisma.botNotificationPreference.upsert).toHaveBeenCalledWith({
+        where: { userId_type: { userId: 'u1', type: 'monthly_digest' } },
+        update: { enabled: false },
+        create: { userId: 'u1', type: 'monthly_digest', enabled: false },
+      });
     });
   });
 });

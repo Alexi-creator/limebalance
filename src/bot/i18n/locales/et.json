@@ -65,5 +65,29 @@
       "income": "Tulud (üksikasjalik):"
     },
     "total": "Kokku"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Positsioon suletud: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Kestus: {{duration}}",
+      "entryExit": "Sisenemine: {{entry}} → Väljumine: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Kuu kokkuvõte — {{period}}",
+      "income": "Tulu",
+      "expense": "Kulu",
+      "net": "Saldo",
+      "savingsRate": "Säästetud tulust",
+      "vsPrevMonth": "võrreldes eelmise kuuga",
+      "topCategory": "Suurim kulukategooria",
+      "biggestExpense": "Suurim üksikkulu",
+      "goalsContributed": "Eesmärkidesse pandud",
+      "goalsCompleted": "Täidetud eesmärgid",
+      "investingPnl": "Kauplemistulemus"
+    }
   }
 }

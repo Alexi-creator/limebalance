@@ -65,5 +65,29 @@
       "income": "Pemasukan (rinci):"
     },
     "total": "Total"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Posisi ditutup: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Durasi: {{duration}}",
+      "entryExit": "Masuk: {{entry}} → Keluar: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Ringkasan bulan — {{period}}",
+      "income": "Pemasukan",
+      "expense": "Pengeluaran",
+      "net": "Saldo",
+      "savingsRate": "Tabungan dari pemasukan",
+      "vsPrevMonth": "vs bulan lalu",
+      "topCategory": "Kategori pengeluaran terbesar",
+      "biggestExpense": "Pengeluaran tunggal terbesar",
+      "goalsContributed": "Disisihkan untuk tujuan",
+      "goalsCompleted": "Tujuan tercapai",
+      "investingPnl": "Hasil trading"
+    }
   }
 }

@@ -65,5 +65,29 @@
       "income": "Thu nhập (chi tiết):"
     },
     "total": "Tổng"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Đã đóng lệnh: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Thời gian: {{duration}}",
+      "entryExit": "Vào lệnh: {{entry}} → Thoát lệnh: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Tổng kết tháng — {{period}}",
+      "income": "Thu nhập",
+      "expense": "Chi tiêu",
+      "net": "Số dư",
+      "savingsRate": "Tiết kiệm từ thu nhập",
+      "vsPrevMonth": "so với tháng trước",
+      "topCategory": "Danh mục chi tiêu nhiều nhất",
+      "biggestExpense": "Khoản chi lớn nhất",
+      "goalsContributed": "Đã đóng góp cho mục tiêu",
+      "goalsCompleted": "Mục tiêu hoàn thành",
+      "investingPnl": "Kết quả giao dịch"
+    }
   }
 }

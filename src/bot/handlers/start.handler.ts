@@ -30,6 +30,7 @@ export class StartHandler {
       telegramId,
       undefined,
       ctx.from.username ?? null,
+      ctx.from.language_code ?? null,
     );
 
     const text = isNew ? m.welcomeNew : m.welcomeBack;

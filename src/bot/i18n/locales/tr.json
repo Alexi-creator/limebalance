@@ -65,5 +65,29 @@
       "income": "Gelirler (detaylı):"
     },
     "total": "Toplam"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} İşlem kapandı: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Süre: {{duration}}",
+      "entryExit": "Giriş: {{entry}} → Çıkış: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Ay özeti — {{period}}",
+      "income": "Gelir",
+      "expense": "Gider",
+      "net": "Net",
+      "savingsRate": "Gelirden biriktirilen",
+      "vsPrevMonth": "önceki aya göre",
+      "topCategory": "En yüksek harcama kategorisi",
+      "biggestExpense": "En büyük tekil harcama",
+      "goalsContributed": "Hedeflere ayrılan",
+      "goalsCompleted": "Tamamlanan hedefler",
+      "investingPnl": "İşlem sonucu"
+    }
   }
 }

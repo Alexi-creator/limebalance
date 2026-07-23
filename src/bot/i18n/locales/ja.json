@@ -65,5 +65,29 @@
       "income": "収入（詳細）："
     },
     "total": "合計"
+  },
+  "push": {
+    "trade": {
+      "long": "ロング",
+      "short": "ショート",
+      "heading": "{{emoji}} 取引がクローズしました: {{symbol}}（{{side}}）",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "期間: {{duration}}",
+      "entryExit": "エントリー: {{entry}} → エグジット: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 月次サマリー — {{period}}",
+      "income": "収入",
+      "expense": "支出",
+      "net": "収支",
+      "savingsRate": "収入からの貯蓄率",
+      "vsPrevMonth": "先月比",
+      "topCategory": "支出が最も多いカテゴリ",
+      "biggestExpense": "最大の単発支出",
+      "goalsContributed": "目標への積立額",
+      "goalsCompleted": "達成した目標",
+      "investingPnl": "トレード損益"
+    }
   }
 }

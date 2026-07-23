@@ -89,6 +89,28 @@ export interface Messages {
   withDetailsHeading: (type: TxType) => string;
   total: string;
   dateLocale: string;
+
+  // Trade-closed push (investing diary — exchange-synced trades only).
+  tradeSideLong: string;
+  tradeSideShort: string;
+  tradeClosedHeading: (emoji: string, symbol: string, side: string) => string;
+  tradePnl: (pnl: string) => string;
+  tradeRoi: (roi: string) => string;
+  tradeDuration: (duration: string) => string;
+  tradeEntryExit: (entry: string, exit: string) => string;
+
+  // Monthly digest push, sent on the 1st for the previous calendar month.
+  digestHeading: (period: string) => string;
+  digestIncome: string;
+  digestExpense: string;
+  digestNet: string;
+  digestSavingsRate: string;
+  digestVsPrevMonth: string;
+  digestTopCategory: string;
+  digestBiggestExpense: string;
+  digestGoalsContributed: string;
+  digestGoalsCompleted: string;
+  digestInvestingPnl: string;
 }
 
 // Builds the typed facade for a locale, backed by i18next's fixed translator.
@@ -146,6 +168,26 @@ export function t(locale: Locale): Messages {
     withDetailsHeading: (type) => `${tt(`stat.withDetailsHeading.${type}`)}\n\n`,
     total: tt('stat.total'),
     dateLocale: locale,
+
+    tradeSideLong: tt('push.trade.long'),
+    tradeSideShort: tt('push.trade.short'),
+    tradeClosedHeading: (emoji, symbol, side) => tt('push.trade.heading', { emoji, symbol, side }),
+    tradePnl: (pnl) => tt('push.trade.pnl', { pnl }),
+    tradeRoi: (roi) => tt('push.trade.roi', { roi }),
+    tradeDuration: (duration) => tt('push.trade.duration', { duration }),
+    tradeEntryExit: (entry, exit) => tt('push.trade.entryExit', { entry, exit }),
+
+    digestHeading: (period) => tt('push.digest.heading', { period }),
+    digestIncome: tt('push.digest.income'),
+    digestExpense: tt('push.digest.expense'),
+    digestNet: tt('push.digest.net'),
+    digestSavingsRate: tt('push.digest.savingsRate'),
+    digestVsPrevMonth: tt('push.digest.vsPrevMonth'),
+    digestTopCategory: tt('push.digest.topCategory'),
+    digestBiggestExpense: tt('push.digest.biggestExpense'),
+    digestGoalsContributed: tt('push.digest.goalsContributed'),
+    digestGoalsCompleted: tt('push.digest.goalsCompleted'),
+    digestInvestingPnl: tt('push.digest.investingPnl'),
   };
 }
 

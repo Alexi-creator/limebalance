@@ -5,6 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BybitClient } from './bybit.client';
 import { encryptSecret } from './crypto.util';
 import { InvestingSyncService } from './investing-sync.service';
+import { TradeCloseNotifierService } from './trade-close-notifier.service';
 
 const KEY = 'c'.repeat(64);
 const DAY = 24 * 60 * 60 * 1000;
@@ -105,6 +106,7 @@ describe('InvestingSyncService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: BybitClient, useValue: bybit },
         { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(KEY) } },
+        { provide: TradeCloseNotifierService, useValue: { notifyNewlyClosed: jest.fn() } },
       ],
     }).compile();
 
@@ -451,6 +453,7 @@ describe('InvestingSyncService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: BybitClient, useValue: bybit },
         { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(undefined) } },
+        { provide: TradeCloseNotifierService, useValue: { notifyNewlyClosed: jest.fn() } },
       ],
     }).compile();
 

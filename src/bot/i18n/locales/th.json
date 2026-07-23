@@ -65,5 +65,29 @@
       "income": "รายรับ (รายละเอียด):"
     },
     "total": "รวม"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} ปิดสถานะแล้ว: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "ระยะเวลา: {{duration}}",
+      "entryExit": "เข้า: {{entry}} → ออก: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 สรุปประจำเดือน — {{period}}",
+      "income": "รายรับ",
+      "expense": "รายจ่าย",
+      "net": "ยอดสุทธิ",
+      "savingsRate": "เก็บออมจากรายรับ",
+      "vsPrevMonth": "เทียบกับเดือนที่แล้ว",
+      "topCategory": "หมวดหมู่ที่ใช้จ่ายมากที่สุด",
+      "biggestExpense": "รายจ่ายเดียวที่สูงที่สุด",
+      "goalsContributed": "สมทบเข้าเป้าหมาย",
+      "goalsCompleted": "เป้าหมายที่สำเร็จ",
+      "investingPnl": "ผลการเทรด"
+    }
   }
 }

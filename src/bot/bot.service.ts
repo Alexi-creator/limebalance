@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Bot } from 'grammy';
 import { PlanLimitExceededException } from '../modules/subscriptions/plan-limit-exceeded.exception';
@@ -14,6 +14,7 @@ import { StateService } from './state.service';
 @Injectable()
 export class BotService implements OnModuleInit {
   readonly bot: Bot;
+  private readonly logger = new Logger(BotService.name);
 
   constructor(
     private readonly config: ConfigService,
@@ -39,6 +40,16 @@ export class BotService implements OnModuleInit {
     return this.bot.handleUpdate(update as Parameters<Bot['handleUpdate']>[0]);
   }
 
+  // Proactive send, outside any incoming update (monthly digest, trade-closed…). Swallows failures
+  // (e.g. the user blocked the bot) so one bad send never breaks a batch loop over many users.
+  async pushMessage(telegramId: bigint, text: string): Promise<void> {
+    try {
+      await this.bot.api.sendMessage(telegramId.toString(), text);
+    } catch (err) {
+      this.logger.warn(`Failed to push message to ${telegramId}: ${err}`);
+    }
+  }
+
   private registerHandlers() {
     this.bot.command('start', (ctx) => this.startHandler.handle(ctx));
 
@@ -49,6 +60,7 @@ export class BotService implements OnModuleInit {
         telegramId,
         undefined,
         ctx.from.username ?? null,
+        ctx.from.language_code ?? null,
       );
 
       if (data === '/addcategory:expense') {

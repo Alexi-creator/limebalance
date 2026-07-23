@@ -65,5 +65,29 @@
       "income": "Ienākumi (detalizēti):"
     },
     "total": "Kopā"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Pozīcija slēgta: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Ilgums: {{duration}}",
+      "entryExit": "Ieeja: {{entry}} → Izeja: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Mēneša kopsavilkums — {{period}}",
+      "income": "Ienākumi",
+      "expense": "Izdevumi",
+      "net": "Bilance",
+      "savingsRate": "Ietaupīts no ienākumiem",
+      "vsPrevMonth": "salīdzinot ar iepriekšējo mēnesi",
+      "topCategory": "Lielākā izdevumu kategorija",
+      "biggestExpense": "Lielākais atsevišķais izdevums",
+      "goalsContributed": "Novirzīts mērķiem",
+      "goalsCompleted": "Sasniegtie mērķi",
+      "investingPnl": "Tirdzniecības rezultāts"
+    }
   }
 }

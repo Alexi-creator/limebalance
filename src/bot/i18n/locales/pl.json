@@ -65,5 +65,29 @@
       "income": "Przychody (szczegółowo):"
     },
     "total": "Razem"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Pozycja zamknięta: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Czas trwania: {{duration}}",
+      "entryExit": "Wejście: {{entry}} → Wyjście: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Podsumowanie miesiąca — {{period}}",
+      "income": "Przychód",
+      "expense": "Wydatki",
+      "net": "Bilans",
+      "savingsRate": "Zaoszczędzone z przychodu",
+      "vsPrevMonth": "vs poprzedni miesiąc",
+      "topCategory": "Największa kategoria wydatków",
+      "biggestExpense": "Największy pojedynczy wydatek",
+      "goalsContributed": "Odłożone na cele",
+      "goalsCompleted": "Ukończone cele",
+      "investingPnl": "Wynik tradingowy"
+    }
   }
 }

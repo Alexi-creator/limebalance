@@ -65,5 +65,29 @@
       "income": "الإيرادات (بالتفصيل):"
     },
     "total": "الإجمالي"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} تم إغلاق الصفقة: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "المدة: {{duration}}",
+      "entryExit": "الدخول: {{entry}} → الخروج: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 ملخص الشهر — {{period}}",
+      "income": "الدخل",
+      "expense": "المصروفات",
+      "net": "الصافي",
+      "savingsRate": "المدخر من الدخل",
+      "vsPrevMonth": "مقارنة بالشهر الماضي",
+      "topCategory": "أكبر فئة إنفاق",
+      "biggestExpense": "أكبر مصروف فردي",
+      "goalsContributed": "المخصص للأهداف",
+      "goalsCompleted": "الأهداف المكتملة",
+      "investingPnl": "نتيجة التداول"
+    }
   }
 }

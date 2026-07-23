@@ -31,5 +31,6 @@ import { StateService } from './state.service';
     IncomeHandler,
     StatHandler,
   ],
+  exports: [BotService],
 })
 export class BotModule {}

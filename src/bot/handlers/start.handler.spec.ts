@@ -30,7 +30,7 @@ describe('StartHandler', () => {
   it('greets a brand-new user', async () => {
     users.findOrCreateByTelegramId.mockResolvedValue({ isNew: true });
     await handler.handle(ctx({ id: 7 }));
-    expect(users.findOrCreateByTelegramId).toHaveBeenCalledWith(7n, undefined, null);
+    expect(users.findOrCreateByTelegramId).toHaveBeenCalledWith(7n, undefined, null, null);
     expect(reply.mock.calls[0][0]).toContain('Добро пожаловать');
   });
 

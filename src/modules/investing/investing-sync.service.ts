@@ -8,6 +8,7 @@ import { decryptSecret } from './crypto.util';
 import { deriveLinearOpenedAt } from './linear-fifo.util';
 import { flipSide } from './side.util';
 import { computeSpotPositions } from './spot-fifo.util';
+import { TradeCloseNotifierService } from './trade-close-notifier.service';
 
 // Bybit limits one range query to 7 days; we step through history in such windows.
 const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -28,6 +29,7 @@ export class InvestingSyncService {
     private readonly prisma: PrismaService,
     private readonly bybit: BybitClient,
     private readonly config: ConfigService,
+    private readonly tradeCloseNotifier: TradeCloseNotifierService,
   ) {}
 
   @Cron('*/2 * * * *')
@@ -65,6 +67,12 @@ export class InvestingSyncService {
       apiSecret: decryptSecret(account.apiSecret, key),
     };
 
+    // Captured before this run mutates anything: "positions closed since the last successful
+    // sync" is exactly the newly-closed set to notify about. NULL means this is the account's
+    // first-ever sync (full history backfill) — skip notifying entirely so connecting an account
+    // with months of history doesn't fire a wave of pushes for old trades.
+    const previousSyncAt = account.lastSyncAt;
+
     try {
       const now = new Date();
       // Closed-pnl runs first so it can flip an existing OPEN row to CLOSED in place; only
@@ -75,6 +83,9 @@ export class InvestingSyncService {
       await this.syncExecutions(account, creds, now);
       await this.rebuildSpotPositions(account);
       await this.rebuildLinearOpenedAt(account);
+      if (previousSyncAt) {
+        await this.tradeCloseNotifier.notifyNewlyClosed(account.id, previousSyncAt);
+      }
       await this.prisma.exchangeAccount.update({
         where: { id: account.id },
         data: { lastSyncAt: now, status: 'ACTIVE', lastError: null },

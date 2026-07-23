@@ -65,5 +65,29 @@
       "income": "Bevételek (részletes):"
     },
     "total": "Összesen"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Pozíció zárva: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Időtartam: {{duration}}",
+      "entryExit": "Belépés: {{entry}} → Kilépés: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Havi összesítés — {{period}}",
+      "income": "Bevétel",
+      "expense": "Kiadás",
+      "net": "Egyenleg",
+      "savingsRate": "Megtakarított a bevételből",
+      "vsPrevMonth": "az előző hónaphoz képest",
+      "topCategory": "Legnagyobb kiadási kategória",
+      "biggestExpense": "Legnagyobb egyedi kiadás",
+      "goalsContributed": "Célokra félretett",
+      "goalsCompleted": "Teljesített célok",
+      "investingPnl": "Kereskedési eredmény"
+    }
   }
 }

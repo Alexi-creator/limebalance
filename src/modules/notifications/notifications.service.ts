@@ -10,6 +10,11 @@ interface CurrencyGroup {
   amountUsd: number | null;
 }
 
+// Proactive Telegram bot pushes the user can individually opt out of. Extend this list to add a
+// new toggle — any type not in here (or without a stored row) is enabled by default.
+export const BOT_NOTIFICATION_TYPES = ['monthly_digest', 'trade_closed'] as const;
+export type BotNotificationType = (typeof BOT_NOTIFICATION_TYPES)[number];
+
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -72,8 +77,42 @@ export class NotificationsService {
    */
   private async generateMonthlySummary(userId: string): Promise<void> {
     const now = new Date();
-    const year = now.getUTCFullYear();
-    const month = now.getUTCMonth(); // 0-based
+    const summary = await this.computeMonthSummary(userId, now.getUTCFullYear(), now.getUTCMonth());
+    if (!summary) return; // nothing happened this month yet — don't create an empty card
+
+    const dedupeKey = `monthly_summary:${summary.period}`;
+    await this.prisma.notification.upsert({
+      where: { userId_dedupeKey: { userId, dedupeKey } },
+      // Refresh content only — isRead/readAt are intentionally left as they are.
+      // title/body are omitted: the frontend localizes from `payload`.
+      update: { payload: summary as Prisma.InputJsonValue },
+      create: {
+        userId,
+        type: 'monthly_summary',
+        dedupeKey,
+        payload: summary as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  /**
+   * Income / expense / net / top-expense-category for one calendar month (UTC), in the user's base
+   * currency. Shared by the current-month bell card above and the monthly digest cron (which also
+   * needs the same shape for the prior month, for comparison). Returns null when the user had no
+   * income or expense at all that month — callers should treat that as "nothing to show".
+   */
+  async computeMonthSummary(
+    userId: string,
+    year: number,
+    month: number, // 0-based, UTC
+  ): Promise<{
+    period: string;
+    baseCurrency: string;
+    income: number | null;
+    expense: number | null;
+    net: number | null;
+    topCategory: { name: string; emoji: string | null } | null;
+  } | null> {
     const monthStart = new Date(Date.UTC(year, month, 1));
     const nextMonthStart = new Date(Date.UTC(year, month + 1, 1));
     const period = `${year}-${String(month + 1).padStart(2, '0')}`;
@@ -101,8 +140,7 @@ export class NotificationsService {
       }),
     ]);
 
-    // Nothing happened this month yet — don't create an empty card.
-    if (incomeGroups.length === 0 && expenseGroups.length === 0) return;
+    if (incomeGroups.length === 0 && expenseGroups.length === 0) return null;
 
     const toRows = (groups: typeof incomeGroups): CurrencyGroup[] =>
       groups.map((g) => ({
@@ -137,22 +175,35 @@ export class NotificationsService {
       if (cat) topCategory = { name: cat.name, emoji: cat.emoji };
     }
 
-    const payload = {
-      period,
-      baseCurrency,
-      income,
-      expense,
-      net,
-      topCategory,
-    } as Prisma.InputJsonValue;
+    return { period, baseCurrency, income, expense, net, topCategory };
+  }
 
-    const dedupeKey = `monthly_summary:${period}`;
-    await this.prisma.notification.upsert({
-      where: { userId_dedupeKey: { userId, dedupeKey } },
-      // Refresh content only — isRead/readAt are intentionally left as they are.
-      // title/body are omitted: the frontend localizes from `payload`.
-      update: { payload },
-      create: { userId, type: 'monthly_summary', dedupeKey, payload },
+  /** Whether `type` should still be pushed to the user's Telegram chat. No stored row = enabled. */
+  async isBotPushEnabled(userId: string, type: BotNotificationType): Promise<boolean> {
+    const pref = await this.prisma.botNotificationPreference.findUnique({
+      where: { userId_type: { userId, type } },
+    });
+    return pref?.enabled ?? true;
+  }
+
+  /** All known bot notification types for this user, merged with any stored overrides. */
+  async listBotNotificationPreferences(
+    userId: string,
+  ): Promise<{ type: BotNotificationType; enabled: boolean }[]> {
+    const rows = await this.prisma.botNotificationPreference.findMany({ where: { userId } });
+    const byType = new Map(rows.map((r) => [r.type, r.enabled]));
+    return BOT_NOTIFICATION_TYPES.map((type) => ({ type, enabled: byType.get(type) ?? true }));
+  }
+
+  async setBotNotificationPreference(
+    userId: string,
+    type: BotNotificationType,
+    enabled: boolean,
+  ): Promise<void> {
+    await this.prisma.botNotificationPreference.upsert({
+      where: { userId_type: { userId, type } },
+      update: { enabled },
+      create: { userId, type, enabled },
     });
   }
 }

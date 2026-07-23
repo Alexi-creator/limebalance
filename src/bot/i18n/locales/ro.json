@@ -65,5 +65,29 @@
       "income": "Venituri (detaliat):"
     },
     "total": "Total"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Poziție închisă: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Durată: {{duration}}",
+      "entryExit": "Intrare: {{entry}} → Ieșire: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Rezumatul lunii — {{period}}",
+      "income": "Venit",
+      "expense": "Cheltuieli",
+      "net": "Sold",
+      "savingsRate": "Economisit din venit",
+      "vsPrevMonth": "față de luna trecută",
+      "topCategory": "Cea mai mare categorie de cheltuieli",
+      "biggestExpense": "Cea mai mare cheltuială unică",
+      "goalsContributed": "Alocat pentru obiective",
+      "goalsCompleted": "Obiective finalizate",
+      "investingPnl": "Rezultat tranzacționare"
+    }
   }
 }

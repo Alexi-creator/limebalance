@@ -65,5 +65,29 @@
       "income": "Receitas (detalhado):"
     },
     "total": "Total"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Operação encerrada: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Duração: {{duration}}",
+      "entryExit": "Entrada: {{entry}} → Saída: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Resumo do mês — {{period}}",
+      "income": "Receita",
+      "expense": "Despesa",
+      "net": "Saldo",
+      "savingsRate": "Poupado da receita",
+      "vsPrevMonth": "vs. mês anterior",
+      "topCategory": "Maior categoria de despesa",
+      "biggestExpense": "Maior despesa única",
+      "goalsContributed": "Destinado a metas",
+      "goalsCompleted": "Metas concluídas",
+      "investingPnl": "Resultado de trading"
+    }
   }
 }

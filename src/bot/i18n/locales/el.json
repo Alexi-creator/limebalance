@@ -65,5 +65,29 @@
       "income": "Έσοδα (αναλυτικά):"
     },
     "total": "Σύνολο"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Η θέση έκλεισε: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Διάρκεια: {{duration}}",
+      "entryExit": "Είσοδος: {{entry}} → Έξοδος: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Σύνοψη μήνα — {{period}}",
+      "income": "Έσοδα",
+      "expense": "Έξοδα",
+      "net": "Υπόλοιπο",
+      "savingsRate": "Αποταμιεύτηκε από το εισόδημα",
+      "vsPrevMonth": "σε σχέση με τον προηγούμενο μήνα",
+      "topCategory": "Μεγαλύτερη κατηγορία εξόδων",
+      "biggestExpense": "Μεγαλύτερο μεμονωμένο έξοδο",
+      "goalsContributed": "Διατέθηκε για στόχους",
+      "goalsCompleted": "Ολοκληρωμένοι στόχοι",
+      "investingPnl": "Αποτέλεσμα συναλλαγών"
+    }
   }
 }

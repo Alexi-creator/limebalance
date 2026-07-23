@@ -65,5 +65,29 @@
       "income": "Inkomsten (gedetailleerd):"
     },
     "total": "Totaal"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Positie gesloten: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Duur: {{duration}}",
+      "entryExit": "Instap: {{entry}} → Uitstap: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Maandoverzicht — {{period}}",
+      "income": "Inkomsten",
+      "expense": "Uitgaven",
+      "net": "Saldo",
+      "savingsRate": "Gespaard van inkomen",
+      "vsPrevMonth": "t.o.v. vorige maand",
+      "topCategory": "Grootste uitgavecategorie",
+      "biggestExpense": "Grootste eenmalige uitgave",
+      "goalsContributed": "Ingelegd voor doelen",
+      "goalsCompleted": "Doelen behaald",
+      "investingPnl": "Handelsresultaat"
+    }
   }
 }

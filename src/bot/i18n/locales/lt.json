@@ -65,5 +65,29 @@
       "income": "Pajamos (detaliai):"
     },
     "total": "Iš viso"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Pozicija uždaryta: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Trukmė: {{duration}}",
+      "entryExit": "Įėjimas: {{entry}} → Išėjimas: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Mėnesio suvestinė — {{period}}",
+      "income": "Pajamos",
+      "expense": "Išlaidos",
+      "net": "Balansas",
+      "savingsRate": "Sutaupyta nuo pajamų",
+      "vsPrevMonth": "palyginti su praėjusiu mėnesiu",
+      "topCategory": "Didžiausia išlaidų kategorija",
+      "biggestExpense": "Didžiausia pavienė išlaida",
+      "goalsContributed": "Skirta tikslams",
+      "goalsCompleted": "Pasiekti tikslai",
+      "investingPnl": "Prekybos rezultatas"
+    }
   }
 }

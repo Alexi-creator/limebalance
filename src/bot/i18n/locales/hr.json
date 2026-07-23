@@ -65,5 +65,29 @@
       "income": "Prihodi (detaljno):"
     },
     "total": "Ukupno"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Pozicija zatvorena: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Trajanje: {{duration}}",
+      "entryExit": "Ulaz: {{entry}} → Izlaz: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Sažetak mjeseca — {{period}}",
+      "income": "Prihod",
+      "expense": "Rashod",
+      "net": "Saldo",
+      "savingsRate": "Ušteđeno od prihoda",
+      "vsPrevMonth": "u odnosu na prošli mjesec",
+      "topCategory": "Najveća kategorija troškova",
+      "biggestExpense": "Najveći pojedinačni trošak",
+      "goalsContributed": "Uplaćeno za ciljeve",
+      "goalsCompleted": "Ostvareni ciljevi",
+      "investingPnl": "Rezultat trgovanja"
+    }
   }
 }

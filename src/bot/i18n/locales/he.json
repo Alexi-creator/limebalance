@@ -65,5 +65,29 @@
       "income": "הכנסות (מפורט):"
     },
     "total": "סך הכול"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} העסקה נסגרה: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "משך: {{duration}}",
+      "entryExit": "כניסה: {{entry}} → יציאה: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 סיכום החודש — {{period}}",
+      "income": "הכנסה",
+      "expense": "הוצאה",
+      "net": "יתרה",
+      "savingsRate": "נחסך מההכנסה",
+      "vsPrevMonth": "לעומת החודש הקודם",
+      "topCategory": "קטגוריית ההוצאה הגדולה ביותר",
+      "biggestExpense": "ההוצאה הבודדת הגדולה ביותר",
+      "goalsContributed": "הופקד למטרות",
+      "goalsCompleted": "מטרות שהושגו",
+      "investingPnl": "תוצאת מסחר"
+    }
   }
 }

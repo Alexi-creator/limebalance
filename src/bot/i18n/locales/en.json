@@ -65,5 +65,29 @@
       "income": "Income (detailed):"
     },
     "total": "Total"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Trade closed: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Duration: {{duration}}",
+      "entryExit": "Entry: {{entry}} → Exit: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Month in review — {{period}}",
+      "income": "Income",
+      "expense": "Expense",
+      "net": "Net",
+      "savingsRate": "Saved of income",
+      "vsPrevMonth": "vs. previous month",
+      "topCategory": "Biggest spending category",
+      "biggestExpense": "Biggest single expense",
+      "goalsContributed": "Put toward goals",
+      "goalsCompleted": "Goals completed",
+      "investingPnl": "Trading result"
+    }
   }
 }

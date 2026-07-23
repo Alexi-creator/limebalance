@@ -65,5 +65,29 @@
       "income": "收入（明细）："
     },
     "total": "合计"
+  },
+  "push": {
+    "trade": {
+      "long": "多",
+      "short": "空",
+      "heading": "{{emoji}} 交易已平仓: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "持仓时长: {{duration}}",
+      "entryExit": "开仓: {{entry}} → 平仓: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 月度总结 — {{period}}",
+      "income": "收入",
+      "expense": "支出",
+      "net": "结余",
+      "savingsRate": "收入储蓄率",
+      "vsPrevMonth": "较上月",
+      "topCategory": "支出最多的类别",
+      "biggestExpense": "单笔最大支出",
+      "goalsContributed": "存入目标的金额",
+      "goalsCompleted": "已完成的目标",
+      "investingPnl": "交易结果"
+    }
   }
 }

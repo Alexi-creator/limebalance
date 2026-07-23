@@ -65,5 +65,29 @@
       "income": "Příjmy (podrobně):"
     },
     "total": "Celkem"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Pozice uzavřena: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Doba trvání: {{duration}}",
+      "entryExit": "Vstup: {{entry}} → Výstup: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Shrnutí měsíce — {{period}}",
+      "income": "Příjem",
+      "expense": "Výdaje",
+      "net": "Bilance",
+      "savingsRate": "Naspořeno z příjmu",
+      "vsPrevMonth": "oproti minulému měsíci",
+      "topCategory": "Největší výdajová kategorie",
+      "biggestExpense": "Největší jednotlivý výdaj",
+      "goalsContributed": "Vloženo do cílů",
+      "goalsCompleted": "Splněné cíle",
+      "investingPnl": "Výsledek obchodování"
+    }
   }
 }

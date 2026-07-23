@@ -65,5 +65,29 @@
       "income": "Доходи з деталізацією:"
     },
     "total": "Разом"
+  },
+  "push": {
+    "trade": {
+      "long": "Лонг",
+      "short": "Шорт",
+      "heading": "{{emoji}} Угоду закрито: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Тривалість: {{duration}}",
+      "entryExit": "Вхід: {{entry}} → Вихід: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Підсумки місяця — {{period}}",
+      "income": "Дохід",
+      "expense": "Витрати",
+      "net": "Баланс",
+      "savingsRate": "Заощаджено від доходу",
+      "vsPrevMonth": "порівняно з минулим місяцем",
+      "topCategory": "Найбільша категорія витрат",
+      "biggestExpense": "Найбільша окрема витрата",
+      "goalsContributed": "Відкладено на цілі",
+      "goalsCompleted": "Досягнуті цілі",
+      "investingPnl": "Результат торгівлі"
+    }
   }
 }

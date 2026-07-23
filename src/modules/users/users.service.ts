@@ -68,18 +68,25 @@ export class UsersService {
 
   // telegramUsername: undefined = leave as is, string/null = the current @username (users can
   // change or remove it, so it's refreshed whenever the caller has fresh Telegram data).
+  // languageCode: same idea for Telegram's `language_code` — kept fresh so proactive pushes (the
+  // monthly digest, trade-closed notifications) have a language to render in without a live ctx.
   async findOrCreateByTelegramId(
     telegramId: bigint,
     defaults?: UserDefaults,
     telegramUsername?: string | null,
+    languageCode?: string | null,
   ) {
     const existing = await this.prisma.user.findUnique({ where: { telegramId } });
     if (existing) {
+      const changes: Prisma.UserUpdateInput = {};
       if (telegramUsername !== undefined && telegramUsername !== existing.telegramUsername) {
-        const user = await this.prisma.user.update({
-          where: { id: existing.id },
-          data: { telegramUsername },
-        });
+        changes.telegramUsername = telegramUsername;
+      }
+      if (languageCode !== undefined && languageCode !== existing.languageCode) {
+        changes.languageCode = languageCode;
+      }
+      if (Object.keys(changes).length > 0) {
+        const user = await this.prisma.user.update({ where: { id: existing.id }, data: changes });
         return { user, isNew: false };
       }
       return { user: existing, isNew: false };
@@ -88,6 +95,7 @@ export class UsersService {
       data: {
         telegramId,
         ...(telegramUsername !== undefined ? { telegramUsername } : {}),
+        ...(languageCode !== undefined ? { languageCode } : {}),
         ...pickDefaults(defaults),
         subscription: FREE_SUBSCRIPTION,
       },

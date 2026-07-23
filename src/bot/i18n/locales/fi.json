@@ -65,5 +65,29 @@
       "income": "Tulot (eritelty):"
     },
     "total": "Yhteensä"
+  },
+  "push": {
+    "trade": {
+      "long": "Long",
+      "short": "Short",
+      "heading": "{{emoji}} Positio suljettu: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Kesto: {{duration}}",
+      "entryExit": "Sisääntulo: {{entry}} → Uloskäynti: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Kuukauden yhteenveto — {{period}}",
+      "income": "Tulot",
+      "expense": "Menot",
+      "net": "Saldo",
+      "savingsRate": "Säästetty tuloista",
+      "vsPrevMonth": "vs. edellinen kuukausi",
+      "topCategory": "Suurin kulukategoria",
+      "biggestExpense": "Suurin yksittäinen kulu",
+      "goalsContributed": "Säästetty tavoitteisiin",
+      "goalsCompleted": "Saavutetut tavoitteet",
+      "investingPnl": "Kaupankäyntitulos"
+    }
   }
 }

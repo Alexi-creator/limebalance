@@ -65,5 +65,29 @@
       "income": "수입 (상세):"
     },
     "total": "합계"
+  },
+  "push": {
+    "trade": {
+      "long": "롱",
+      "short": "숏",
+      "heading": "{{emoji}} 포지션 종료: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "기간: {{duration}}",
+      "entryExit": "진입: {{entry}} → 종료: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 월간 요약 — {{period}}",
+      "income": "수입",
+      "expense": "지출",
+      "net": "순액",
+      "savingsRate": "수입 대비 저축률",
+      "vsPrevMonth": "전월 대비",
+      "topCategory": "지출이 가장 많은 카테고리",
+      "biggestExpense": "최대 단일 지출",
+      "goalsContributed": "목표에 저축한 금액",
+      "goalsCompleted": "달성한 목표",
+      "investingPnl": "트레이딩 결과"
+    }
   }
 }

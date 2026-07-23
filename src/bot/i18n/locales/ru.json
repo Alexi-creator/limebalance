@@ -65,5 +65,29 @@
       "income": "Доходы с детализацией:"
     },
     "total": "Итого"
+  },
+  "push": {
+    "trade": {
+      "long": "Лонг",
+      "short": "Шорт",
+      "heading": "{{emoji}} Сделка закрыта: {{symbol}} ({{side}})",
+      "pnl": "PnL: {{pnl}}",
+      "roi": "ROI: {{roi}}",
+      "duration": "Длительность: {{duration}}",
+      "entryExit": "Вход: {{entry}} → Выход: {{exit}}"
+    },
+    "digest": {
+      "heading": "📊 Итоги месяца — {{period}}",
+      "income": "Доход",
+      "expense": "Расход",
+      "net": "Баланс",
+      "savingsRate": "Сохранено от дохода",
+      "vsPrevMonth": "к прошлому месяцу",
+      "topCategory": "Больше всего потратили на",
+      "biggestExpense": "Крупнейшая трата",
+      "goalsContributed": "Отложено на цели",
+      "goalsCompleted": "Цели достигнуты",
+      "investingPnl": "Результат по сделкам"
+    }
   }
 }
