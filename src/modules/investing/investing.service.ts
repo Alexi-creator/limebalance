@@ -154,20 +154,48 @@ export class InvestingService {
       this.prisma.position.count({ where }),
     ]);
 
+    // Only worth hitting the price cache when this page actually has an open position to price.
+    const prices = rows.some((p) => p.status === 'OPEN') ? await this.prices.getUsdPrices() : null;
+
     const items = await Promise.all(
       rows.map(async (p) => {
         const notional = Number(p.qty) * Number(p.avgEntryPrice);
         const leverage = p.leverage ? Number(p.leverage) : 1;
+        const currentPrice =
+          p.status === 'OPEN' && prices
+            ? this.prices.priceOf(this.baseAssetOf(p.symbol), prices)
+            : null;
+        const unrealizedPnl =
+          currentPrice !== null
+            ? round2(
+                computePnl(
+                  sideToDirection(p.side),
+                  Number(p.qty),
+                  Number(p.avgEntryPrice),
+                  currentPrice,
+                ),
+              )
+            : null;
         return {
           ...p,
           // Capital actually committed, in USDT — notional at entry price divided by leverage,
           // fees aside. 1x for spot/manual (no leverage).
           entryVolumeUsd: round2(notional / leverage),
           totalFeeUsd: await this.sumFees(p),
+          currentPrice,
+          unrealizedPnl,
         };
       }),
     );
     return { items, total };
+  }
+
+  // Position.symbol is a full trading pair ("BTCUSDT"), but PriceService.priceOf expects the
+  // bare asset ticker and appends "USDT" itself — peel it back off before looking up. Symbols
+  // that don't end in USDT (unmapped manual entries) are returned as-is and will simply miss.
+  private baseAssetOf(symbol: string): string {
+    const s = symbol.toUpperCase();
+    return s.endsWith('USDT') ? s.slice(0, -4) : s;
   }
 
   private buildPositionsWhere(userId: string, query: ListQuery) {

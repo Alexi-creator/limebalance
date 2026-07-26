@@ -118,6 +118,25 @@ export class PositionResponseDto {
   })
   closedPnl: string | null;
 
+  @ApiProperty({
+    example: 65200,
+    nullable: true,
+    description:
+      'Live market price while the position is OPEN, from Bybit spot tickers (60s cache). ' +
+      'Null once closed, or if the symbol has no USDT ticker (unmapped manual entries), or if ' +
+      'prices are temporarily unavailable.',
+  })
+  currentPrice: number | null;
+
+  @ApiProperty({
+    example: 599.75,
+    nullable: true,
+    description:
+      'Unrealized PnL in USDT against currentPrice, using the same sign convention as ' +
+      'closedPnl. Null under the same conditions as currentPrice, or once the position is closed.',
+  })
+  unrealizedPnl: number | null;
+
   @ApiProperty({ type: String, example: '10', nullable: true })
   leverage: string | null;
 

@@ -403,6 +403,107 @@ describe('InvestingService', () => {
 
       expect(prisma.position.findMany.mock.calls[0][0].take).toBe(200);
     });
+
+    it('prices an open long position against the live market and computes unrealized PnL', async () => {
+      prisma.position.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          source: 'bybit',
+          accountId: 'acc-1',
+          status: 'OPEN',
+          symbol: 'BTCUSDT',
+          category: 'linear',
+          side: 'Sell', // closing-side convention: Sell closes a long
+          qty: 1,
+          avgEntryPrice: 60000,
+          leverage: null,
+        },
+      ]);
+      prisma.position.count.mockResolvedValue(1);
+      const priceMap = new Map<string, number>();
+      prices.getUsdPrices.mockResolvedValue(priceMap);
+      prices.priceOf.mockImplementation((asset: string) => (asset === 'BTC' ? 65000 : null));
+
+      const result = await service.getPositions('u1', {});
+
+      // Symbol "BTCUSDT" is peeled down to the bare "BTC" ticker before the price lookup.
+      expect(prices.priceOf).toHaveBeenCalledWith('BTC', priceMap);
+      expect(result.items[0]).toMatchObject({ currentPrice: 65000, unrealizedPnl: 5000 });
+    });
+
+    it('prices an open short position with the opposite sign', async () => {
+      prisma.position.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          source: 'bybit',
+          accountId: 'acc-1',
+          status: 'OPEN',
+          symbol: 'BTCUSDT',
+          category: 'linear',
+          side: 'Buy', // closing-side convention: Buy closes a short
+          qty: 1,
+          avgEntryPrice: 60000,
+          leverage: null,
+        },
+      ]);
+      prisma.position.count.mockResolvedValue(1);
+      const priceMap = new Map<string, number>();
+      prices.getUsdPrices.mockResolvedValue(priceMap);
+      prices.priceOf.mockImplementation((asset: string) => (asset === 'BTC' ? 65000 : null));
+
+      const result = await service.getPositions('u1', {});
+
+      expect(result.items[0]).toMatchObject({ currentPrice: 65000, unrealizedPnl: -5000 });
+    });
+
+    it('leaves currentPrice/unrealizedPnl null for closed positions, and skips the price fetch entirely', async () => {
+      prisma.position.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          source: 'bybit',
+          accountId: 'acc-1',
+          status: 'CLOSED',
+          symbol: 'BTCUSDT',
+          category: 'linear',
+          side: 'Sell',
+          qty: 1,
+          avgEntryPrice: 60000,
+          avgExitPrice: 65000,
+          closedPnl: 5000,
+          leverage: null,
+        },
+      ]);
+      prisma.position.count.mockResolvedValue(1);
+
+      const result = await service.getPositions('u1', {});
+
+      expect(prices.getUsdPrices).not.toHaveBeenCalled();
+      expect(result.items[0]).toMatchObject({ currentPrice: null, unrealizedPnl: null });
+    });
+
+    it('leaves currentPrice/unrealizedPnl null when the symbol has no matching ticker or prices are unavailable', async () => {
+      prisma.position.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          source: 'manual',
+          accountId: null,
+          status: 'OPEN',
+          symbol: 'MYCOIN',
+          category: 'manual',
+          side: 'Sell',
+          qty: 1,
+          avgEntryPrice: 60000,
+          leverage: null,
+        },
+      ]);
+      prisma.position.count.mockResolvedValue(1);
+      prices.getUsdPrices.mockResolvedValue(new Map());
+      prices.priceOf.mockReturnValue(null);
+
+      const result = await service.getPositions('u1', {});
+
+      expect(result.items[0]).toMatchObject({ currentPrice: null, unrealizedPnl: null });
+    });
   });
 
   describe('getPositionsSummary', () => {
