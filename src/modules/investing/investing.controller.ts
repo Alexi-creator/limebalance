@@ -29,6 +29,7 @@ import {
   PositionListResponseDto,
   PositionNoteResponseDto,
   PositionResponseDto,
+  PositionSymbolsResponseDto,
   PositionsSummaryResponseDto,
   TradeExecutionListResponseDto,
 } from './dto/investing-response.dto';
@@ -152,6 +153,19 @@ export class InvestingController {
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
     });
+  }
+
+  @Get('positions/symbols')
+  @ApiOperation({
+    summary: 'Distinct symbols ever traded — for the Pair filter autocomplete',
+    description:
+      "Every symbol across all of this user's positions (any account/category/status), " +
+      'alphabetical. Not affected by the current filter selection — this lists possible values ' +
+      'to filter BY, not what the filter currently matches.',
+  })
+  @ApiOkResponse({ type: PositionSymbolsResponseDto })
+  async getPositionSymbols(@CurrentUser() user: { id: string }) {
+    return { items: await this.investingService.getPositionSymbols(user.id) };
   }
 
   @Get('positions/summary')

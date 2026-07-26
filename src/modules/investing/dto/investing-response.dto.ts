@@ -213,6 +213,16 @@ export class PositionListResponseDto {
   total: number;
 }
 
+export class PositionSymbolsResponseDto {
+  @ApiProperty({
+    type: [String],
+    example: ['BTCUSDT', 'ETHUSDT', 'SHIB1000USDT'],
+    description:
+      'Distinct symbols the user has ever traded, alphabetical — for a Pair filter autocomplete.',
+  })
+  items: string[];
+}
+
 export class PositionsSummaryResponseDto {
   @ApiProperty({
     example: 4820.55,

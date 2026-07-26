@@ -221,7 +221,9 @@ export class InvestingService {
     return {
       userId,
       ...(query.accountId ? { accountId: query.accountId } : {}),
-      ...(query.symbol ? { symbol: query.symbol.toUpperCase() } : {}),
+      // Partial match — symbols are always stored uppercased, so uppercasing the query is enough
+      // to make this case-insensitive without a Postgres `mode: 'insensitive'` (slower, no index).
+      ...(query.symbol ? { symbol: { contains: query.symbol.toUpperCase() } } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(query.category ? { category: query.category } : {}),
       // A closing-date filter is meaningless for an OPEN position (closedAt is null) — rather
@@ -279,6 +281,19 @@ export class InvestingService {
         closedPnl: r.closedPnl ? Number(r.closedPnl) : 0,
       })),
     };
+  }
+
+  // Distinct symbols the user has ever traded (any account/category/status) — for the diary's
+  // Pair filter autocomplete. Deliberately not scoped to the current filter selection: the point
+  // is to help pick a value for the symbol field, not to reflect what's already filtered.
+  async getPositionSymbols(userId: string): Promise<string[]> {
+    const rows = await this.prisma.position.findMany({
+      where: { userId },
+      select: { symbol: true },
+      distinct: ['symbol'],
+      orderBy: { symbol: 'asc' },
+    });
+    return rows.map((r) => r.symbol);
   }
 
   // Every fee (trading + funding) charged over the position's life, signed as Bybit reports it

@@ -264,7 +264,7 @@ describe('InvestingService', () => {
       expect(prisma.position.findMany).toHaveBeenCalledWith({
         where: {
           userId: 'u1',
-          symbol: 'BTCUSDT',
+          symbol: { contains: 'BTCUSDT' },
           OR: [{ status: 'OPEN' }, { closedAt: { gte: from, lte: undefined } }],
         },
         orderBy: [{ status: 'asc' }, { closedAt: 'desc' }, { openedAt: 'desc' }],
@@ -579,6 +579,26 @@ describe('InvestingService', () => {
     });
   });
 
+  describe('getPositionSymbols', () => {
+    it('returns distinct traded symbols, alphabetical, regardless of status/category/account', async () => {
+      prisma.position.findMany.mockResolvedValue([
+        { symbol: 'BTCUSDT' },
+        { symbol: 'ETHUSDT' },
+        { symbol: 'SHIB1000USDT' },
+      ]);
+
+      const result = await service.getPositionSymbols('u1');
+
+      expect(prisma.position.findMany).toHaveBeenCalledWith({
+        where: { userId: 'u1' },
+        select: { symbol: true },
+        distinct: ['symbol'],
+        orderBy: { symbol: 'asc' },
+      });
+      expect(result).toEqual(['BTCUSDT', 'ETHUSDT', 'SHIB1000USDT']);
+    });
+  });
+
   describe('getPositionsSummary', () => {
     it('sums closedPnl and the win/loss/breakeven split across the full filtered history', async () => {
       prisma.position.aggregate.mockResolvedValue({ _sum: { closedPnl: 4820.555 } });
@@ -630,7 +650,7 @@ describe('InvestingService', () => {
 
       const expectedWhere = {
         userId: 'u1',
-        symbol: 'BTCUSDT',
+        symbol: { contains: 'BTCUSDT' },
         status: 'CLOSED',
         category: 'linear',
         OR: [{ status: 'OPEN' }, { closedAt: { gte: from, lte: undefined } }],
@@ -700,7 +720,7 @@ describe('InvestingService', () => {
 
       expect(prisma.position.findMany.mock.calls[0][0].where).toEqual({
         userId: 'u1',
-        symbol: 'BTCUSDT',
+        symbol: { contains: 'BTCUSDT' },
         category: 'linear',
         status: 'CLOSED',
         OR: [{ status: 'OPEN' }, { closedAt: { gte: from, lte: undefined } }],
