@@ -48,8 +48,13 @@ export type BybitPositionRecord = {
   size: string;
   avgPrice: string;
   leverage: string;
+  // `createdTime` is when this position *slot* was first created on Bybit's side and can predate
+  // the current entry by months if the symbol was never fully flat in between — `openTime` is when
+  // the currently-held (non-zero) position actually started, which is what "opened" should mean.
+  // Older payloads may lack it, so callers should fall back to createdTime.
   createdTime: string;
   updatedTime: string;
+  openTime?: string;
   // Empty string when not set — never absent, never null.
   takeProfit: string;
   stopLoss: string;

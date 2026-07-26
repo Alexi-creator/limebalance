@@ -312,7 +312,10 @@ export class InvestingSyncService {
           qty: rec.size,
           avgEntryPrice: rec.avgPrice,
           leverage: rec.leverage || null,
-          openedAt: new Date(Number(rec.createdTime)),
+          // openTime is when the current (non-zero) position actually started; createdTime is the
+          // position slot's original creation and can be much older if the symbol was never fully
+          // flat since then (see BybitPositionRecord).
+          openedAt: new Date(Number(rec.openTime || rec.createdTime)),
           takeProfitPrice: rec.takeProfit || null,
           stopLossPrice: rec.stopLoss || null,
           raw: rec as Prisma.InputJsonValue,

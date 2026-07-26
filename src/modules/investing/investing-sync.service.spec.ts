@@ -64,6 +64,7 @@ const openPositionRecord = (over: Record<string, string> = {}) => ({
   leverage: '10',
   createdTime: '1750000000000',
   updatedTime: '1750000000000',
+  openTime: '1750000000000',
   ...over,
 });
 
@@ -207,6 +208,33 @@ describe('InvestingSyncService', () => {
         qty: '0.5',
         avgEntryPrice: '64000',
       }),
+    });
+  });
+
+  it('uses openTime rather than createdTime for a freshly (re)opened position', async () => {
+    bybit.getOpenPositions.mockResolvedValue({
+      list: [openPositionRecord({ createdTime: '1710000000000', openTime: '1750000000000' })],
+      nextPageCursor: '',
+    });
+
+    await service.syncAccount(makeAccount());
+
+    expect(prisma.position.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ openedAt: new Date(1750000000000) }),
+    });
+  });
+
+  it('falls back to createdTime when openTime is absent from the payload', async () => {
+    const { openTime: _openTime, ...withoutOpenTime } = openPositionRecord();
+    bybit.getOpenPositions.mockResolvedValue({
+      list: [withoutOpenTime],
+      nextPageCursor: '',
+    });
+
+    await service.syncAccount(makeAccount());
+
+    expect(prisma.position.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ openedAt: new Date(1750000000000) }),
     });
   });
 
