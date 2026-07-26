@@ -122,9 +122,11 @@ export class PositionResponseDto {
     example: 65200,
     nullable: true,
     description:
-      'Live market price while the position is OPEN, from Bybit spot tickers (60s cache). ' +
-      'Null once closed, or if the symbol has no USDT ticker (unmapped manual entries), or if ' +
-      'prices are temporarily unavailable.',
+      'Live market price while the position is OPEN (60s cache): linear positions match their ' +
+      'own symbol directly against Bybit’s linear tickers (correct even for multiplier ' +
+      'tickers like SHIB1000USDT), spot/manual against the spot tickers. Null once closed, if ' +
+      'the symbol has no matching ticker (unmapped manual entries), or if prices are temporarily ' +
+      'unavailable.',
   })
   currentPrice: number | null;
 

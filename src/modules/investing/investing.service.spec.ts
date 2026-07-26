@@ -53,7 +53,7 @@ describe('InvestingService', () => {
   };
   let bybit: { validateKey: jest.Mock };
   let sync: { syncAccount: jest.Mock; syncAccountById: jest.Mock };
-  let prices: { getUsdPrices: jest.Mock; priceOf: jest.Mock };
+  let prices: { getUsdPrices: jest.Mock; getLinearPrices: jest.Mock; priceOf: jest.Mock };
   let configGet: jest.Mock;
 
   beforeEach(async () => {
@@ -93,7 +93,7 @@ describe('InvestingService', () => {
     };
     bybit = { validateKey: jest.fn().mockResolvedValue({ readOnly: true }) };
     sync = { syncAccount: jest.fn(), syncAccountById: jest.fn().mockResolvedValue(undefined) };
-    prices = { getUsdPrices: jest.fn(), priceOf: jest.fn() };
+    prices = { getUsdPrices: jest.fn(), getLinearPrices: jest.fn(), priceOf: jest.fn() };
     configGet = jest.fn().mockReturnValue(KEY);
 
     const module = await Test.createTestingModule({
@@ -404,7 +404,7 @@ describe('InvestingService', () => {
       expect(prisma.position.findMany.mock.calls[0][0].take).toBe(200);
     });
 
-    it('prices an open long position against the live market and computes unrealized PnL', async () => {
+    it('prices an open linear position directly by symbol from the linear feed (long) and computes unrealized PnL', async () => {
       prisma.position.findMany.mockResolvedValue([
         {
           id: 'p1',
@@ -420,18 +420,17 @@ describe('InvestingService', () => {
         },
       ]);
       prisma.position.count.mockResolvedValue(1);
-      const priceMap = new Map<string, number>();
-      prices.getUsdPrices.mockResolvedValue(priceMap);
-      prices.priceOf.mockImplementation((asset: string) => (asset === 'BTC' ? 65000 : null));
+      prices.getLinearPrices.mockResolvedValue(new Map([['BTCUSDT', 65000]]));
 
       const result = await service.getPositions('u1', {});
 
-      // Symbol "BTCUSDT" is peeled down to the bare "BTC" ticker before the price lookup.
-      expect(prices.priceOf).toHaveBeenCalledWith('BTC', priceMap);
+      // Direct symbol match on the linear feed — no bare-asset derivation, no priceOf involved.
+      expect(prices.getUsdPrices).not.toHaveBeenCalled();
+      expect(prices.priceOf).not.toHaveBeenCalled();
       expect(result.items[0]).toMatchObject({ currentPrice: 65000, unrealizedPnl: 5000 });
     });
 
-    it('prices an open short position with the opposite sign', async () => {
+    it('prices an open short linear position with the opposite PnL sign', async () => {
       prisma.position.findMany.mockResolvedValue([
         {
           id: 'p1',
@@ -447,16 +446,89 @@ describe('InvestingService', () => {
         },
       ]);
       prisma.position.count.mockResolvedValue(1);
-      const priceMap = new Map<string, number>();
-      prices.getUsdPrices.mockResolvedValue(priceMap);
-      prices.priceOf.mockImplementation((asset: string) => (asset === 'BTC' ? 65000 : null));
+      prices.getLinearPrices.mockResolvedValue(new Map([['BTCUSDT', 65000]]));
 
       const result = await service.getPositions('u1', {});
 
       expect(result.items[0]).toMatchObject({ currentPrice: 65000, unrealizedPnl: -5000 });
     });
 
-    it('leaves currentPrice/unrealizedPnl null for closed positions, and skips the price fetch entirely', async () => {
+    it('prices a multiplier-ticker linear symbol (e.g. SHIB1000USDT) correctly by matching it as-is, not by deriving a bare asset', async () => {
+      prisma.position.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          source: 'bybit',
+          accountId: 'acc-1',
+          status: 'OPEN',
+          symbol: 'SHIB1000USDT',
+          category: 'linear',
+          side: 'Sell',
+          qty: 3565,
+          avgEntryPrice: 0.005738,
+          leverage: 2,
+        },
+      ]);
+      prisma.position.count.mockResolvedValue(1);
+      prices.getLinearPrices.mockResolvedValue(new Map([['SHIB1000USDT', 0.00654]]));
+
+      const result = await service.getPositions('u1', {});
+
+      expect(result.items[0].currentPrice).toBe(0.00654);
+      expect(result.items[0].unrealizedPnl).not.toBeNull();
+    });
+
+    it('prices an open spot position directly by symbol from the spot feed', async () => {
+      prisma.position.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          source: 'bybit',
+          accountId: 'acc-1',
+          status: 'OPEN',
+          symbol: 'BTCUSDT',
+          category: 'spot',
+          side: 'Sell',
+          qty: 1,
+          avgEntryPrice: 60000,
+          leverage: null,
+        },
+      ]);
+      prisma.position.count.mockResolvedValue(1);
+      prices.getUsdPrices.mockResolvedValue(new Map([['BTCUSDT', 65000]]));
+
+      const result = await service.getPositions('u1', {});
+
+      expect(prices.getLinearPrices).not.toHaveBeenCalled();
+      expect(prices.priceOf).not.toHaveBeenCalled();
+      expect(result.items[0]).toMatchObject({ currentPrice: 65000, unrealizedPnl: 5000 });
+    });
+
+    it('prices an open manual position by bare asset ticker (still via priceOf, since the symbol is user-typed)', async () => {
+      prisma.position.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          source: 'manual',
+          accountId: null,
+          status: 'OPEN',
+          symbol: 'BTCUSDT',
+          category: 'manual',
+          side: 'Sell',
+          qty: 1,
+          avgEntryPrice: 60000,
+          leverage: null,
+        },
+      ]);
+      prisma.position.count.mockResolvedValue(1);
+      const priceMap = new Map<string, number>();
+      prices.getUsdPrices.mockResolvedValue(priceMap);
+      prices.priceOf.mockImplementation((asset: string) => (asset === 'BTC' ? 65000 : null));
+
+      const result = await service.getPositions('u1', {});
+
+      expect(prices.priceOf).toHaveBeenCalledWith('BTC', priceMap);
+      expect(result.items[0]).toMatchObject({ currentPrice: 65000, unrealizedPnl: 5000 });
+    });
+
+    it('leaves currentPrice/unrealizedPnl null for closed positions, and skips price fetches entirely', async () => {
       prisma.position.findMany.mockResolvedValue([
         {
           id: 'p1',
@@ -478,6 +550,7 @@ describe('InvestingService', () => {
       const result = await service.getPositions('u1', {});
 
       expect(prices.getUsdPrices).not.toHaveBeenCalled();
+      expect(prices.getLinearPrices).not.toHaveBeenCalled();
       expect(result.items[0]).toMatchObject({ currentPrice: null, unrealizedPnl: null });
     });
 

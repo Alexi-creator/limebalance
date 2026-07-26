@@ -154,17 +154,21 @@ export class InvestingService {
       this.prisma.position.count({ where }),
     ]);
 
-    // Only worth hitting the price cache when this page actually has an open position to price.
-    const prices = rows.some((p) => p.status === 'OPEN') ? await this.prices.getUsdPrices() : null;
+    // Only worth hitting a price cache when this page actually has an open position that needs
+    // it, and only the feed(s) it needs — linear positions price off their own feed (see
+    // priceFor below), spot/manual off the bare-asset one.
+    const openRows = rows.filter((p) => p.status === 'OPEN');
+    const [spotPrices, linearPrices] = await Promise.all([
+      openRows.some((p) => p.category !== 'linear') ? this.prices.getUsdPrices() : null,
+      openRows.some((p) => p.category === 'linear') ? this.prices.getLinearPrices() : null,
+    ]);
 
     const items = await Promise.all(
       rows.map(async (p) => {
         const notional = Number(p.qty) * Number(p.avgEntryPrice);
         const leverage = p.leverage ? Number(p.leverage) : 1;
         const currentPrice =
-          p.status === 'OPEN' && prices
-            ? this.prices.priceOf(this.baseAssetOf(p.symbol), prices)
-            : null;
+          p.status === 'OPEN' ? this.priceFor(p, spotPrices, linearPrices) : null;
         const unrealizedPnl =
           currentPrice !== null
             ? round2(
@@ -190,9 +194,24 @@ export class InvestingService {
     return { items, total };
   }
 
-  // Position.symbol is a full trading pair ("BTCUSDT"), but PriceService.priceOf expects the
-  // bare asset ticker and appends "USDT" itself — peel it back off before looking up. Symbols
-  // that don't end in USDT (unmapped manual entries) are returned as-is and will simply miss.
+  // Synced positions (spot/linear) carry the exchange's own trading-pair symbol, which is
+  // already the exact key its ticker feed uses — including oddities like SHIB1000USDT, where
+  // guessing a bare asset ticker back out would silently misprice (see getLinearTickers). So
+  // those look the symbol up directly, one map per category. Manual entries have no such
+  // guarantee — symbol is whatever the user typed — so that's the one case still routed through
+  // priceOf's "bare asset + USDT" convention, same as Holdings.
+  private priceFor(
+    position: { symbol: string; category: string },
+    spotPrices: Map<string, number> | null,
+    linearPrices: Map<string, number> | null,
+  ): number | null {
+    if (position.category === 'linear') return linearPrices?.get(position.symbol) ?? null;
+    if (position.category === 'spot') return spotPrices?.get(position.symbol) ?? null;
+    return spotPrices ? this.prices.priceOf(this.baseAssetOf(position.symbol), spotPrices) : null;
+  }
+
+  // Peels the quote currency off a bare-ish symbol for the manual-entry price lookup above —
+  // PriceService.priceOf expects just the asset ("BTC") and appends "USDT" itself.
   private baseAssetOf(symbol: string): string {
     const s = symbol.toUpperCase();
     return s.endsWith('USDT') ? s.slice(0, -4) : s;

@@ -118,9 +118,24 @@ export class BybitClient {
     return this.get(creds, '/v5/position/list', { limit: 200, ...params });
   }
 
-  // Public market data — no API key needed. Used to value manual holdings.
+  // Public market data — no API key needed. Used to value manual holdings and manual/spot
+  // positions (looked up by bare asset ticker — see PriceService.priceOf).
   async getSpotTickers(): Promise<{ symbol: string; lastPrice: string }[]> {
-    const res = await fetch(`${this.baseUrl}/v5/market/tickers?category=spot`);
+    return this.getTickers('spot');
+  }
+
+  // Public market data — no API key needed. Unlike spot, callers match linear positions by
+  // their exact `symbol` (see PriceService.getLinearPrices): Bybit's own multiplier tickers
+  // (e.g. SHIB1000USDT quotes the price of 1000 SHIB, not 1) make deriving a bare asset ticker
+  // from the symbol unreliable, and inconsistent besides — some multipliers prefix the asset
+  // (1000PEPEUSDT), others suffix it (SHIB1000USDT). Reading `lastPrice` straight off this feed
+  // by the same symbol sidesteps that entirely, since it's already quoted the same way.
+  async getLinearTickers(): Promise<{ symbol: string; lastPrice: string }[]> {
+    return this.getTickers('linear');
+  }
+
+  private async getTickers(category: string): Promise<{ symbol: string; lastPrice: string }[]> {
+    const res = await fetch(`${this.baseUrl}/v5/market/tickers?category=${category}`);
     if (!res.ok) throw new Error(`Bybit HTTP ${res.status} on /v5/market/tickers`);
     const body = (await res.json()) as {
       retCode: number;
