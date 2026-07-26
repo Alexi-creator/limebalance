@@ -1,4 +1,4 @@
-import { computeSpotPositions, type SpotFill, splitSymbol } from './spot-fifo.util';
+import { computeSpotPositions, type SpotFill, splitSymbol } from './spot-lifo.util';
 
 let seq = 0;
 const fill = (over: Partial<SpotFill>): SpotFill => ({
@@ -72,36 +72,36 @@ describe('computeSpotPositions', () => {
     ]);
   });
 
-  it('closes lots FIFO one at a time, each slice keeping its own lot entry price', () => {
+  it('closes lots LIFO one at a time, each slice keeping its own lot entry price', () => {
     const buy1 = fill({ side: 'Buy', qty: 1, price: 100 });
     const buy2 = fill({ side: 'Buy', qty: 1, price: 200 });
     const sell = fill({ side: 'Sell', qty: 1.5, price: 300 });
     const { closed, open } = computeSpotPositions([buy1, buy2, sell]);
 
     expect(closed).toHaveLength(2);
-    // Lot 1 (oldest) is fully drained by this sell.
+    // Lot 2 (newest) is fully drained by this sell first.
     expect(closed[0]).toMatchObject({
-      lotKey: buy1.execId,
+      lotKey: buy2.execId,
       closesLot: true,
       qty: 1,
-      avgEntryPrice: 100,
-      closedPnl: 200,
+      avgEntryPrice: 200,
+      closedPnl: 100,
     });
-    // Lot 2 is only half-drained — it stays open with the remainder.
+    // Lot 1 (oldest) is only half-drained — it stays open with the remainder.
     expect(closed[1]).toMatchObject({
-      lotKey: buy2.execId,
+      lotKey: buy1.execId,
       closesLot: false,
       qty: 0.5,
-      avgEntryPrice: 200,
-      closedPnl: 50,
+      avgEntryPrice: 100,
+      closedPnl: 100,
     });
     expect(open).toEqual([
       {
-        lotKey: buy2.execId,
+        lotKey: buy1.execId,
         symbol: 'BTCUSDT',
         qty: 0.5,
-        avgEntryPrice: 200,
-        openedAt: buy2.execTime,
+        avgEntryPrice: 100,
+        openedAt: buy1.execTime,
       },
     ]);
   });

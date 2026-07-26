@@ -7,7 +7,7 @@ import { BybitClient, type BybitCredentials } from './bybit.client';
 import { decryptSecret } from './crypto.util';
 import { deriveLinearOpenedAt } from './linear-fifo.util';
 import { flipSide } from './side.util';
-import { computeSpotPositions } from './spot-fifo.util';
+import { computeSpotPositions } from './spot-lifo.util';
 import { TradeCloseNotifierService } from './trade-close-notifier.service';
 
 // Bybit limits one range query to 7 days; we step through history in such windows.
@@ -15,7 +15,7 @@ const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 // Re-scan a little before the cursor so records landing exactly on the boundary are never
 // skipped; upserts make the overlap harmless.
 const OVERLAP_MS = 60 * 1000;
-// Closed PnL exists only for derivatives; spot PnL is derived from fills (see spot-fifo.util).
+// Closed PnL exists only for derivatives; spot PnL is derived from fills (see spot-lifo.util).
 const PNL_CATEGORY = 'linear';
 const EXECUTION_CATEGORIES = ['linear', 'spot'];
 
@@ -210,9 +210,10 @@ export class InvestingSyncService {
 
   // Bybit reports no realized PnL for spot and no live "position" endpoint either (spot holdings
   // are just a balance) — both closed round trips and the currently open remainder are derived
-  // from the fills by FIFO matching, one row per BUY fill (not merged per symbol) so each
-  // purchase is its own diary entry. Recomputed from the full fill history on every sync,
-  // stateless and idempotent: every row has a deterministic orderId, so re-runs upsert in place.
+  // from the fills by LIFO matching (see spot-lifo.util for why LIFO over FIFO), one row per BUY
+  // fill (not merged per symbol) so each purchase is its own diary entry. Recomputed from the
+  // full fill history on every sync, stateless and idempotent: every row has a deterministic
+  // orderId, so re-runs upsert in place.
   private async rebuildSpotPositions(account: ExchangeAccount) {
     const fills = await this.prisma.tradeExecution.findMany({
       where: { accountId: account.id, category: 'spot' },
@@ -259,7 +260,10 @@ export class InvestingSyncService {
       });
     }
 
-    // One row per still-unsold buy lot — each purchase is its own open diary entry.
+    // One row per still-unsold buy lot — each purchase is its own open diary entry. Exit fields
+    // are explicitly nulled: if this same lotKey was CLOSED on a previous run (e.g. the FIFO→LIFO
+    // switch reshuffled which lot a sell drains), the row must not keep stale avgExitPrice/
+    // closedPnl/closedAt sitting alongside a freshly-flipped OPEN status.
     for (const lot of open) {
       const orderId = `spot-open:${lot.lotKey}`;
       const data = {
@@ -270,6 +274,9 @@ export class InvestingSyncService {
         side: 'Sell',
         qty: lot.qty,
         avgEntryPrice: lot.avgEntryPrice,
+        avgExitPrice: null,
+        closedPnl: null,
+        closedAt: null,
         openedAt: lot.openedAt,
       };
       await this.prisma.position.upsert({

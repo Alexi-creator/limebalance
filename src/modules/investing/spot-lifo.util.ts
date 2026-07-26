@@ -1,9 +1,13 @@
 // Bybit reports no realized PnL for spot — only individual fills. Each BUY fill is its own lot
 // and its own diary entry (not merged with other buys of the same coin): a SELL consumes the
-// oldest lots first (FIFO), and each (lot, sell) pairing becomes one closed slice. A lot that's
-// fully drained in one shot has its OPEN row flipped to CLOSED in place (same row, so notes
-// survive); a lot only partially nibbled stays OPEN with a shrunk qty, and the nibble itself
-// becomes its own separate closed row. Lots never touched by a sell are still open right now.
+// newest lots first (LIFO), and each (lot, sell) pairing becomes one closed slice. LIFO over
+// FIFO because a spot wallet is one fungible balance — there's no way to know which literal
+// coins a sell drew from, so "which purchase is this still open lot" is a modeling choice either
+// way. LIFO matches how users actually think about it here: the most recent buy is the one still
+// sitting unsold, not the oldest. A lot that's fully drained in one shot has its OPEN row flipped
+// to CLOSED in place (same row, so notes survive); a lot only partially nibbled stays OPEN with a
+// shrunk qty, and the nibble itself becomes its own separate closed row. Lots never touched by a
+// sell are still open right now.
 
 export type SpotFill = {
   execId: string;
@@ -46,7 +50,7 @@ export type SpotOpenLot = {
   openedAt: Date;
 };
 
-export type SpotFifoResult = { closed: SpotClosedSlice[]; open: SpotOpenLot[] };
+export type SpotLifoResult = { closed: SpotClosedSlice[]; open: SpotOpenLot[] };
 
 // Only dollar-quoted pairs take part in PnL matching — for them the numbers mean USD like the
 // rest of the diary. Other quotes (BTC-, ETH-pairs) are stored as fills but not matched.
@@ -64,8 +68,8 @@ export function splitSymbol(symbol: string): { base: string; quote: string } | n
 }
 
 // Fills must come in chronological order (oldest first) covering the account's whole history —
-// FIFO state is rebuilt from scratch on every call, which keeps the computation stateless.
-export function computeSpotPositions(fills: SpotFill[]): SpotFifoResult {
+// lot state is rebuilt from scratch on every call, which keeps the computation stateless.
+export function computeSpotPositions(fills: SpotFill[]): SpotLifoResult {
   const bySymbol = new Map<string, SpotFill[]>();
   for (const fill of fills) {
     if (!splitSymbol(fill.symbol)) continue;
@@ -91,12 +95,12 @@ export function computeSpotPositions(fills: SpotFill[]): SpotFifoResult {
         continue;
       }
 
-      // Sell: consume the oldest lots one at a time, emitting one closed slice per lot touched.
+      // Sell: consume the newest lots first (LIFO), emitting one closed slice per lot touched.
       // Coins sold beyond what any recorded lot covers (deposits, pre-history) are simply not
       // covered — the excess request just goes unmatched once lots run out.
       let remaining = fill.qty;
       while (remaining > EPS && lots.length) {
-        const lot = lots[0];
+        const lot = lots[lots.length - 1];
         const take = Math.min(lot.qty, remaining);
         const closesLot = take >= lot.qty - EPS;
         // A sell fee in the quote currency comes straight out of the proceeds; attribute it to
@@ -118,7 +122,7 @@ export function computeSpotPositions(fills: SpotFill[]): SpotFifoResult {
 
         lot.qty -= take;
         remaining -= take;
-        if (lot.qty <= EPS) lots.shift();
+        if (lot.qty <= EPS) lots.pop();
       }
     }
 

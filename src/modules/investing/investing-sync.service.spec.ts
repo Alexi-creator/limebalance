@@ -453,6 +453,77 @@ describe('InvestingSyncService', () => {
     );
   });
 
+  it('closes the newest lot first on a sell spanning multiple lots (LIFO)', async () => {
+    const buy1 = {
+      execId: 'b1',
+      symbol: 'BTCUSDT',
+      side: 'Buy',
+      price: 100,
+      qty: 1,
+      fee: 0,
+      feeCurrency: null,
+      execTime: new Date('2026-07-01T00:00:00Z'),
+    };
+    const buy2 = { ...buy1, execId: 'b2', price: 200, execTime: new Date('2026-07-05T00:00:00Z') };
+    const sell = {
+      ...buy1,
+      execId: 's1',
+      side: 'Sell',
+      qty: 1,
+      price: 300,
+      execTime: new Date('2026-07-10T00:00:00Z'),
+    };
+    prisma.tradeExecution.findMany.mockResolvedValue([buy1, buy2, sell]);
+
+    await service.syncAccount(makeAccount());
+
+    // buy2 (newer, $200) is what the sell drains and closes — not buy1 ($100), the older one.
+    expect(prisma.position.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { accountId_orderId: { accountId: 'acc-1', orderId: 'spot-open:b2' } },
+        update: expect.objectContaining({ status: 'CLOSED', closedPnl: 100 }),
+      }),
+    );
+    // buy1 is untouched, still open at its original quantity.
+    expect(prisma.position.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { accountId_orderId: { accountId: 'acc-1', orderId: 'spot-open:b1' } },
+        update: expect.objectContaining({ status: 'OPEN', qty: 1, avgExitPrice: null }),
+      }),
+    );
+  });
+
+  it("clears a lot's stale exit fields when a resync flips it back from CLOSED to OPEN", async () => {
+    // Simulates the FIFO→LIFO switch: this lot was closed on a previous run, but this run's
+    // fills only cover a buy — nothing here closes it, so it must come back fully OPEN, not
+    // OPEN-with-leftover avgExitPrice/closedPnl/closedAt from before.
+    const buy = {
+      execId: 'b1',
+      symbol: 'BTCUSDT',
+      side: 'Buy',
+      price: 100,
+      qty: 1,
+      fee: 0,
+      feeCurrency: null,
+      execTime: new Date('2026-07-01T00:00:00Z'),
+    };
+    prisma.tradeExecution.findMany.mockResolvedValue([buy]);
+
+    await service.syncAccount(makeAccount());
+
+    expect(prisma.position.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { accountId_orderId: { accountId: 'acc-1', orderId: 'spot-open:b1' } },
+        update: expect.objectContaining({
+          status: 'OPEN',
+          avgExitPrice: null,
+          closedPnl: null,
+          closedAt: null,
+        }),
+      }),
+    );
+  });
+
   it('marks the account ERROR with the reason when the sync fails, and rethrows', async () => {
     bybit.getClosedPnl.mockRejectedValue(new Error('rate limited'));
 
