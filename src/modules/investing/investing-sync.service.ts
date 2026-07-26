@@ -306,6 +306,8 @@ export class InvestingSyncService {
           avgEntryPrice: rec.avgPrice,
           leverage: rec.leverage || null,
           openedAt: new Date(Number(rec.createdTime)),
+          takeProfitPrice: rec.takeProfit || null,
+          stopLossPrice: rec.stopLoss || null,
           raw: rec as Prisma.InputJsonValue,
         };
 

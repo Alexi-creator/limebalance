@@ -210,6 +210,32 @@ describe('InvestingSyncService', () => {
     });
   });
 
+  it("carries take-profit/stop-loss over from Bybit's live position list", async () => {
+    bybit.getOpenPositions.mockResolvedValue({
+      list: [openPositionRecord({ takeProfit: '68000', stopLoss: '62000' })],
+      nextPageCursor: '',
+    });
+
+    await service.syncAccount(makeAccount());
+
+    expect(prisma.position.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ takeProfitPrice: '68000', stopLossPrice: '62000' }),
+    });
+  });
+
+  it('treats an empty take-profit/stop-loss string (Bybit convention for "not set") as null', async () => {
+    bybit.getOpenPositions.mockResolvedValue({
+      list: [openPositionRecord({ takeProfit: '', stopLoss: '' })],
+      nextPageCursor: '',
+    });
+
+    await service.syncAccount(makeAccount());
+
+    expect(prisma.position.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ takeProfitPrice: null, stopLossPrice: null }),
+    });
+  });
+
   it('updates the existing OPEN row for a symbol instead of duplicating it', async () => {
     prisma.position.findFirst.mockResolvedValue({ id: 'open-row-1' });
     bybit.getOpenPositions.mockResolvedValue({

@@ -803,6 +803,52 @@ describe('InvestingService', () => {
       expect(prisma.position.create.mock.calls[1][0].data.closedPnl).toBe(185.5);
     });
 
+    it('stores hand-entered take-profit/stop-loss on create, null when omitted', async () => {
+      prisma.position.create.mockResolvedValue({});
+
+      await service.addManualPosition('u1', {
+        symbol: 'BTCUSDT',
+        direction: 'long',
+        qty: 0.5,
+        entryPrice: 64000,
+        takeProfitPrice: 68000,
+        stopLossPrice: 62000,
+      });
+      expect(prisma.position.create.mock.calls[0][0].data).toMatchObject({
+        takeProfitPrice: 68000,
+        stopLossPrice: 62000,
+      });
+
+      await service.addManualPosition('u1', {
+        symbol: 'BTCUSDT',
+        direction: 'long',
+        qty: 0.5,
+        entryPrice: 64000,
+      });
+      expect(prisma.position.create.mock.calls[1][0].data).toMatchObject({
+        takeProfitPrice: null,
+        stopLossPrice: null,
+      });
+    });
+
+    it('only touches take-profit/stop-loss on update when explicitly provided', async () => {
+      prisma.position.findFirst.mockResolvedValue({
+        id: 'p1',
+        source: 'manual',
+        status: 'OPEN',
+        side: 'Sell',
+        qty: 1,
+        avgEntryPrice: 100,
+        avgExitPrice: null,
+        closedAt: null,
+      });
+      prisma.position.update.mockResolvedValue({});
+
+      await service.updateManualPosition('u1', 'p1', { takeProfitPrice: 120 });
+      expect(prisma.position.update.mock.calls[0][0].data).toMatchObject({ takeProfitPrice: 120 });
+      expect(prisma.position.update.mock.calls[0][0].data).not.toHaveProperty('stopLossPrice');
+    });
+
     it('recomputes PnL on update only when trade inputs change', async () => {
       prisma.position.findFirst.mockResolvedValue({
         id: 'p1',

@@ -366,6 +366,8 @@ export class InvestingService {
             ? (dto.closedPnl ?? computePnl(dto.direction, dto.qty, dto.entryPrice, exitPrice))
             : null,
         leverage: dto.leverage ?? null,
+        takeProfitPrice: dto.takeProfitPrice ?? null,
+        stopLossPrice: dto.stopLossPrice ?? null,
         openedAt: dto.openedAt ?? null,
         closedAt: closedAt ?? null,
         raw: dto.venue ? { venue: dto.venue } : undefined,
@@ -421,6 +423,8 @@ export class InvestingService {
         ...(dto.exitPrice !== undefined ? { avgExitPrice: dto.exitPrice } : {}),
         ...(closedPnl !== undefined ? { closedPnl } : {}),
         ...(dto.leverage !== undefined ? { leverage: dto.leverage } : {}),
+        ...(dto.takeProfitPrice !== undefined ? { takeProfitPrice: dto.takeProfitPrice } : {}),
+        ...(dto.stopLossPrice !== undefined ? { stopLossPrice: dto.stopLossPrice } : {}),
         ...(dto.openedAt !== undefined ? { openedAt: dto.openedAt } : {}),
         ...(dto.closedAt !== undefined ? { closedAt: dto.closedAt } : {}),
         // A still-open manual entry flips to CLOSED the moment both closing fields resolve;

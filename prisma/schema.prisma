@@ -394,6 +394,10 @@ model Position {
   // while open.
   closedPnl     Decimal?       @map("closed_pnl") @db.Decimal(30, 12)
   leverage      Decimal?       @db.Decimal(10, 2)
+  // Synced from Bybit's live position list for linear (NULL if not set there, or once closed —
+  // kept as the last known value rather than cleared). Manual entries set it by hand.
+  takeProfitPrice Decimal?     @map("take_profit_price") @db.Decimal(30, 12)
+  stopLossPrice   Decimal?     @map("stop_loss_price") @db.Decimal(30, 12)
   // Bybit's closed-pnl records carry no open time. Spot is derived by FIFO over the fills
   // (spot-fifo.util), linear by matching closing qty against opening fills (linear-fifo.util) —
   // NULL there only when the opening fills predate the synced history. Manual entries may set it.

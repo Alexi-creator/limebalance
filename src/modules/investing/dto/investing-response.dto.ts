@@ -144,6 +144,25 @@ export class PositionResponseDto {
 
   @ApiProperty({
     type: String,
+    example: '68000',
+    nullable: true,
+    description:
+      "Take-profit price. For synced linear positions, comes straight from Bybit's live " +
+      'position list (null if not set there — kept as the last known value once closed, not ' +
+      'cleared). For manual entries, set by hand.',
+  })
+  takeProfitPrice: string | null;
+
+  @ApiProperty({
+    type: String,
+    example: '62000',
+    nullable: true,
+    description: 'Stop-loss price — same source/rules as takeProfitPrice.',
+  })
+  stopLossPrice: string | null;
+
+  @ApiProperty({
+    type: String,
     format: 'date-time',
     nullable: true,
     description:

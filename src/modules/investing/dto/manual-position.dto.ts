@@ -56,6 +56,18 @@ export class CreateManualPositionDto {
   @IsPositive()
   leverage?: number;
 
+  @ApiPropertyOptional({ example: 68000, description: 'Planned take-profit price' })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  takeProfitPrice?: number;
+
+  @ApiPropertyOptional({ example: 62000, description: 'Planned stop-loss price' })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  stopLossPrice?: number;
+
   @ApiPropertyOptional({
     example: '2026-07-10T09:00:00Z',
     description: 'When the position was opened',
@@ -139,6 +151,18 @@ export class UpdateManualPositionDto {
   @IsNumber()
   @IsPositive()
   leverage?: number;
+
+  @ApiPropertyOptional({ example: 68000, description: 'Planned take-profit price' })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  takeProfitPrice?: number;
+
+  @ApiPropertyOptional({ example: 62000, description: 'Planned stop-loss price' })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  stopLossPrice?: number;
 
   @ApiPropertyOptional({ example: '2026-07-10T09:00:00Z' })
   @IsOptional()

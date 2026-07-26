@@ -50,6 +50,9 @@ export type BybitPositionRecord = {
   leverage: string;
   createdTime: string;
   updatedTime: string;
+  // Empty string when not set — never absent, never null.
+  takeProfit: string;
+  stopLoss: string;
   [key: string]: unknown;
 };
 
