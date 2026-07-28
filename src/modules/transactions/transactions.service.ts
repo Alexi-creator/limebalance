@@ -148,30 +148,37 @@ export class TransactionsService {
     const incomeRows = toRows(incomeGroups);
     const expenseRows = toRows(expenseGroups);
 
-    // In USD and in the base currency — with a spread adjustment for cross-currency rows
-    // (income ×1−spread, expense ×1+spread); single-currency rows are taken as-is.
+    // Computed once, in USD — with a spread adjustment for cross-currency rows (income ×1−spread,
+    // expense ×1+spread; single-currency rows taken as-is) — then converted to the base currency
+    // as a single number. `balance`/`inGoals` must never be re-derived as their own independent
+    // aggregation: each row's amount would then get weighted differently per target currency
+    // (base-currency rows taken as-is vs. others going through a historical USD snapshot), so the
+    // two totals could drift apart in magnitude and even sign once cross-currency rows are large
+    // relative to the (small) net balance — see getBalance's bug history.
     // Goals (model A — transfer): money allocated to active goals is reserved, so it is
     // subtracted from the free balance. Net worth (income − expense) splits into free + inGoals.
     const round2 = (v: number) => Math.round(v * 100) / 100;
     const sub = (a: number | null, b: number | null, c: number | null) =>
       a === null || b === null || c === null ? null : round2(a - b - c);
+    const toBase = (usd: number | null) =>
+      usd === null
+        ? null
+        : baseCurrency === 'USD'
+          ? usd
+          : this.currency.usdToBase(usd, baseCurrency, rates);
 
     const incomeUsd = this.currency.approxTotalInBase(incomeRows, 'USD', rates, 'income');
     const expenseUsd = this.currency.approxTotalInBase(expenseRows, 'USD', rates, 'expense');
     const goalsUsd = this.currency.approxTotalInBase(goalRows, 'USD', rates, 'none');
     const balanceUsd = sub(incomeUsd, expenseUsd, goalsUsd);
 
-    const incomeBase = this.currency.approxTotalInBase(incomeRows, baseCurrency, rates, 'income');
-    const expenseBase = this.currency.approxTotalInBase(
-      expenseRows,
+    return {
       baseCurrency,
-      rates,
-      'expense',
-    );
-    const goalsBase = this.currency.approxTotalInBase(goalRows, baseCurrency, rates, 'none');
-    const balance = sub(incomeBase, expenseBase, goalsBase);
-
-    return { baseCurrency, balanceUsd, balance, inGoals: goalsBase, inGoalsUsd: goalsUsd };
+      balanceUsd,
+      balance: toBase(balanceUsd),
+      inGoals: toBase(goalsUsd),
+      inGoalsUsd: goalsUsd,
+    };
   }
 
   private buildWhere(

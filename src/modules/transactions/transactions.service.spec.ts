@@ -12,7 +12,7 @@ describe('TransactionsService', () => {
     expense: { groupBy: jest.Mock };
     user: { findUnique: jest.Mock };
   };
-  let currency: { getRates: jest.Mock; approxTotalInBase: jest.Mock };
+  let currency: { getRates: jest.Mock; approxTotalInBase: jest.Mock; usdToBase: jest.Mock };
   let goals: { reservedRows: jest.Mock };
 
   beforeEach(async () => {
@@ -22,7 +22,11 @@ describe('TransactionsService', () => {
       expense: { groupBy: jest.fn() },
       user: { findUnique: jest.fn().mockResolvedValue({ currency: 'USD' }) },
     };
-    currency = { getRates: jest.fn().mockResolvedValue({}), approxTotalInBase: jest.fn() };
+    currency = {
+      getRates: jest.fn().mockResolvedValue({}),
+      approxTotalInBase: jest.fn(),
+      usdToBase: jest.fn(),
+    };
     goals = { reservedRows: jest.fn().mockResolvedValue([]) };
 
     const module = await Test.createTestingModule({
@@ -95,7 +99,7 @@ describe('TransactionsService', () => {
   });
 
   describe('getBalance', () => {
-    it('returns the free balance (income − expense − goals) in USD and the base currency', async () => {
+    it('returns the free balance (income − expense − goals) in USD, converted once into the base currency', async () => {
       prisma.income.groupBy.mockResolvedValue([
         { currency: 'USD', _sum: { amount: 200, amountUsd: 200 } },
       ]);
@@ -104,14 +108,13 @@ describe('TransactionsService', () => {
       ]);
       prisma.user.findUnique.mockResolvedValue({ currency: 'EUR' });
       // No active goals reserve anything.
-      // order: incomeUsd, expenseUsd, goalsUsd, incomeBase, expenseBase, goalsBase
+      // order: incomeUsd, expenseUsd, goalsUsd — the base-currency figures are never a separate
+      // aggregation, only usdToBase(balanceUsd)/usdToBase(goalsUsd).
       currency.approxTotalInBase
         .mockReturnValueOnce(200)
         .mockReturnValueOnce(50)
-        .mockReturnValueOnce(0)
-        .mockReturnValueOnce(180)
-        .mockReturnValueOnce(45)
         .mockReturnValueOnce(0);
+      currency.usdToBase.mockReturnValueOnce(135).mockReturnValueOnce(0);
 
       const res = await service.getBalance('u1');
 
@@ -122,6 +125,11 @@ describe('TransactionsService', () => {
         inGoals: 0,
         inGoalsUsd: 0,
       });
+      // Exactly 3 calls (USD only) — never a second, independent aggregation into the base
+      // currency, which is what let balance/balanceUsd disagree in sign in production.
+      expect(currency.approxTotalInBase).toHaveBeenCalledTimes(3);
+      expect(currency.usdToBase).toHaveBeenNthCalledWith(1, 150, 'EUR', {});
+      expect(currency.usdToBase).toHaveBeenNthCalledWith(2, 0, 'EUR', {});
     });
 
     it('subtracts money reserved in active goals from the free balance', async () => {
@@ -133,43 +141,69 @@ describe('TransactionsService', () => {
       ]);
       prisma.user.findUnique.mockResolvedValue({ currency: 'EUR' });
       goals.reservedRows.mockResolvedValue([{ currency: 'USD', amount: 30, amountUsd: null }]);
-      // order: incomeUsd, expenseUsd, goalsUsd, incomeBase, expenseBase, goalsBase
+      // order: incomeUsd, expenseUsd, goalsUsd
       currency.approxTotalInBase
         .mockReturnValueOnce(200)
         .mockReturnValueOnce(50)
-        .mockReturnValueOnce(30)
-        .mockReturnValueOnce(180)
-        .mockReturnValueOnce(45)
-        .mockReturnValueOnce(27);
+        .mockReturnValueOnce(30);
+      currency.usdToBase.mockReturnValueOnce(108).mockReturnValueOnce(27);
 
       const res = await service.getBalance('u1');
 
       expect(res).toEqual({
         baseCurrency: 'EUR',
         balanceUsd: 120, // 200 − 50 − 30
-        balance: 108, // 180 − 45 − 27
+        balance: 108,
         inGoals: 27,
         inGoalsUsd: 30,
       });
     });
 
-    it('returns a null balance when a total is unavailable', async () => {
-      prisma.income.groupBy.mockResolvedValue([]);
-      prisma.expense.groupBy.mockResolvedValue([]);
+    it('skips the USD→base conversion entirely when the base currency already is USD', async () => {
+      prisma.income.groupBy.mockResolvedValue([
+        { currency: 'USD', _sum: { amount: 200, amountUsd: 200 } },
+      ]);
+      prisma.expense.groupBy.mockResolvedValue([
+        { currency: 'USD', _sum: { amount: 50, amountUsd: 50 } },
+      ]);
       prisma.user.findUnique.mockResolvedValue({ currency: 'USD' });
-      // order: incomeUsd, expenseUsd, goalsUsd, incomeBase, expenseBase, goalsBase
       currency.approxTotalInBase
         .mockReturnValueOnce(200)
         .mockReturnValueOnce(50)
-        .mockReturnValueOnce(0)
-        .mockReturnValueOnce(200)
-        .mockReturnValueOnce(null)
         .mockReturnValueOnce(0);
+
+      const res = await service.getBalance('u1');
+
+      expect(res).toEqual({
+        baseCurrency: 'USD',
+        balanceUsd: 150,
+        balance: 150,
+        inGoals: 0,
+        inGoalsUsd: 0,
+      });
+      // balance is balanceUsd, not a converted copy — no rates dependency for a USD user.
+      expect(currency.usdToBase).not.toHaveBeenCalled();
+    });
+
+    it('returns a null base-currency balance (but a non-null USD one) when rates are unavailable', async () => {
+      prisma.income.groupBy.mockResolvedValue([
+        { currency: 'USD', _sum: { amount: 200, amountUsd: 200 } },
+      ]);
+      prisma.expense.groupBy.mockResolvedValue([
+        { currency: 'USD', _sum: { amount: 50, amountUsd: 50 } },
+      ]);
+      prisma.user.findUnique.mockResolvedValue({ currency: 'EUR' });
+      currency.approxTotalInBase
+        .mockReturnValueOnce(200)
+        .mockReturnValueOnce(50)
+        .mockReturnValueOnce(0);
+      currency.usdToBase.mockReturnValue(null); // rates unavailable
 
       const res = await service.getBalance('u1');
 
       expect(res.balanceUsd).toBe(150);
       expect(res.balance).toBeNull();
+      expect(res.inGoals).toBeNull();
     });
   });
 });
