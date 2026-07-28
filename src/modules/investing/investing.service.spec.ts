@@ -267,7 +267,7 @@ describe('InvestingService', () => {
           symbol: { contains: 'BTCUSDT' },
           OR: [{ status: 'OPEN' }, { closedAt: { gte: from, lte: undefined } }],
         },
-        orderBy: [{ status: 'asc' }, { closedAt: 'desc' }, { openedAt: 'desc' }],
+        orderBy: [{ openedAt: 'desc' }, { closedAt: 'desc' }],
         include: { notes: { orderBy: { createdAt: 'asc' } } },
         take: 10,
         skip: 0,

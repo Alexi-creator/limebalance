@@ -143,10 +143,10 @@ export class InvestingService {
     const [rows, total] = await Promise.all([
       this.prisma.position.findMany({
         where,
-        // Open trades first (regardless of recency), then closed ones newest-first — an open
-        // position is the one thing in the diary still actionable, so it shouldn't scroll off
-        // under months of closed history.
-        orderBy: [{ status: 'asc' }, { closedAt: 'desc' }, { openedAt: 'desc' }],
+        // One chronological timeline by entry date — open and closed, spot and linear, all
+        // interleaved — rather than bucketed by status first. closedAt is the tiebreaker for the
+        // rare rows with no derivable openedAt (see Position.openedAt).
+        orderBy: [{ openedAt: 'desc' }, { closedAt: 'desc' }],
         include: { notes: { orderBy: { createdAt: 'asc' } } },
         take: Math.min(query.limit ?? 50, MAX_PAGE),
         skip: query.offset ?? 0,
