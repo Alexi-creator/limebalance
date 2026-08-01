@@ -7,7 +7,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { ExchangeAccount } from '@prisma/client';
+import type { ExchangeAccount, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BybitClient } from './bybit.client';
 import { decryptSecret, encryptSecret } from './crypto.util';
@@ -44,6 +44,9 @@ type ListQuery = {
   to?: Date;
   limit?: number;
   offset?: number;
+  /** Currently in profit/loss — realized (closedPnl) for CLOSED rows, live (currentPrice vs
+   *  avgEntryPrice) for OPEN ones. See applyPnlFilter. */
+  pnl?: 'positive' | 'negative';
 };
 
 @Injectable()
@@ -139,7 +142,7 @@ export class InvestingService {
   }
 
   async getPositions(userId: string, query: ListQuery) {
-    const where = this.buildPositionsWhere(userId, query);
+    const where = await this.applyPnlFilter(userId, query, this.buildPositionsWhere(userId, query));
     const [rows, total] = await Promise.all([
       this.prisma.position.findMany({
         where,
@@ -217,6 +220,67 @@ export class InvestingService {
     return s.endsWith('USDT') ? s.slice(0, -4) : s;
   }
 
+  // CLOSED rows filter on the stored closedPnl column directly. OPEN rows have no stored PnL
+  // (see getPositions' currentPrice/unrealizedPnl comment) — matching them means pricing every
+  // open row up front (open counts are small, tens per user typically) and filtering by id,
+  // rather than pushing the comparison into SQL. Skipped entirely when the query already narrows
+  // to status=CLOSED, since the open branch would only end up excluded by that AND anyway.
+  private async applyPnlFilter(
+    userId: string,
+    query: ListQuery,
+    where: Prisma.PositionWhereInput,
+  ): Promise<Prisma.PositionWhereInput> {
+    if (!query.pnl) return where;
+    const cmp = query.pnl === 'positive' ? { gt: 0 } : { lt: 0 };
+    const branches: Prisma.PositionWhereInput[] = [{ status: 'CLOSED', closedPnl: cmp }];
+    if (query.status !== 'CLOSED') {
+      const openIds = await this.openIdsMatchingPnlSign(userId, query, query.pnl);
+      branches.push({ id: { in: openIds } });
+    }
+    return { AND: [where, { OR: branches }] };
+  }
+
+  // Live PnL isn't stored, so matching OPEN rows against a sign means pricing all of them
+  // up front (bounded by how many positions a user has open at once) instead of a WHERE clause.
+  private async openIdsMatchingPnlSign(
+    userId: string,
+    query: ListQuery,
+    sign: 'positive' | 'negative',
+  ): Promise<string[]> {
+    const where = this.buildPositionsWhere(userId, { ...query, pnl: undefined, status: 'OPEN' });
+    const openPositions = await this.prisma.position.findMany({
+      where,
+      select: {
+        id: true,
+        symbol: true,
+        category: true,
+        side: true,
+        qty: true,
+        avgEntryPrice: true,
+      },
+    });
+    if (openPositions.length === 0) return [];
+
+    const [spotPrices, linearPrices] = await Promise.all([
+      openPositions.some((p) => p.category !== 'linear') ? this.prices.getUsdPrices() : null,
+      openPositions.some((p) => p.category === 'linear') ? this.prices.getLinearPrices() : null,
+    ]);
+
+    return openPositions
+      .filter((p) => {
+        const currentPrice = this.priceFor(p, spotPrices, linearPrices);
+        if (currentPrice === null) return false;
+        const pnl = computePnl(
+          sideToDirection(p.side),
+          Number(p.qty),
+          Number(p.avgEntryPrice),
+          currentPrice,
+        );
+        return sign === 'positive' ? pnl > 0 : pnl < 0;
+      })
+      .map((p) => p.id);
+  }
+
   private buildPositionsWhere(userId: string, query: ListQuery) {
     return {
       userId,
@@ -243,7 +307,7 @@ export class InvestingService {
   // cap) — getPositions' `items` is paginated for display and must never be summed/counted
   // client-side for "total profit" or "winrate".
   async getPositionsSummary(userId: string, query: Omit<ListQuery, 'limit' | 'offset'>) {
-    const where = this.buildPositionsWhere(userId, query);
+    const where = await this.applyPnlFilter(userId, query, this.buildPositionsWhere(userId, query));
     const closedWhere = { ...where, status: 'CLOSED' as const };
     const [pnlAgg, statusCounts, winCount, lossCount] = await Promise.all([
       this.prisma.position.aggregate({ where, _sum: { closedPnl: true } }),

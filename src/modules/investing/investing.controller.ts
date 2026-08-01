@@ -121,7 +121,9 @@ export class InvestingController {
       'accountId, symbol (e.g. BTCUSDT), status (OPEN/CLOSED), category (linear/spot/manual), ' +
       'from/to — closing date range (inclusive, either bound may be omitted; OPEN positions have ' +
       'no closedAt so they stay visible regardless of this range unless status=CLOSED narrows ' +
-      'them out). Pagination via limit/offset; total carries the full count for the filter.',
+      'them out). pnl — currently in profit/loss: realized closedPnl for CLOSED rows, live PnL ' +
+      '(currentPrice vs avgEntryPrice) for OPEN ones. Pagination via limit/offset; total carries ' +
+      'the full count for the filter.',
   })
   @ApiQuery({ name: 'accountId', required: false })
   @ApiQuery({ name: 'symbol', required: false, example: 'BTCUSDT' })
@@ -129,6 +131,7 @@ export class InvestingController {
   @ApiQuery({ name: 'category', required: false, enum: ['linear', 'spot', 'manual'] })
   @ApiQuery({ name: 'from', required: false, example: '2026-07-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-07-31' })
+  @ApiQuery({ name: 'pnl', required: false, enum: ['positive', 'negative'] })
   @ApiQuery({ name: 'limit', required: false, example: 50 })
   @ApiQuery({ name: 'offset', required: false, example: 0 })
   @ApiOkResponse({ type: PositionListResponseDto })
@@ -140,6 +143,7 @@ export class InvestingController {
     @Query('category') category?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('pnl') pnl?: 'positive' | 'negative',
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
@@ -150,6 +154,7 @@ export class InvestingController {
       category,
       from: from ? new Date(from) : undefined,
       to: to ? endOfDay(to) : undefined,
+      pnl,
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
     });
@@ -183,6 +188,7 @@ export class InvestingController {
   @ApiQuery({ name: 'category', required: false, enum: ['linear', 'spot', 'manual'] })
   @ApiQuery({ name: 'from', required: false, example: '2026-07-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-07-31' })
+  @ApiQuery({ name: 'pnl', required: false, enum: ['positive', 'negative'] })
   @ApiOkResponse({ type: PositionsSummaryResponseDto })
   getPositionsSummary(
     @CurrentUser() user: { id: string },
@@ -192,6 +198,7 @@ export class InvestingController {
     @Query('category') category?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('pnl') pnl?: 'positive' | 'negative',
   ) {
     return this.investingService.getPositionsSummary(user.id, {
       accountId,
@@ -200,6 +207,7 @@ export class InvestingController {
       category,
       from: from ? new Date(from) : undefined,
       to: to ? endOfDay(to) : undefined,
+      pnl,
     });
   }
 

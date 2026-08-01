@@ -338,6 +338,73 @@ describe('InvestingService', () => {
       });
     });
 
+    it('filters by pnl sign: CLOSED via closedPnl column, OPEN via live-priced ids', async () => {
+      // First findMany call is openIdsMatchingPnlSign's own lookup (status forced OPEN);
+      // the second is the real paginated query.
+      prisma.position.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'o1',
+            symbol: 'BTCUSDT',
+            category: 'spot',
+            side: 'Sell',
+            qty: 1,
+            avgEntryPrice: 100,
+          },
+          {
+            id: 'o2',
+            symbol: 'ETHUSDT',
+            category: 'linear',
+            side: 'Buy',
+            qty: 1,
+            avgEntryPrice: 100,
+          },
+        ])
+        .mockResolvedValueOnce([]);
+      prisma.position.count.mockResolvedValue(0);
+      prices.getUsdPrices.mockResolvedValue(new Map([['BTCUSDT', 150]]));
+      prices.getLinearPrices.mockResolvedValue(new Map([['ETHUSDT', 150]]));
+
+      await service.getPositions('u1', { pnl: 'positive' });
+
+      // o1 is long (side Sell) and priced up → +50, matches "positive"; o2 is short (side Buy)
+      // and priced up → -50, excluded.
+      expect(prisma.position.findMany).toHaveBeenNthCalledWith(1, {
+        where: { userId: 'u1', status: 'OPEN' },
+        select: {
+          id: true,
+          symbol: true,
+          category: true,
+          side: true,
+          qty: true,
+          avgEntryPrice: true,
+        },
+      });
+      expect(prisma.position.findMany.mock.calls[1][0].where).toEqual({
+        AND: [
+          { userId: 'u1' },
+          { OR: [{ status: 'CLOSED', closedPnl: { gt: 0 } }, { id: { in: ['o1'] } }] },
+        ],
+      });
+    });
+
+    it('skips the live-priced open lookup when status=CLOSED already excludes OPEN rows', async () => {
+      prisma.position.findMany.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+
+      await service.getPositions('u1', { status: 'CLOSED', pnl: 'negative' });
+
+      expect(prisma.position.findMany).toHaveBeenCalledTimes(1);
+      expect(prices.getUsdPrices).not.toHaveBeenCalled();
+      expect(prices.getLinearPrices).not.toHaveBeenCalled();
+      expect(prisma.position.findMany.mock.calls[0][0].where).toEqual({
+        AND: [
+          { userId: 'u1', status: 'CLOSED' },
+          { OR: [{ status: 'CLOSED', closedPnl: { lt: 0 } }] },
+        ],
+      });
+    });
+
     it('divides entry volume by leverage and sums fees over the position window for synced trades', async () => {
       const openedAt = new Date('2026-07-01T00:00:00Z');
       const closedAt = new Date('2026-07-02T00:00:00Z');
@@ -667,6 +734,26 @@ describe('InvestingService', () => {
       expect(prisma.position.count).toHaveBeenNthCalledWith(1, {
         where: { ...expectedWhere, status: 'CLOSED', closedPnl: { gt: 0 } },
       });
+    });
+
+    it('applies the pnl filter (status=CLOSED short-circuits the live open lookup)', async () => {
+      prisma.position.aggregate.mockResolvedValue({ _sum: { closedPnl: 100 } });
+      prisma.position.groupBy.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+
+      await service.getPositionsSummary('u1', { status: 'CLOSED', pnl: 'positive' });
+
+      const expectedWhere = {
+        AND: [
+          { userId: 'u1', status: 'CLOSED' },
+          { OR: [{ status: 'CLOSED', closedPnl: { gt: 0 } }] },
+        ],
+      };
+      expect(prisma.position.aggregate).toHaveBeenCalledWith({
+        where: expectedWhere,
+        _sum: { closedPnl: true },
+      });
+      expect(prices.getUsdPrices).not.toHaveBeenCalled();
     });
 
     it('returns zero counts/pnl when nothing matches', async () => {
