@@ -61,6 +61,13 @@ export type BybitPositionRecord = {
   [key: string]: unknown;
 };
 
+export type BybitConvertCoin = {
+  coin: string;
+  icon: string;
+  iconNight: string;
+  [key: string]: unknown;
+};
+
 type Page<T> = { list: T[]; nextPageCursor: string };
 
 type RangeParams = {
@@ -140,6 +147,20 @@ export class BybitClient {
   // by the same symbol sidesteps that entirely, since it's already quoted the same way.
   async getLinearTickers(): Promise<{ symbol: string; lastPrice: string }[]> {
     return this.getTickers('linear');
+  }
+
+  // Convert's coin list (GET /v5/asset/exchange/query-coin-list) — the only Bybit endpoint that
+  // carries per-coin icon URLs (icon/iconNight). Signed, but not user-specific data, so callers
+  // pass a dedicated service key (see CoinIconService), never a connected user's own credentials.
+  // accountType=eb_convert_uta + side=0 (fromCoin) asks for the broadest coin list Convert
+  // exposes; coverage is whatever's eligible for Convert, not necessarily every tradable symbol.
+  async getConvertCoinList(creds: BybitCredentials): Promise<BybitConvertCoin[]> {
+    const result = await this.get<{ coins: BybitConvertCoin[] }>(
+      creds,
+      '/v5/asset/exchange/query-coin-list',
+      { accountType: 'eb_convert_uta', side: 0 },
+    );
+    return result.coins;
   }
 
   private async getTickers(category: string): Promise<{ symbol: string; lastPrice: string }[]> {

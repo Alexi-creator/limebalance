@@ -21,6 +21,12 @@ export const envSchema = z.object({
   // is ISP-blocked; defaults to the main domain.
   BYBIT_API_URL: z.url().optional(),
 
+  // A dedicated read-only Bybit key (NOT a user's own) used only to fetch the coin icon list
+  // (CoinIconService) — an app-wide lookup, unrelated to any individual user's trades. Optional:
+  // without it, coin icons are simply unavailable and the frontend falls back to its letter avatar.
+  BYBIT_ICON_API_KEY: z.string().optional(),
+  BYBIT_ICON_API_SECRET: z.string().optional(),
+
   // Frontend base URL — used to build links in emails (email confirmation, password reset).
   FRONTEND_URL: z.url().optional(),
 

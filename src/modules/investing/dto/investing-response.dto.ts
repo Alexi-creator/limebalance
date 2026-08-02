@@ -223,6 +223,27 @@ export class PositionSymbolsResponseDto {
   items: string[];
 }
 
+export class CoinIconsResponseDto {
+  @ApiProperty({
+    example: {
+      BTC: {
+        icon: 'https://bycsi.com/.../BTC.svg',
+        iconNight: 'https://bycsi.com/.../BTC-dark.svg',
+      },
+      ETH: {
+        icon: 'https://bycsi.com/.../ETH.svg',
+        iconNight: 'https://bycsi.com/.../ETH-dark.svg',
+      },
+    },
+    description:
+      "Coin ticker -> icon URLs, sourced from Bybit's Convert coin list and cached ~24h server-" +
+      'side. Covers whatever is eligible for Convert, not necessarily every tradable symbol — ' +
+      'missing coins should fall back to a client-side placeholder. Empty when the server has no ' +
+      'BYBIT_ICON_API_KEY configured.',
+  })
+  items: Record<string, { icon: string; iconNight: string }>;
+}
+
 export class PositionsSummaryResponseDto {
   @ApiProperty({
     example: 4820.55,

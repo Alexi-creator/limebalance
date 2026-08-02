@@ -65,4 +65,24 @@ describe('BybitClient', () => {
     fetchMock.mockResolvedValue(okResponse({ readOnly: 0 }));
     await expect(client.validateKey(CREDS)).resolves.toEqual({ readOnly: false });
   });
+
+  it('fetches the Convert coin list with the broadest coin/side params', async () => {
+    fetchMock.mockResolvedValue(
+      okResponse({
+        coins: [
+          { coin: 'BTC', icon: 'https://cdn/btc.svg', iconNight: 'https://cdn/btc-dark.svg' },
+        ],
+      }),
+    );
+
+    const coins = await client.getConvertCoinList(CREDS);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain('/v5/asset/exchange/query-coin-list');
+    expect(String(url)).toContain('accountType=eb_convert_uta');
+    expect(String(url)).toContain('side=0');
+    expect(coins).toEqual([
+      { coin: 'BTC', icon: 'https://cdn/btc.svg', iconNight: 'https://cdn/btc-dark.svg' },
+    ]);
+  });
 });

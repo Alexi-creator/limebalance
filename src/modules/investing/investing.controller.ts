@@ -19,9 +19,11 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { endOfDay } from '../currency/summary.util';
 import { InvestingAccessGuard } from '../subscriptions/guards/investing-access.guard';
+import { CoinIconService } from './coin-icon.service';
 import { CreateExchangeAccountDto } from './dto/create-exchange-account.dto';
 import { CreateHoldingDto, UpdateHoldingDto } from './dto/holding.dto';
 import {
+  CoinIconsResponseDto,
   EquityCurveResponseDto,
   ExchangeAccountResponseDto,
   HoldingListResponseDto,
@@ -42,7 +44,10 @@ import { InvestingService } from './investing.service';
 @Controller('investing')
 @UseGuards(InvestingAccessGuard)
 export class InvestingController {
-  constructor(private readonly investingService: InvestingService) {}
+  constructor(
+    private readonly investingService: InvestingService,
+    private readonly coinIconService: CoinIconService,
+  ) {}
 
   @Post('accounts')
   @ApiOperation({
@@ -330,6 +335,20 @@ export class InvestingController {
     @Param('noteId') noteId: string,
   ) {
     return this.investingService.removePositionNote(user.id, id, noteId);
+  }
+
+  @Get('coin-icons')
+  @ApiOperation({
+    summary: 'Coin ticker -> icon URL lookup',
+    description:
+      "Sourced from Bybit's Convert coin list and cached ~24h server-side, so this is cheap to " +
+      'call on every page load. Covers whatever is eligible for Convert, not necessarily every ' +
+      'symbol traded (e.g. futures-only underlyings) — render a placeholder for tickers missing ' +
+      'from the map. Empty when the server has no BYBIT_ICON_API_KEY configured.',
+  })
+  @ApiOkResponse({ type: CoinIconsResponseDto })
+  async getCoinIcons() {
+    return { items: Object.fromEntries(await this.coinIconService.getIconMap()) };
   }
 
   @Get('holdings')
