@@ -62,4 +62,21 @@ export class BalanceResponseDto {
     description: 'The same goal reserve in USD.',
   })
   inGoalsUsd: number | null;
+
+  @ApiProperty({
+    example: 41400,
+    nullable: true,
+    description:
+      'Money working in external accounts (betting bankroll), at what it is worth today — the ' +
+      'deposits plus whatever the bets have realized, in the base currency. The balance itself ' +
+      'only ever had the deposits subtracted, so net worth is balance + inGoals + inBetting.',
+  })
+  inBetting: number | null;
+
+  @ApiProperty({
+    example: 1150,
+    nullable: true,
+    description: 'The same external-account value in USD.',
+  })
+  inBettingUsd: number | null;
 }

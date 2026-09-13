@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BettingService } from '../betting/betting.service';
 import { CurrencyService, type Rates } from '../currency/currency.service';
 import { FxRatesService } from '../currency/fx-rates.service';
 import { ExchangesService } from '../exchanges/exchanges.service';
@@ -29,6 +30,7 @@ export class TransactionsService {
     private readonly fx: FxRatesService,
     private readonly goals: GoalsService,
     private readonly exchanges: ExchangesService,
+    private readonly betting: BettingService,
   ) {}
 
   async findAll(userId: string, dto: GetTransactionsDto) {
@@ -140,14 +142,20 @@ export class TransactionsService {
    * all. `byCurrency` is the source of truth here; `balance` is a convenience total.
    */
   async getBalance(userId: string) {
-    const [incomeGroups, expenseGroups, user, rates, goalRows, exchangeRows] = await Promise.all([
-      this.prisma.income.groupBy({ by: ['currency'], where: { userId }, _sum: { amount: true } }),
-      this.prisma.expense.groupBy({ by: ['currency'], where: { userId }, _sum: { amount: true } }),
-      this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),
-      this.currency.getRates(),
-      this.goals.reservedRows(userId),
-      this.exchanges.movementsByCurrency(userId),
-    ]);
+    const [incomeGroups, expenseGroups, user, rates, goalRows, exchangeRows, bettingRows] =
+      await Promise.all([
+        this.prisma.income.groupBy({ by: ['currency'], where: { userId }, _sum: { amount: true } }),
+        this.prisma.expense.groupBy({
+          by: ['currency'],
+          where: { userId },
+          _sum: { amount: true },
+        }),
+        this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),
+        this.currency.getRates(),
+        this.goals.reservedRows(userId),
+        this.exchanges.movementsByCurrency(userId),
+        this.betting.balanceRows(userId),
+      ]);
 
     const baseCurrency = user?.currency ?? 'USD';
     const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -165,6 +173,10 @@ export class TransactionsService {
     // Exchanges move money between currencies at the rate the user actually got, so both sides are
     // exact figures and net worth is preserved without a single conversion of ours.
     for (const r of exchangeRows) add(r.currency, r.amount);
+    // External accounts (betting bankroll): only what was actually moved out leaves the balance —
+    // never the bankroll's current value. That is what makes a withdrawn profit appear as free
+    // money without ever being booked as an income, and an unrealized one stay out of the ledger.
+    for (const r of bettingRows.transferred) add(r.currency, -r.amount);
 
     const byCurrency = [...net]
       .map(([currency, amount]) => ({ currency, amount: round2(amount) }))
@@ -191,6 +203,10 @@ export class TransactionsService {
       return usd === null ? null : Math.round(usd * 100) / 100;
     };
 
+    // What those external accounts are worth today, not what was put into them: net worth is
+    // `balance + inGoals + inBetting`, and the bets' PnL lives in this figure alone.
+    const inBetting = this.sumIntoBase(bettingRows.value, baseCurrency, rates);
+
     return {
       baseCurrency,
       balance,
@@ -201,6 +217,8 @@ export class TransactionsService {
       isApproximate: foreign.length > 0,
       inGoals,
       inGoalsUsd: toUsd(inGoals),
+      inBetting,
+      inBettingUsd: toUsd(inBetting),
     };
   }
 

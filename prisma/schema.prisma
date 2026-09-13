@@ -89,6 +89,9 @@ model User {
   holdings                   Holding[]
   botNotificationPreferences BotNotificationPreference[]
   currencyExchanges          CurrencyExchange[]
+  externalAccounts           ExternalAccount[]
+  externalTransfers          ExternalTransfer[]
+  bets                       Bet[]
 
   @@map("users")
 }
@@ -373,41 +376,41 @@ enum PositionStatus {
 // Journal notes (entry reason, updates, exit reason, screenshots) live on PositionNote and can
 // be added regardless of source or status — that's the part meant to survive the whole trade.
 model Position {
-  id            String         @id @default(uuid())
+  id              String         @id @default(uuid())
   // NULL for manual entries — they don't belong to any exchange account.
-  accountId     String?        @map("account_id")
-  userId        String         @map("user_id")
-  source        String         @default("bybit") // bybit | manual
-  status        PositionStatus @default(CLOSED)
+  accountId       String?        @map("account_id")
+  userId          String         @map("user_id")
+  source          String         @default("bybit") // bybit | manual
+  status          PositionStatus @default(CLOSED)
   // Bybit id of the closing order — the dedupe key for closed-pnl records. NULL while open and
   // for manual entries.
-  orderId       String?        @map("order_id")
-  symbol        String
-  category      String
+  orderId         String?        @map("order_id")
+  symbol          String
+  category        String
   // Side of the CLOSING order: Sell closes a long, Buy closes a short (manual entries and open
   // positions are stored with the same convention so all rows read uniformly).
-  side          String
-  qty           Decimal        @db.Decimal(30, 12)
-  avgEntryPrice Decimal        @map("avg_entry_price") @db.Decimal(30, 12)
+  side            String
+  qty             Decimal        @db.Decimal(30, 12)
+  avgEntryPrice   Decimal        @map("avg_entry_price") @db.Decimal(30, 12)
   // NULL while the position is open.
-  avgExitPrice  Decimal?       @map("avg_exit_price") @db.Decimal(30, 12)
+  avgExitPrice    Decimal?       @map("avg_exit_price") @db.Decimal(30, 12)
   // Realized PnL in the settlement currency (USDT for linear), fees included by Bybit. NULL
   // while open.
-  closedPnl     Decimal?       @map("closed_pnl") @db.Decimal(30, 12)
-  leverage      Decimal?       @db.Decimal(10, 2)
+  closedPnl       Decimal?       @map("closed_pnl") @db.Decimal(30, 12)
+  leverage        Decimal?       @db.Decimal(10, 2)
   // Synced from Bybit's live position list for linear (NULL if not set there, or once closed —
   // kept as the last known value rather than cleared). Manual entries set it by hand.
-  takeProfitPrice Decimal?     @map("take_profit_price") @db.Decimal(30, 12)
-  stopLossPrice   Decimal?     @map("stop_loss_price") @db.Decimal(30, 12)
+  takeProfitPrice Decimal?       @map("take_profit_price") @db.Decimal(30, 12)
+  stopLossPrice   Decimal?       @map("stop_loss_price") @db.Decimal(30, 12)
   // Bybit's closed-pnl records carry no open time. Spot is derived by FIFO over the fills
   // (spot-fifo.util), linear by matching closing qty against opening fills (linear-fifo.util) —
   // NULL there only when the opening fills predate the synced history. Manual entries may set it.
   // Synced OPEN positions get it straight from Bybit's position list (createdTime).
-  openedAt      DateTime?      @map("opened_at")
+  openedAt        DateTime?      @map("opened_at")
   // NULL while open.
-  closedAt      DateTime?      @map("closed_at")
-  raw           Json?
-  createdAt     DateTime       @default(now()) @map("created_at")
+  closedAt        DateTime?      @map("closed_at")
+  raw             Json?
+  createdAt       DateTime       @default(now()) @map("created_at")
 
   account ExchangeAccount? @relation(fields: [accountId], references: [id], onDelete: Cascade)
   user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -512,4 +515,100 @@ model CurrencyExchange {
 
   @@index([userId, date])
   @@map("currency_exchanges")
+}
+
+// What kind of place holds the money. Only BETTING is wired up for now, but the account/transfer
+// pair is deliberately generic: crypto exchanges and brokers hold money the exact same way (it
+// leaves the free balance, works elsewhere, comes back grown or shrunk), and today the investing
+// module has no way to express that at all.
+enum ExternalAccountKind {
+  BETTING
+  CRYPTO
+  BROKER
+}
+
+enum BetStatus {
+  // Placed, not settled yet — the stake is at risk and the outcome unknown.
+  PENDING
+  WON
+  LOST
+  // Cancelled event / push: the stake comes back untouched, PnL is exactly zero.
+  VOID
+  // Sold back to the bookmaker before settlement — payout is whatever was actually offered.
+  CASHOUT
+}
+
+// Money held outside the ledger: a bookmaker account, an exchange, a broker. Single-currency on
+// purpose — a cross-currency deposit is a CurrencyExchange followed by a transfer in the account's
+// own currency, which keeps every figure exact and reuses machinery that already exists.
+model ExternalAccount {
+  id        String              @id @default(uuid())
+  userId    String              @map("user_id")
+  name      String
+  emoji     String?
+  kind      ExternalAccountKind @default(BETTING)
+  currency  String
+  // Manual "в архив" — display-only. Unlike a goal, an archived account keeps reserving its money
+  // from the free balance: hiding the card must never invent money that is still sitting elsewhere.
+  archived  Boolean             @default(false)
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transfers ExternalTransfer[]
+  bets      Bet[]
+
+  @@index([userId, archived])
+  @@map("external_accounts")
+}
+
+// A deposit to / withdrawal from an external account. These rows are the ONLY thing here that the
+// free balance reads: neither income nor expense (net worth doesn't change when money moves
+// pockets — same reasoning as CurrencyExchange), they just move money out of the ledger and back.
+model ExternalTransfer {
+  id        String   @id @default(uuid())
+  accountId String   @map("account_id")
+  userId    String   @map("user_id")
+  // In the account's currency. Positive = deposited into the account, negative = withdrawn back
+  // to the ledger (same sign convention as GoalContribution.amount).
+  amount    Decimal  @db.Decimal(12, 2)
+  note      String?
+  date      DateTime @db.Date
+  createdAt DateTime @default(now()) @map("created_at")
+
+  account ExternalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, date])
+  @@index([userId])
+  @@map("external_transfers")
+}
+
+// A single bet. Lifecycle mirrors Position: PENDING is an open position (stake at risk, no PnL
+// yet), a settled bet is a closed one whose PnL is payout - stake. The account's value is derived
+// from these plus the transfers, never stored — see betting.service.ts.
+model Bet {
+  id        String    @id @default(uuid())
+  accountId String    @map("account_id")
+  userId    String    @map("user_id")
+  // What was bet on, free-form: "Arsenal — Chelsea".
+  event     String
+  // Which market/selection, free-form: "1X2, Arsenal", "over 2.5".
+  market    String    @default("")
+  stake     Decimal   @db.Decimal(12, 2)
+  odds      Decimal   @db.Decimal(10, 3)
+  status    BetStatus @default(PENDING)
+  // Total returned, stake included (so a won bet at 2.0 on a stake of 100 pays out 200, PnL 100).
+  // NULL while PENDING; on settling it defaults from the status (see settle()) unless given.
+  payout    Decimal?  @db.Decimal(12, 2)
+  note      String?
+  placedAt  DateTime  @map("placed_at")
+  settledAt DateTime? @map("settled_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  account ExternalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, placedAt])
+  @@index([userId, status])
+  @@map("bets")
 }
