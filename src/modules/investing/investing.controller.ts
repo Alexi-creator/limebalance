@@ -37,8 +37,22 @@ import {
 } from './dto/investing-response.dto';
 import { CreateManualPositionDto, UpdateManualPositionDto } from './dto/manual-position.dto';
 import { CreatePositionNoteDto, UpdatePositionNoteDto } from './dto/position-note.dto';
+import {
+  AdjustmentResponseDto,
+  CreateAdjustmentDto,
+  CreateTransferDto,
+  CreateVenueDto,
+  TransferListResponseDto,
+  TransferResponseDto,
+  UpdateTransferDto,
+  UpdateVenueDto,
+  VenueDto,
+  VenuesResponseDto,
+} from './dto/transfer.dto';
 import { UpdateExchangeAccountDto } from './dto/update-exchange-account.dto';
 import { InvestingService } from './investing.service';
+import { InvestingTransfersService } from './investing-transfers.service';
+import { InvestingVenuesService } from './investing-venues.service';
 
 @ApiTags('investing')
 @Controller('investing')
@@ -46,8 +60,168 @@ import { InvestingService } from './investing.service';
 export class InvestingController {
   constructor(
     private readonly investingService: InvestingService,
+    private readonly transfersService: InvestingTransfersService,
+    private readonly venuesService: InvestingVenuesService,
     private readonly coinIconService: CoinIconService,
   ) {}
+
+  @Get('venues')
+  @ApiOperation({
+    summary: 'Where your invested money sits, and what it is worth',
+    description:
+      'Every venue with three figures: what was moved in, what it is worth now, and the result ' +
+      'between them. A connected exchange is valued from the exchange itself on every sync — ' +
+      'open positions marked to market included — so the number matches what you see there ' +
+      'rather than being reconstructed from deposits and trades.',
+  })
+  @ApiOkResponse({ type: VenuesResponseDto })
+  listVenues(@CurrentUser() user: { id: string }) {
+    return this.transfersService.listVenues(user.id);
+  }
+
+  @Post('venues')
+  @ApiOperation({
+    summary: 'Add a place you keep by hand',
+    description:
+      'A cold wallet, an exchange with no API key. Connected exchanges get their venue by ' +
+      'themselves — this is only for what we cannot read.',
+  })
+  @ApiCreatedResponse({ type: VenueDto })
+  createVenue(@CurrentUser() user: { id: string }, @Body() dto: CreateVenueDto) {
+    return this.venuesService.createManual(user.id, dto.name);
+  }
+
+  @Patch('venues/:id')
+  @ApiOperation({
+    summary: 'Rename or archive a venue',
+    description:
+      'Archiving only hides it: the money still counts, hiding a card is not a withdrawal.',
+  })
+  @ApiOkResponse({ type: VenueDto })
+  updateVenue(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: UpdateVenueDto,
+  ) {
+    return this.venuesService.rename(user.id, id, dto);
+  }
+
+  @Delete('venues/:id')
+  @ApiOperation({
+    summary: 'Delete a venue',
+    description:
+      'Refused while it still has transfers on record — deleting them would hand your free ' +
+      'balance money that never came back. Archive it instead.',
+  })
+  removeVenue(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.venuesService.remove(user.id, id);
+  }
+
+  @Get('venues/:id/adjustments')
+  @ApiOperation({ summary: 'Corrections applied to a venue, newest first' })
+  @ApiOkResponse({ type: [AdjustmentResponseDto] })
+  listAdjustments(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.venuesService.listAdjustments(user.id, id);
+  }
+
+  @Post('venues/:id/adjustments')
+  @ApiOperation({
+    summary: 'Correct what a venue holds',
+    description:
+      'For everything we cannot see: coins sent to someone, a miscount, a reward that appeared ' +
+      'out of nowhere. Manual venues only — a connected exchange is re-read on the next sync, ' +
+      'which would wipe the correction without explanation. The reason is required.',
+  })
+  @ApiCreatedResponse({ type: AdjustmentResponseDto })
+  addAdjustment(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: CreateAdjustmentDto,
+  ) {
+    return this.venuesService.addAdjustment(user.id, id, dto);
+  }
+
+  @Delete('adjustments/:id')
+  @ApiOperation({ summary: 'Delete a correction' })
+  removeAdjustment(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.venuesService.removeAdjustment(user.id, id);
+  }
+
+  @Get('assets')
+  @ApiOperation({
+    summary: 'Coins you can track',
+    description:
+      'Every ticker we can put a USD price on, built from the same feed the values use — so a ' +
+      'coin offered here can always be valued, and "no price" cannot be typed in by hand.',
+  })
+  @ApiOkResponse({ type: [String] })
+  listAssets() {
+    return this.venuesService.priceableAssets();
+  }
+
+  @Get('transfers')
+  @ApiOperation({
+    summary: 'Deposit / withdrawal history',
+    description:
+      'Money moved between your balance and the places you invest from, newest first. Positive ' +
+      'amounts left the balance, negative ones came back.',
+  })
+  @ApiQuery({ name: 'venueId', required: false })
+  @ApiQuery({ name: 'from', required: false, description: 'YYYY-MM-DD' })
+  @ApiQuery({ name: 'to', required: false, description: 'YYYY-MM-DD' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Default 50, max 200' })
+  @ApiQuery({ name: 'offset', required: false })
+  @ApiOkResponse({ type: TransferListResponseDto })
+  listTransfers(
+    @CurrentUser() user: { id: string },
+    @Query('venueId') venueId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.transfersService.list(user.id, {
+      venueId,
+      from: from ? new Date(from) : undefined,
+      to: to ? endOfDay(to) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
+  }
+
+  @Post('transfers')
+  @ApiOperation({
+    summary: 'Record money moving in or out of a venue',
+    description:
+      'The amount is always positive; `direction` says whether the venue gained or lost it, and ' +
+      '`peer` who was on the other side. Only peer=LEDGER moves your free balance, and even then ' +
+      'it is neither an income nor an expense, so no report changes. peer=VENUE moves money ' +
+      'between two venues; peer=EXTERNAL means it went to someone else and will not come back.',
+  })
+  @ApiCreatedResponse({ type: TransferResponseDto })
+  createTransfer(@CurrentUser() user: { id: string }, @Body() dto: CreateTransferDto) {
+    return this.transfersService.create(user.id, dto);
+  }
+
+  @Patch('transfers/:id')
+  @ApiOperation({ summary: 'Edit a transfer' })
+  @ApiOkResponse({ type: TransferResponseDto })
+  updateTransfer(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: UpdateTransferDto,
+  ) {
+    return this.transfersService.update(user.id, id, dto);
+  }
+
+  @Delete('transfers/:id')
+  @ApiOperation({
+    summary: 'Delete a transfer',
+    description: 'The money goes back to your free balance, since it was never really spent.',
+  })
+  removeTransfer(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.transfersService.remove(user.id, id);
+  }
 
   @Post('accounts')
   @ApiOperation({
@@ -359,9 +533,10 @@ export class InvestingController {
       'Bybit spot prices in USD. price/value/pnl are null when the asset has no USDT ticker or ' +
       'prices are temporarily unavailable; totalValue sums the priced items.',
   })
+  @ApiQuery({ name: 'venueId', required: false, description: 'Only the coins kept in this venue' })
   @ApiOkResponse({ type: HoldingListResponseDto })
-  listHoldings(@CurrentUser() user: { id: string }) {
-    return this.investingService.listHoldings(user.id);
+  listHoldings(@CurrentUser() user: { id: string }, @Query('venueId') venueId?: string) {
+    return this.investingService.listHoldings(user.id, venueId);
   }
 
   @Post('holdings')

@@ -5,6 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BybitClient } from './bybit.client';
 import { encryptSecret } from './crypto.util';
 import { InvestingSyncService } from './investing-sync.service';
+import { InvestingVenuesService } from './investing-venues.service';
 import { TradeCloseNotifierService } from './trade-close-notifier.service';
 
 const KEY = 'c'.repeat(64);
@@ -116,6 +117,8 @@ describe('InvestingSyncService', () => {
         { provide: BybitClient, useValue: bybit },
         { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(KEY) } },
         { provide: TradeCloseNotifierService, useValue: { notifyNewlyClosed: jest.fn() } },
+        // The balance read is covered by its own spec; here it only has to not get in the way.
+        { provide: InvestingVenuesService, useValue: { refreshLiveBalance: jest.fn() } },
       ],
     }).compile();
 
@@ -623,6 +626,8 @@ describe('InvestingSyncService', () => {
         { provide: BybitClient, useValue: bybit },
         { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(undefined) } },
         { provide: TradeCloseNotifierService, useValue: { notifyNewlyClosed: jest.fn() } },
+        // The balance read is covered by its own spec; here it only has to not get in the way.
+        { provide: InvestingVenuesService, useValue: { refreshLiveBalance: jest.fn() } },
       ],
     }).compile();
 

@@ -9,10 +9,14 @@
  *   docker compose run --rm app bun scripts/backfill-fx-rates.ts
  *   ... --dry-run    to see what would change without writing
  */
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 
 const HISTORY_ENDPOINT = 'https://api.frankfurter.dev/v1';
-const prisma = new PrismaClient();
+// Prisma 7 needs an explicit driver adapter, same as PrismaService.
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+});
 const dryRun = process.argv.includes('--dry-run');
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);

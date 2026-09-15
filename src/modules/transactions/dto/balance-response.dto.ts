@@ -67,16 +67,16 @@ export class BalanceResponseDto {
     example: 41400,
     nullable: true,
     description:
-      'Money working in external accounts (betting bankroll), at what it is worth today — the ' +
-      'deposits plus whatever the bets have realized, in the base currency. The balance itself ' +
-      'only ever had the deposits subtracted, so net worth is balance + inGoals + inBetting.',
+      'Money sent off to invest and not yet brought back — funded exchange accounts, cold ' +
+      'wallets — at what was sent, in the base currency. It is already subtracted from `balance`, ' +
+      'so the money is counted once; what it is worth today only the portfolio can say.',
   })
-  inBetting: number | null;
+  inExchanges: number | null;
 
   @ApiProperty({
     example: 1150,
     nullable: true,
-    description: 'The same external-account value in USD.',
+    description: 'The same figure in USD.',
   })
-  inBettingUsd: number | null;
+  inExchangesUsd: number | null;
 }

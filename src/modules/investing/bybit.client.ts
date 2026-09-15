@@ -24,6 +24,25 @@ export type BybitClosedPnlRecord = {
   [key: string]: unknown;
 };
 
+// One coin's slice of the unified account, as /v5/account/wallet-balance reports it.
+export type BybitWalletCoin = {
+  coin: string;
+  walletBalance: string;
+  // Value in USD as Bybit computes it — empty string for coins it cannot price.
+  usdValue: string;
+  equity: string;
+  unrealisedPnl: string;
+  [key: string]: unknown;
+};
+
+export type BybitWalletBalance = {
+  // Everything the account is worth, open positions marked to market included.
+  totalEquity: string;
+  // Same, minus unrealized PnL — the difference between the two is what open trades are showing.
+  totalWalletBalance: string;
+  coin: BybitWalletCoin[];
+};
+
 export type BybitExecutionRecord = {
   execId: string;
   orderId: string;
@@ -131,6 +150,28 @@ export class BybitClient {
     params: OpenPositionsParams,
   ): Promise<Page<BybitPositionRecord>> {
     return this.get(creds, '/v5/position/list', { limit: 200, ...params });
+  }
+
+  /**
+   * What the account is actually worth right now, straight from the exchange.
+   *
+   * This is the figure a venue's value is read from instead of being accumulated from deposits and
+   * PnL: it already includes open positions marked to market, funding, fees and anything that
+   * happened before the account was ever connected — none of which we could reconstruct reliably.
+   *
+   * Verified against a live read-only key whose only permission is ContractTrade(Position), so no
+   * extra API-key scope is required (see scripts/probe-bybit-wallet.ts).
+   */
+  async getWalletBalance(
+    creds: BybitCredentials,
+    accountType = 'UNIFIED',
+  ): Promise<BybitWalletBalance | null> {
+    const page = await this.get<{ list: BybitWalletBalance[] }>(
+      creds,
+      '/v5/account/wallet-balance',
+      { accountType },
+    );
+    return page.list?.[0] ?? null;
   }
 
   // Public market data — no API key needed. Used to value manual holdings and manual/spot

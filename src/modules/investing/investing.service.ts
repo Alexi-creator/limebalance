@@ -588,6 +588,7 @@ export class InvestingService {
         amount: dto.amount,
         avgBuyPrice: dto.avgBuyPrice ?? null,
         location: dto.location ?? '',
+        venueId: dto.venueId ?? null,
         note: dto.note ?? null,
       },
     });
@@ -595,9 +596,13 @@ export class InvestingService {
 
   // Holdings valued at current market prices. price/value/pnl are null when the asset has no
   // USDT ticker on Bybit or prices are temporarily unavailable.
-  async listHoldings(userId: string) {
+  /** `venueId` narrows the list to one place — the venue cards ask for their own coins. */
+  async listHoldings(userId: string, venueId?: string) {
     const [holdings, prices] = await Promise.all([
-      this.prisma.holding.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+      this.prisma.holding.findMany({
+        where: { userId, ...(venueId ? { venueId } : {}) },
+        orderBy: { createdAt: 'asc' },
+      }),
       this.prices.getUsdPrices(),
     ]);
 
@@ -629,6 +634,7 @@ export class InvestingService {
         ...(dto.amount !== undefined ? { amount: dto.amount } : {}),
         ...(dto.avgBuyPrice !== undefined ? { avgBuyPrice: dto.avgBuyPrice } : {}),
         ...(dto.location !== undefined ? { location: dto.location } : {}),
+        ...(dto.venueId !== undefined ? { venueId: dto.venueId } : {}),
         ...(dto.note !== undefined ? { note: dto.note } : {}),
       },
     });

@@ -8,7 +8,6 @@ import { envSchema } from './config/env.schema';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
-import { BettingModule } from './modules/betting/betting.module';
 import { CurrencyModule } from './modules/currency/currency.module';
 import { ExchangesModule } from './modules/exchanges/exchanges.module';
 import { ExpenseCategoriesModule } from './modules/expense-categories/expense-categories.module';
@@ -42,7 +41,6 @@ import { PrismaModule } from './prisma/prisma.module';
     ExpensesModule,
     ExchangesModule,
     GoalsModule,
-    BettingModule,
     InvestingModule,
     TransactionsModule,
     NotificationsModule,

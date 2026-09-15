@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsPositive, IsString, Matches, MaxLength } from 'class-validator';
+import {
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  Matches,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateHoldingDto {
   @ApiProperty({ example: 'BTC', description: 'Asset ticker' })
@@ -11,6 +19,15 @@ export class CreateHoldingDto {
   @IsNumber()
   @IsPositive()
   amount: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Venue this sits in. Manual venues only — a connected exchange reports its own coins, and ' +
+      'tracking the same asset by hand would double it.',
+  })
+  @IsOptional()
+  @IsUUID()
+  venueId?: string;
 
   @ApiPropertyOptional({
     example: 60000,
@@ -36,6 +53,11 @@ export class CreateHoldingDto {
 }
 
 export class UpdateHoldingDto {
+  @ApiPropertyOptional({ description: 'Move the asset to another venue' })
+  @IsOptional()
+  @IsUUID()
+  venueId?: string;
+
   @ApiPropertyOptional({ example: 'ETH' })
   @IsOptional()
   @IsString()

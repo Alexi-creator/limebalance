@@ -1,10 +1,10 @@
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BettingService } from '../betting/betting.service';
 import { CurrencyService } from '../currency/currency.service';
 import { FxRatesService } from '../currency/fx-rates.service';
 import { ExchangesService } from '../exchanges/exchanges.service';
 import { GoalsService } from '../goals/goals.service';
+import { InvestingTransfersService } from '../investing/investing-transfers.service';
 import { TransactionsService } from './transactions.service';
 
 // rates[X] = units of X per 1 USD.
@@ -31,7 +31,7 @@ describe('TransactionsService', () => {
   };
   let goals: { reservedRows: jest.Mock };
   let exchanges: { movementsByCurrency: jest.Mock };
-  let betting: { balanceRows: jest.Mock };
+  let investingTransfers: { transferRows: jest.Mock; totalValueUsd: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
@@ -55,8 +55,9 @@ describe('TransactionsService', () => {
     };
     goals = { reservedRows: jest.fn().mockResolvedValue([]) };
     exchanges = { movementsByCurrency: jest.fn().mockResolvedValue([]) };
-    betting = {
-      balanceRows: jest.fn().mockResolvedValue({ transferred: [], value: [] }),
+    investingTransfers = {
+      transferRows: jest.fn().mockResolvedValue([]),
+      totalValueUsd: jest.fn().mockResolvedValue(0),
     };
 
     const module = await Test.createTestingModule({
@@ -67,7 +68,7 @@ describe('TransactionsService', () => {
         { provide: FxRatesService, useValue: fx },
         { provide: GoalsService, useValue: goals },
         { provide: ExchangesService, useValue: exchanges },
-        { provide: BettingService, useValue: betting },
+        { provide: InvestingTransfersService, useValue: investingTransfers },
       ],
     }).compile();
 
@@ -197,37 +198,49 @@ describe('TransactionsService', () => {
       expect(res.inGoals).toBe(30_000);
     });
 
-    it('subtracts only what was deposited into a betting account, not its current value', async () => {
+    it('takes money sent to an exchange out of the free balance, at what was sent', async () => {
       prisma.income.groupBy.mockResolvedValue(groups([['THB', 100_000]]));
       prisma.expense.groupBy.mockResolvedValue(groups([['THB', 20_000]]));
       prisma.user.findUnique.mockResolvedValue({ currency: 'THB' });
-      // 30 000 deposited, now worth 45 000 — the 15 000 of winnings is not free money yet.
-      betting.balanceRows.mockResolvedValue({
-        transferred: [{ currency: 'THB', amount: 30_000 }],
-        value: [{ currency: 'THB', amount: 45_000 }],
-      });
+      investingTransfers.transferRows.mockResolvedValue([{ currency: 'THB', amount: 30_000 }]);
+      investingTransfers.totalValueUsd.mockResolvedValue(1_000);
 
       const res = await service.getBalance('u1');
 
       expect(res.balance).toBe(50_000);
-      expect(res.inBetting).toBe(45_000);
+      // Reported at what the venues are worth today (1 000 USD at 32 THB), not at what was sent.
+      expect(res.inExchanges).toBe(32_000);
     });
 
-    it('returns withdrawn winnings to the free balance without booking an income', async () => {
-      prisma.income.groupBy.mockResolvedValue(groups([['THB', 100_000]]));
-      prisma.expense.groupBy.mockResolvedValue(groups([['THB', 20_000]]));
-      prisma.user.findUnique.mockResolvedValue({ currency: 'THB' });
-      // Deposited 30 000, took 40 000 back out: net transferred is negative, and the account is empty.
-      betting.balanceRows.mockResolvedValue({
-        transferred: [{ currency: 'THB', amount: -10_000 }],
-        value: [{ currency: 'THB', amount: 0 }],
-      });
+    it('reports what the venues are worth, not what was put in', async () => {
+      prisma.income.groupBy.mockResolvedValue(groups([['USD', 5_000]]));
+      prisma.expense.groupBy.mockResolvedValue(groups([['USD', 0]]));
+      prisma.user.findUnique.mockResolvedValue({ currency: 'USD' });
+      investingTransfers.transferRows.mockResolvedValue([{ currency: 'USD', amount: 1_000 }]);
+      // 1 000 went out, 200 of it was paid to someone else and will never come back.
+      investingTransfers.totalValueUsd.mockResolvedValue(800);
 
       const res = await service.getBalance('u1');
 
-      // 80 000 net ledger + the 10 000 that came back from the bookmaker.
+      expect(res.balance).toBe(4_000);
+      // Net worth reads 4 800, which is the truth — counting the sent 1 000 would hide the loss.
+      expect(res.inExchanges).toBe(800);
+    });
+
+    it('hands trading profit back to the balance without booking an income', async () => {
+      prisma.income.groupBy.mockResolvedValue(groups([['THB', 100_000]]));
+      prisma.expense.groupBy.mockResolvedValue(groups([['THB', 20_000]]));
+      prisma.user.findUnique.mockResolvedValue({ currency: 'THB' });
+      // Sent 30 000 to the exchange, brought 40 000 back: net sent out is negative.
+      investingTransfers.transferRows.mockResolvedValue([{ currency: 'THB', amount: -10_000 }]);
+
+      const res = await service.getBalance('u1');
+
+      // 80 000 net ledger + the 10 000 that came back beyond what was ever sent.
       expect(res.balance).toBe(90_000);
-      expect(res.inBetting).toBe(0);
+      // Everything was withdrawn, so there is nothing left out there — the gain lives in the
+      // balance now, and no income row was ever written for it.
+      expect(res.inExchanges).toBe(0);
     });
 
     it('converts the base-currency total into USD, rather than aggregating twice', async () => {

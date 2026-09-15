@@ -5,6 +5,7 @@ import type { ExchangeAccount, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BybitClient, type BybitCredentials } from './bybit.client';
 import { decryptSecret } from './crypto.util';
+import { InvestingVenuesService } from './investing-venues.service';
 import { deriveLinearOpenedAt } from './linear-fifo.util';
 import { flipSide } from './side.util';
 import { computeSpotPositions } from './spot-lifo.util';
@@ -30,6 +31,7 @@ export class InvestingSyncService {
     private readonly bybit: BybitClient,
     private readonly config: ConfigService,
     private readonly tradeCloseNotifier: TradeCloseNotifierService,
+    private readonly venues: InvestingVenuesService,
   ) {}
 
   @Cron('*/2 * * * *')
@@ -81,6 +83,10 @@ export class InvestingSyncService {
       await this.syncClosedPnl(account, creds, now);
       await this.syncOpenPositions(account, creds);
       await this.syncExecutions(account, creds, now);
+      // The venue's value comes straight from the exchange rather than from the rows above — it
+      // already includes open positions marked to market, funding and fees. Never throws: a
+      // balance we could not read must not fail a sync that otherwise worked.
+      await this.venues.refreshLiveBalance(account, creds);
       await this.rebuildSpotPositions(account);
       await this.rebuildLinearOpenedAt(account);
       if (previousSyncAt) {

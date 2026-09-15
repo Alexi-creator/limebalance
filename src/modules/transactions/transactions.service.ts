@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BettingService } from '../betting/betting.service';
 import { CurrencyService, type Rates } from '../currency/currency.service';
 import { FxRatesService } from '../currency/fx-rates.service';
 import { ExchangesService } from '../exchanges/exchanges.service';
 import { GoalsService } from '../goals/goals.service';
+import { InvestingTransfersService } from '../investing/investing-transfers.service';
 import { GetTransactionsDto, TransactionType } from './dto/get-transactions.dto';
 
 export interface TransactionRow {
@@ -30,7 +30,7 @@ export class TransactionsService {
     private readonly fx: FxRatesService,
     private readonly goals: GoalsService,
     private readonly exchanges: ExchangesService,
-    private readonly betting: BettingService,
+    private readonly investingTransfers: InvestingTransfersService,
   ) {}
 
   async findAll(userId: string, dto: GetTransactionsDto) {
@@ -142,20 +142,29 @@ export class TransactionsService {
    * all. `byCurrency` is the source of truth here; `balance` is a convenience total.
    */
   async getBalance(userId: string) {
-    const [incomeGroups, expenseGroups, user, rates, goalRows, exchangeRows, bettingRows] =
-      await Promise.all([
-        this.prisma.income.groupBy({ by: ['currency'], where: { userId }, _sum: { amount: true } }),
-        this.prisma.expense.groupBy({
-          by: ['currency'],
-          where: { userId },
-          _sum: { amount: true },
-        }),
-        this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),
-        this.currency.getRates(),
-        this.goals.reservedRows(userId),
-        this.exchanges.movementsByCurrency(userId),
-        this.betting.balanceRows(userId),
-      ]);
+    const [
+      incomeGroups,
+      expenseGroups,
+      user,
+      rates,
+      goalRows,
+      exchangeRows,
+      investedRows,
+      venuesValueUsd,
+    ] = await Promise.all([
+      this.prisma.income.groupBy({ by: ['currency'], where: { userId }, _sum: { amount: true } }),
+      this.prisma.expense.groupBy({
+        by: ['currency'],
+        where: { userId },
+        _sum: { amount: true },
+      }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),
+      this.currency.getRates(),
+      this.goals.reservedRows(userId),
+      this.exchanges.movementsByCurrency(userId),
+      this.investingTransfers.transferRows(userId),
+      this.investingTransfers.totalValueUsd(userId),
+    ]);
 
     const baseCurrency = user?.currency ?? 'USD';
     const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -173,10 +182,11 @@ export class TransactionsService {
     // Exchanges move money between currencies at the rate the user actually got, so both sides are
     // exact figures and net worth is preserved without a single conversion of ours.
     for (const r of exchangeRows) add(r.currency, r.amount);
-    // External accounts (betting bankroll): only what was actually moved out leaves the balance —
-    // never the bankroll's current value. That is what makes a withdrawn profit appear as free
-    // money without ever being booked as an income, and an unrealized one stay out of the ledger.
-    for (const r of bettingRows.transferred) add(r.currency, -r.amount);
+    // Money sent off to invest (a Bybit account, a cold wallet): it left the ledger but is still
+    // the user's, so it leaves the free balance and nothing else. Withdrawing more than was ever
+    // sent — i.e. trading at a profit — makes this sum negative and hands the balance the gain,
+    // without an income row ever being written.
+    for (const r of investedRows) add(r.currency, -r.amount);
 
     const byCurrency = [...net]
       .map(([currency, amount]) => ({ currency, amount: round2(amount) }))
@@ -203,9 +213,17 @@ export class TransactionsService {
       return usd === null ? null : Math.round(usd * 100) / 100;
     };
 
-    // What those external accounts are worth today, not what was put into them: net worth is
-    // `balance + inGoals + inBetting`, and the bets' PnL lives in this figure alone.
-    const inBetting = this.sumIntoBase(bettingRows.value, baseCurrency, rates);
+    // What is sitting outside the ledger on exchanges and wallets, at what it is worth today —
+    // read from the exchanges themselves, so trading results are already inside it. Reported in
+    // the base currency, while the venues themselves are USD-denominated.
+    const inExchanges =
+      baseCurrency === 'USD'
+        ? round2(venuesValueUsd)
+        : rates
+          ? this.roundOrNull(
+              this.currency.convertWithRates(rates, venuesValueUsd, 'USD', baseCurrency),
+            )
+          : null;
 
     return {
       baseCurrency,
@@ -217,9 +235,14 @@ export class TransactionsService {
       isApproximate: foreign.length > 0,
       inGoals,
       inGoalsUsd: toUsd(inGoals),
-      inBetting,
-      inBettingUsd: toUsd(inBetting),
+      inExchanges,
+      inExchangesUsd: toUsd(inExchanges),
     };
+  }
+
+  /** Rounds a conversion that may have failed, keeping null as null. */
+  private roundOrNull(value: number | null): number | null {
+    return value === null ? null : Math.round(value * 100) / 100;
   }
 
   /**
