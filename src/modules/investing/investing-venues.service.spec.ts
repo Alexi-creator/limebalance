@@ -1,3 +1,4 @@
+import type { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BybitClient } from './bybit.client';
@@ -71,13 +72,14 @@ describe('InvestingVenuesService', () => {
       delete: jest.Mock;
     };
     investingTransfer: { count: jest.Mock };
-    holding: { findMany: jest.Mock };
+    holding: { findMany: jest.Mock; count: jest.Mock };
     investingAdjustment: {
       groupBy: jest.Mock;
       findMany: jest.Mock;
       create: jest.Mock;
       findFirst: jest.Mock;
       delete: jest.Mock;
+      count: jest.Mock;
     };
   };
   let bybit: { getWalletBalance: jest.Mock };
@@ -93,13 +95,14 @@ describe('InvestingVenuesService', () => {
         delete: jest.fn(),
       },
       investingTransfer: { count: jest.fn().mockResolvedValue(0) },
-      holding: { findMany: jest.fn().mockResolvedValue([]) },
+      holding: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
       investingAdjustment: {
         groupBy: jest.fn().mockResolvedValue([]),
         findMany: jest.fn().mockResolvedValue([]),
         create: jest.fn(),
         findFirst: jest.fn(),
         delete: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
       },
     };
     bybit = { getWalletBalance: jest.fn().mockResolvedValue(WALLET) };
@@ -226,6 +229,48 @@ describe('InvestingVenuesService', () => {
       prisma.investingVenue.findFirst.mockResolvedValue(VENUE);
 
       await expect(service.remove('u1', 'v1')).rejects.toThrow(/disconnect the exchange/);
+    });
+
+    it('refuses to delete a venue that still tracks coins', async () => {
+      prisma.investingVenue.findFirst.mockResolvedValue({ ...VENUE, accountId: null });
+      prisma.holding.count.mockResolvedValue(2);
+
+      // The coins would merely be unlinked: gone from every total, and out of the app's reach.
+      await expect(service.remove('u1', 'v1')).rejects.toThrow(/2 tracked coin/);
+      expect(prisma.investingVenue.delete).not.toHaveBeenCalled();
+    });
+
+    it('refuses to delete a venue whose value is all corrections', async () => {
+      prisma.investingVenue.findFirst.mockResolvedValue({ ...VENUE, accountId: null });
+      prisma.investingAdjustment.count.mockResolvedValue(1);
+
+      // They cascade, so net worth would drop with no record left of why.
+      await expect(service.remove('u1', 'v1')).rejects.toThrow(/1 correction/);
+      expect(prisma.investingVenue.delete).not.toHaveBeenCalled();
+    });
+
+    it('names everything that is in the way, not just the first thing', async () => {
+      prisma.investingVenue.findFirst.mockResolvedValue({ ...VENUE, accountId: null });
+      prisma.investingTransfer.count.mockResolvedValue(3);
+      prisma.holding.count.mockResolvedValue(2);
+      prisma.investingAdjustment.count.mockResolvedValue(1);
+
+      await expect(service.remove('u1', 'v1')).rejects.toThrow(
+        /3 transfer\(s\), 2 tracked coin\(s\), 1 correction\(s\)/,
+      );
+    });
+
+    it('sends the counts as data, so the client can say it in its own language', async () => {
+      prisma.investingVenue.findFirst.mockResolvedValue({ ...VENUE, accountId: null });
+      prisma.holding.count.mockResolvedValue(2);
+      prisma.investingAdjustment.count.mockResolvedValue(1);
+
+      const err = await service.remove('u1', 'v1').catch((e: BadRequestException) => e);
+
+      expect((err as BadRequestException).getResponse()).toMatchObject({
+        code: 'VENUE_NOT_EMPTY',
+        blockers: { transfers: 0, holdings: 2, adjustments: 1 },
+      });
     });
 
     it('deletes an empty manual venue', async () => {

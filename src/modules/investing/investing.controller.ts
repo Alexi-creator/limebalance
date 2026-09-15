@@ -87,8 +87,9 @@ export class InvestingController {
       'themselves — this is only for what we cannot read.',
   })
   @ApiCreatedResponse({ type: VenueDto })
-  createVenue(@CurrentUser() user: { id: string }, @Body() dto: CreateVenueDto) {
-    return this.venuesService.createManual(user.id, dto.name);
+  async createVenue(@CurrentUser() user: { id: string }, @Body() dto: CreateVenueDto) {
+    const venue = await this.venuesService.createManual(user.id, dto.name);
+    return this.transfersService.venueView(user.id, venue);
   }
 
   @Patch('venues/:id')
@@ -98,12 +99,13 @@ export class InvestingController {
       'Archiving only hides it: the money still counts, hiding a card is not a withdrawal.',
   })
   @ApiOkResponse({ type: VenueDto })
-  updateVenue(
+  async updateVenue(
     @CurrentUser() user: { id: string },
     @Param('id') id: string,
     @Body() dto: UpdateVenueDto,
   ) {
-    return this.venuesService.rename(user.id, id, dto);
+    const venue = await this.venuesService.rename(user.id, id, dto);
+    return this.transfersService.venueView(user.id, venue);
   }
 
   @Delete('venues/:id')

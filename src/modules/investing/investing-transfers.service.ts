@@ -182,28 +182,13 @@ export class InvestingTransfersService {
       this.currency.getRates(),
     ]);
 
-    const items = venues.map((venue) => {
-      const transferred = round2(netByVenue.get(venue.id) ?? 0);
-      const value = this.venues.valueOf(venue, {
+    const items = venues.map((venue) =>
+      this.viewOf(venue, {
+        transferredUsd: netByVenue.get(venue.id) ?? 0,
         coinsUsd: coinValues.get(venue.id) ?? null,
         adjustmentsUsd: adjustments.get(venue.id) ?? 0,
-        transferredUsd: transferred,
-      });
-      return {
-        id: venue.id,
-        name: venue.name,
-        accountId: venue.accountId,
-        mode: venue.mode,
-        archived: venue.archived,
-        transferredUsd: transferred,
-        valueUsd: value,
-        resultUsd: this.venues.resultOf(venue, value, transferred),
-        openingUsd: venue.openingUsd === null ? null : Number(venue.openingUsd),
-        adjustmentsUsd: round2(adjustments.get(venue.id) ?? 0),
-        valueAt: venue.balanceAt,
-        coins: this.venues.coinsOf(venue),
-      };
-    });
+      }),
+    );
 
     const baseCurrency = user?.currency ?? 'USD';
     const totalUsd = items.reduce((sum, i) => sum + (i.valueUsd ?? 0), 0);
@@ -219,6 +204,54 @@ export class InvestingTransfersService {
       resultUsd: round2(totalUsd - investedUsd),
       // A venue whose value could not be read at all makes every total a lower bound.
       isPartial: items.some((i) => i.valueUsd === null),
+    };
+  }
+
+  /**
+   * One venue in exactly the shape the list returns.
+   *
+   * Create and rename answer with this rather than the freshly written row: a row on its own
+   * carries none of the figures a venue card is made of, so a client handed one gets something
+   * that only looks like a venue.
+   */
+  async venueView(userId: string, venue: InvestingVenue) {
+    const [netByVenue, coinValues, adjustments] = await Promise.all([
+      this.netTransferredUsdByVenue(userId),
+      this.venues.manualCoinValues(userId),
+      this.venues.adjustmentTotals(userId),
+    ]);
+
+    return this.viewOf(venue, {
+      transferredUsd: netByVenue.get(venue.id) ?? 0,
+      coinsUsd: coinValues.get(venue.id) ?? null,
+      adjustmentsUsd: adjustments.get(venue.id) ?? 0,
+    });
+  }
+
+  /** A venue as the API shows it: the row plus the three figures that give it meaning. */
+  private viewOf(
+    venue: InvestingVenue,
+    parts: { transferredUsd: number; coinsUsd: number | null; adjustmentsUsd: number },
+  ) {
+    const transferred = round2(parts.transferredUsd);
+    const value = this.venues.valueOf(venue, {
+      coinsUsd: parts.coinsUsd,
+      adjustmentsUsd: parts.adjustmentsUsd,
+      transferredUsd: transferred,
+    });
+    return {
+      id: venue.id,
+      name: venue.name,
+      accountId: venue.accountId,
+      mode: venue.mode,
+      archived: venue.archived,
+      transferredUsd: transferred,
+      valueUsd: value,
+      resultUsd: this.venues.resultOf(venue, value, transferred),
+      openingUsd: venue.openingUsd === null ? null : Number(venue.openingUsd),
+      adjustmentsUsd: round2(parts.adjustmentsUsd),
+      valueAt: venue.balanceAt,
+      coins: this.venues.coinsOf(venue),
     };
   }
 

@@ -336,6 +336,39 @@ describe('InvestingTransfersService', () => {
     });
   });
 
+  describe('venueView', () => {
+    it('answers with a whole venue card, figures and all', async () => {
+      const view = await service.venueView('u1', { ...WALLET_VENUE });
+
+      // A freshly made wallet is empty rather than unknown: every figure is present, so the client
+      // gets a venue it can render instead of a bare row it has to guess the rest of.
+      expect(view).toEqual({
+        id: 'v2',
+        name: 'Ledger',
+        accountId: null,
+        mode: 'MANUAL',
+        archived: false,
+        transferredUsd: 0,
+        valueUsd: 0,
+        resultUsd: 0,
+        openingUsd: null,
+        adjustmentsUsd: 0,
+        valueAt: WALLET_VENUE.balanceAt,
+        coins: [],
+      });
+    });
+
+    it('carries the money already moved into an existing venue', async () => {
+      prisma.investingTransfer.groupBy
+        .mockResolvedValueOnce([venueGroup('v2', 'IN', 250)])
+        .mockResolvedValueOnce([]);
+
+      const view = await service.venueView('u1', { ...WALLET_VENUE });
+
+      expect(view).toMatchObject({ transferredUsd: 250, valueUsd: 250, resultUsd: 0 });
+    });
+  });
+
   describe('coin moves', () => {
     const coinRow = {
       ...ROW,

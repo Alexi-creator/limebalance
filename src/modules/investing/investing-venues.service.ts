@@ -7,6 +7,12 @@ import { PriceService } from './price.service';
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
+/**
+ * Why a venue would not delete, as a code the client can translate. The sentence beside it is a
+ * fallback for anything that only knows how to print a message.
+ */
+export const VENUE_NOT_EMPTY = 'VENUE_NOT_EMPTY';
+
 /** One coin of a live venue, as shown to the user. */
 /** The three things a manual venue's value is assembled from. */
 export interface ManualParts {
@@ -146,8 +152,18 @@ export class InvestingVenuesService {
   }
 
   /**
-   * Deletes a venue, but never one with money history behind it: its transfers would go with it,
-   * and every ledger transfer among them would silently hand the free balance money back.
+   * Deletes a venue — but only an empty one, never a venue anything is recorded against.
+   *
+   * Deleting a card is not a way to take money out of it, and refusing here is what keeps that
+   * true. Each of the three things a venue is worth would be destroyed differently and all of them
+   * silently: transfers cascade, and every ledger transfer among them would hand the free balance
+   * money that never actually came back; corrections cascade too, taking the reasons with them;
+   * tracked coins are merely unlinked, which drops them out of every total while leaving rows
+   * nothing in the app can reach any more.
+   *
+   * The way out is to say where the money went — a transfer to the ledger, to another venue, or
+   * out to someone else — and then archive what is left. Archiving hides the card and keeps its
+   * history; deleting is only ever for one created by mistake.
    */
   async remove(userId: string, id: string): Promise<{ success: true }> {
     const venue = await this.owned(userId, id);
@@ -156,14 +172,34 @@ export class InvestingVenuesService {
         'This venue belongs to a connected exchange — disconnect the exchange instead.',
       );
     }
-    const transfers = await this.prisma.investingTransfer.count({
-      where: { OR: [{ venueId: id }, { peerVenueId: id }] },
-    });
-    if (transfers > 0) {
-      throw new BadRequestException(
-        `The venue has ${transfers} transfer(s) on record. Delete them first, or archive the venue instead.`,
-      );
+
+    const [transfers, holdings, adjustments] = await Promise.all([
+      this.prisma.investingTransfer.count({
+        where: { OR: [{ venueId: id }, { peerVenueId: id }] },
+      }),
+      this.prisma.holding.count({ where: { userId, venueId: id } }),
+      this.prisma.investingAdjustment.count({ where: { userId, venueId: id } }),
+    ]);
+
+    // Named one by one: "not empty" leaves the user hunting for what is still in there. The counts
+    // travel as data beside the sentence, so the client can say the same thing in its own language
+    // and offer the two ways out instead of only reporting the refusal.
+    const named = [
+      transfers > 0 && `${transfers} transfer(s)`,
+      holdings > 0 && `${holdings} tracked coin(s)`,
+      adjustments > 0 && `${adjustments} correction(s)`,
+    ].filter((b): b is string => b !== false);
+
+    if (named.length > 0) {
+      throw new BadRequestException({
+        code: VENUE_NOT_EMPTY,
+        blockers: { transfers, holdings, adjustments },
+        message:
+          `The venue still has ${named.join(', ')} on record. Move what is in it out first, ` +
+          'or archive the venue instead — deleting it is not a way to withdraw from it.',
+      });
     }
+
     await this.prisma.investingVenue.delete({ where: { id: venue.id } });
     return { success: true };
   }
