@@ -198,7 +198,8 @@ export class InvestingController {
       'The amount is always positive; `direction` says whether the venue gained or lost it, and ' +
       '`peer` who was on the other side. Only peer=LEDGER moves your free balance, and even then ' +
       'it is neither an income nor an expense, so no report changes. peer=VENUE moves money ' +
-      'between two venues; peer=EXTERNAL means it went to someone else and will not come back.',
+      'between two venues; peer=EXTERNAL is the outside world — out to someone else and not ' +
+      'coming back, or in from someone else or from a holding that predates the app.',
   })
   @ApiCreatedResponse({ type: TransferResponseDto })
   createTransfer(@CurrentUser() user: { id: string }, @Body() dto: CreateTransferDto) {

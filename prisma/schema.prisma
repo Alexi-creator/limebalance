@@ -539,7 +539,9 @@ enum TransferPeer {
   LEDGER
   // Another venue — Bybit to a cold wallet. Net worth unchanged, two venues move.
   VENUE
-  // Someone else: paid, gifted, lost. The money is gone for good and net worth drops with it.
+  // The outside world, in either direction. Out: paid, gifted, lost — gone for good, and net
+  // worth drops with it. In: someone sent it to you, or it was already sitting here before the
+  // app ever saw this venue — net worth rises and the ledger is never involved either way.
   EXTERNAL
 }
 

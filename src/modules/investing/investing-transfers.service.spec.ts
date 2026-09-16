@@ -30,6 +30,7 @@ const WALLET_VENUE = {
   mode: 'MANUAL' as const,
   balanceUsd: null,
   openingUsd: null,
+  openingAt: null,
 };
 
 const ROW = {
@@ -309,6 +310,21 @@ describe('InvestingTransfersService', () => {
       expect(resultUsd).toBe(38.27);
     });
 
+    it('keeps what was already there apart from what was put in', async () => {
+      // v1 opened at 500 and had 100 deposited; the wallet was made by hand and has neither. The
+      // client needs the halves separately: calling 600 "put in" would claim the user deposited a
+      // balance the exchange already had.
+      prisma.investingVenue.findMany.mockResolvedValue([VENUE, WALLET_VENUE]);
+      prisma.investingTransfer.groupBy
+        .mockResolvedValueOnce([venueGroup('v1', 'IN', 100)])
+        .mockResolvedValueOnce([]);
+
+      const { openingUsd, investedUsd } = await service.listVenues('u1');
+
+      expect(openingUsd).toBe(500);
+      expect(investedUsd).toBe(600);
+    });
+
     it('counts a venue-to-venue move on both sides from one row', async () => {
       prisma.investingVenue.findMany.mockResolvedValue([VENUE, WALLET_VENUE]);
       prisma.investingTransfer.groupBy
@@ -323,6 +339,23 @@ describe('InvestingTransfersService', () => {
       expect(items[1].transferredUsd).toBe(200);
       // A manual venue is worth what is in it, so moving money there is not a result.
       expect(items[1].valueUsd).toBe(200);
+    });
+
+    it('reads a holding brought in from outside as put in, not as profit', async () => {
+      // A wallet whose only history is "this BTC was already mine": worth 700 today and 700 was
+      // brought in, so nothing here was made by trading.
+      prisma.investingVenue.findMany.mockResolvedValue([WALLET_VENUE]);
+      prisma.investingTransfer.groupBy
+        .mockResolvedValueOnce([venueGroup('v2', 'IN', 700)])
+        .mockResolvedValueOnce([]);
+      prisma.holding.findMany.mockResolvedValue([{ venueId: 'v2', asset: 'BTC', amount: 0.01 }]);
+
+      const { items, investedUsd, resultUsd } = await service.listVenues('u1');
+
+      expect(items[0]).toMatchObject({ valueUsd: 700, transferredUsd: 700 });
+      expect(items[0].resultUsd).toBe(0);
+      expect(investedUsd).toBe(700);
+      expect(resultUsd).toBe(0);
     });
 
     it('flags the totals as partial while a venue cannot be valued', async () => {
@@ -352,6 +385,7 @@ describe('InvestingTransfersService', () => {
         valueUsd: 0,
         resultUsd: 0,
         openingUsd: null,
+        openingAt: null,
         adjustmentsUsd: 0,
         valueAt: WALLET_VENUE.balanceAt,
         coins: [],
@@ -454,6 +488,39 @@ describe('InvestingTransfersService', () => {
           assetAmount: 0.01,
         }),
       ).rejects.toThrow(/only has 0.005 BTC/);
+    });
+
+    it('brings in a coin from outside without touching the free balance', async () => {
+      // A holding that predates the app, or one somebody sent you: it arrives in the venue's
+      // composition and is counted as put in, so the venue reads a result of zero rather than a
+      // profit equal to its whole value.
+      prisma.investingVenue.findFirst.mockResolvedValue(WALLET_VENUE);
+      prisma.investingTransfer.findUnique.mockResolvedValue({
+        ...coinRow,
+        direction: 'IN',
+        peer: 'EXTERNAL',
+        peerVenueId: null,
+        peerVenue: null,
+      });
+      prisma.holding.findFirst.mockResolvedValue(null);
+
+      await service.create('u1', {
+        venueId: 'v2',
+        direction: 'IN',
+        peer: 'EXTERNAL',
+        asset: 'BTC',
+        assetAmount: 0.01,
+      });
+
+      const data = prisma.investingTransfer.create.mock.calls[0][0].data;
+      expect(data).toMatchObject({ peer: 'EXTERNAL', direction: 'IN', asset: 'BTC', amount: 700 });
+      // The coin lands in the wallet's tracked composition…
+      expect(prisma.holding.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ asset: 'BTC', amount: 0.01 }) }),
+      );
+      // …priced at what it is worth, which is what the venue counts as put in — see the
+      // listVenues case that turns this into a result of zero.
+      expect(data.amountUsd).toBe(700);
     });
 
     it('refuses a coin moving to or from the wallet', async () => {

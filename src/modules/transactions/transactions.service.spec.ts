@@ -185,6 +185,48 @@ describe('TransactionsService', () => {
       expect(res.balance).toBe(50_000);
     });
 
+    it('cancels an expense against an income in the same non-base currency', async () => {
+      // The suspicion this test exists for: that spending in a currency other than the base one
+      // never reaches the balance. It does — the two rows meet inside their own bucket, and a
+      // bucket that nets to zero leaves byCurrency entirely.
+      prisma.income.groupBy.mockResolvedValue(
+        groups([
+          ['THB', 15_516],
+          ['RUB', 12_840],
+        ]),
+      );
+      prisma.expense.groupBy.mockResolvedValue(groups([['RUB', 12_840]]));
+      prisma.user.findUnique.mockResolvedValue({ currency: 'THB' });
+      currency.getRates.mockResolvedValue({ ...RATES, RUB: 80 });
+
+      const res = await service.getBalance('u1');
+
+      expect(res.byCurrency).toEqual([{ currency: 'THB', amount: 15_516 }]);
+      expect(res.balance).toBe(15_516);
+    });
+
+    it('leaves only what income in a foreign currency outlived its expenses and exchanges', async () => {
+      // Real figures from a user whose RUB balance would not go away: the leftover is what the
+      // exchanges did not carry off, not an expense that failed to land.
+      prisma.income.groupBy.mockResolvedValue(
+        groups([
+          ['THB', 15_516],
+          ['RUB', 1_494_884],
+        ]),
+      );
+      prisma.expense.groupBy.mockResolvedValue(groups([['RUB', 51_740]]));
+      prisma.user.findUnique.mockResolvedValue({ currency: 'THB' });
+      currency.getRates.mockResolvedValue({ ...RATES, RUB: 80 });
+      exchanges.movementsByCurrency.mockResolvedValue([{ currency: 'RUB', amount: -1_430_304 }]);
+
+      const res = await service.getBalance('u1');
+
+      expect(res.byCurrency).toEqual([
+        { currency: 'THB', amount: 15_516 },
+        { currency: 'RUB', amount: 12_840 },
+      ]);
+    });
+
     it('subtracts goal reserves from the free balance of their own currency', async () => {
       prisma.income.groupBy.mockResolvedValue(groups([['THB', 100_000]]));
       prisma.expense.groupBy.mockResolvedValue(groups([['THB', 20_000]]));

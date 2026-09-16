@@ -47,9 +47,11 @@ type TransferWithVenues = InvestingTransfer & {
  *
  * The one rule everything else follows: only a transfer whose peer is the LEDGER touches the free
  * balance. Moving coins from an exchange to a cold wallet changes no net worth and no ledger;
- * sending them to someone else reduces net worth without the ledger ever seeing the money back.
+ * the outside world moves net worth without the ledger ever seeing the money — out to someone
+ * else, or in from someone else and from holdings that predate the app.
  * Keeping those three apart is what lets the result stay honest — without the EXTERNAL case, coins
- * leaving the exchange would read as a trading loss.
+ * leaving the exchange would read as a trading loss, and coins that arrived from outside as a
+ * profit made out of nothing.
  */
 @Injectable()
 export class InvestingTransfersService {
@@ -192,6 +194,7 @@ export class InvestingTransfersService {
 
     const baseCurrency = user?.currency ?? 'USD';
     const totalUsd = items.reduce((sum, i) => sum + (i.valueUsd ?? 0), 0);
+    const openingUsd = items.reduce((sum, i) => sum + (i.openingUsd ?? 0), 0);
     const investedUsd = items.reduce((sum, i) => sum + i.transferredUsd + (i.openingUsd ?? 0), 0);
 
     return {
@@ -201,6 +204,10 @@ export class InvestingTransfersService {
       // The same total in the user's own currency, for the cards that live outside this section.
       totalBase: this.toBase(totalUsd, baseCurrency, rates),
       investedUsd: round2(investedUsd),
+      // Kept apart from the total it is half of: money that was already there when tracking began
+      // was never "put in" by anyone here, and summing the two under that one word is what makes a
+      // connected exchange claim you deposited its whole balance.
+      openingUsd: round2(openingUsd),
       resultUsd: round2(totalUsd - investedUsd),
       // A venue whose value could not be read at all makes every total a lower bound.
       isPartial: items.some((i) => i.valueUsd === null),
@@ -249,6 +256,7 @@ export class InvestingTransfersService {
       valueUsd: value,
       resultUsd: this.venues.resultOf(venue, value, transferred),
       openingUsd: venue.openingUsd === null ? null : Number(venue.openingUsd),
+      openingAt: venue.openingAt,
       adjustmentsUsd: round2(parts.adjustmentsUsd),
       valueAt: venue.balanceAt,
       coins: this.venues.coinsOf(venue),

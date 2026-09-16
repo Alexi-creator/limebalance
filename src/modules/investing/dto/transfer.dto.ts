@@ -32,7 +32,8 @@ export class CreateTransferDto {
     enum: TransferPeer,
     description:
       'Who is on the other side. LEDGER moves your free balance; VENUE moves money between two ' +
-      'venues and touches no balance; EXTERNAL means it went to someone else and is gone for good.',
+      'venues and touches no balance; EXTERNAL is the outside world — out to someone else and ' +
+      'gone for good, or in from someone else or from what was here before tracking began.',
   })
   @IsEnum(TransferPeer)
   peer: TransferPeer;
@@ -207,6 +208,14 @@ export class VenueDto {
   openingUsd: number | null;
 
   @ApiProperty({
+    nullable: true,
+    description:
+      'When that baseline was taken — the date the result is measured from. Without it a small ' +
+      'result reads as a lifetime figure instead of the few days it actually covers.',
+  })
+  openingAt: Date | null;
+
+  @ApiProperty({
     example: -200,
     description: 'Net of the manual corrections applied to this venue, USD.',
   })
@@ -233,6 +242,14 @@ export class VenuesResponseDto {
 
   @ApiProperty({ example: 1300, description: 'Opening balances + everything moved in, USD' })
   investedUsd: number;
+
+  @ApiProperty({
+    example: 1000,
+    description:
+      'The opening half of investedUsd: what was already on the venues when tracking began, and ' +
+      'was never put there through this app.',
+  })
+  openingUsd: number;
 
   @ApiProperty({ example: 338.27, description: 'total − invested' })
   resultUsd: number;
