@@ -126,11 +126,13 @@ export class InvestingTransfersService {
 
   async update(userId: string, id: string, input: Partial<CreateTransferInput>) {
     const existing = await this.owned(userId, id);
-    // Editing the size of a coin move would have to unwind the composition it already shifted and
+    // Editing the size or direction of a coin move would have to unwind the composition it already shifted and
     // re-apply it — two chances to get the books wrong. Delete it and record the real one instead.
-    if (existing.asset && (input.amount !== undefined || input.currency !== undefined)) {
+    const flipped = input.direction !== undefined && input.direction !== existing.direction;
+    if (existing.asset && (input.amount !== undefined || input.currency !== undefined || flipped)) {
       throw new BadRequestException(
-        'This transfer was made in a coin — delete it and record a new one to change the amount.',
+        'This transfer was made in a coin — delete it and record a new one to change the amount ' +
+          'or the direction.',
       );
     }
     if (input.amount !== undefined && input.amount <= 0) {
