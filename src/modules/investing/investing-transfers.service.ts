@@ -358,12 +358,16 @@ export class InvestingTransfersService {
       throw new BadRequestException(`No price for ${asset} — record the move in USD instead.`);
     }
 
-    // Only the venue the coin leaves is checked, and only when we actually track its contents:
-    // a live exchange knows its own holdings, and a venue nobody has described cannot contradict us.
+    // Only the venue the coin leaves is checked, and only when it is kept by hand — a live exchange
+    // knows its own holdings. A manual venue holds exactly what its records say: a coin it has none
+    // of cannot leave it, or the transfer would be counted while the composition stayed unchanged.
     const source = input.direction === 'OUT' ? venue : await this.peerVenueOf(userId, input);
     if (source && source.mode === 'MANUAL') {
       const tracked = await this.venues.trackedAmount(userId, source.id, asset);
-      if (tracked > 0 && amount > tracked + 1e-12) {
+      if (tracked <= 0) {
+        throw new BadRequestException(`${source.name} has no ${asset} on record.`);
+      }
+      if (amount > tracked + 1e-12) {
         throw new BadRequestException(
           `${source.name} only has ${tracked} ${asset} on record — move at most that.`,
         );

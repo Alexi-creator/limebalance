@@ -418,6 +418,7 @@ describe('InvestingTransfersService', () => {
     it('prices the move off the coin, not off a typed amount', async () => {
       prisma.investingVenue.findFirst.mockResolvedValue({ ...VENUE, mode: 'MANUAL' });
       prisma.investingTransfer.findUnique.mockResolvedValue(coinRow);
+      prisma.holding.findMany.mockResolvedValue([{ amount: 0.05 }]);
 
       await service.create('u1', {
         venueId: 'v1',
@@ -438,6 +439,7 @@ describe('InvestingTransfersService', () => {
       prisma.investingVenue.findFirst.mockResolvedValue({ ...VENUE, mode: 'MANUAL' });
       prisma.investingTransfer.findUnique.mockResolvedValue(coinRow);
       prisma.holding.findFirst.mockResolvedValue({ id: 'h1', amount: 0.05 });
+      prisma.holding.findMany.mockResolvedValue([{ amount: 0.05 }]);
 
       await service.create('u1', {
         venueId: 'v1',
@@ -488,6 +490,25 @@ describe('InvestingTransfersService', () => {
           assetAmount: 0.01,
         }),
       ).rejects.toThrow(/only has 0.005 BTC/);
+    });
+
+    it('refuses to move a coin the manual venue has none of', async () => {
+      prisma.investingVenue.findFirst.mockResolvedValue({
+        ...VENUE,
+        mode: 'MANUAL',
+        name: 'Ledger',
+      });
+      prisma.holding.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.create('u1', {
+          venueId: 'v1',
+          direction: 'OUT',
+          peer: 'EXTERNAL',
+          asset: 'BTC',
+          assetAmount: 0.01,
+        }),
+      ).rejects.toThrow(/has no BTC on record/);
     });
 
     it('brings in a coin from outside without touching the free balance', async () => {
