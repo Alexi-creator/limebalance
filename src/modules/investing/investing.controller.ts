@@ -39,9 +39,11 @@ import { CreateManualPositionDto, UpdateManualPositionDto } from './dto/manual-p
 import { CreatePositionNoteDto, UpdatePositionNoteDto } from './dto/position-note.dto';
 import {
   AdjustmentResponseDto,
+  ClassifyTransferDto,
   CreateAdjustmentDto,
   CreateTransferDto,
   CreateVenueDto,
+  P2pOrdersResponseDto,
   TransferListResponseDto,
   TransferResponseDto,
   UpdateTransferDto,
@@ -51,6 +53,7 @@ import {
 } from './dto/transfer.dto';
 import { UpdateExchangeAccountDto } from './dto/update-exchange-account.dto';
 import { InvestingService } from './investing.service';
+import { InvestingP2pService } from './investing-p2p.service';
 import { InvestingTransfersService } from './investing-transfers.service';
 import { InvestingVenuesService } from './investing-venues.service';
 
@@ -61,6 +64,7 @@ export class InvestingController {
   constructor(
     private readonly investingService: InvestingService,
     private readonly transfersService: InvestingTransfersService,
+    private readonly p2pService: InvestingP2pService,
     private readonly venuesService: InvestingVenuesService,
     private readonly coinIconService: CoinIconService,
   ) {}
@@ -169,6 +173,11 @@ export class InvestingController {
       'amounts left the balance, negative ones came back.',
   })
   @ApiQuery({ name: 'venueId', required: false })
+  @ApiQuery({
+    name: 'needsReview',
+    required: false,
+    description: 'true: only movements imported from the exchange and not yet classified',
+  })
   @ApiQuery({ name: 'from', required: false, description: 'YYYY-MM-DD' })
   @ApiQuery({ name: 'to', required: false, description: 'YYYY-MM-DD' })
   @ApiQuery({ name: 'limit', required: false, description: 'Default 50, max 200' })
@@ -177,6 +186,7 @@ export class InvestingController {
   listTransfers(
     @CurrentUser() user: { id: string },
     @Query('venueId') venueId?: string,
+    @Query('needsReview') needsReview?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('limit') limit?: string,
@@ -184,6 +194,7 @@ export class InvestingController {
   ) {
     return this.transfersService.list(user.id, {
       venueId,
+      needsReview: needsReview === undefined ? undefined : needsReview === 'true',
       from: from ? new Date(from) : undefined,
       to: to ? endOfDay(to) : undefined,
       limit: limit ? Number(limit) : undefined,
@@ -217,10 +228,31 @@ export class InvestingController {
     return this.transfersService.update(user.id, id, dto);
   }
 
+  @Post('transfers/:id/classify')
+  @ApiOperation({
+    summary: 'Say what an imported deposit or withdrawal was',
+    description:
+      'Movements imported from the exchange arrive flagged needsReview and count as EXTERNAL ' +
+      'until classified. peer=LEDGER takes the money out of (or back into) your free balance and ' +
+      'needs the amount and currency that moved there; peer=VENUE names your other venue; ' +
+      'EXTERNAL confirms it came from or went to someone else. replacesId folds in a transfer you ' +
+      'already recorded by hand for the same movement. Can be repeated to change the answer.',
+  })
+  @ApiOkResponse({ type: TransferResponseDto })
+  classifyTransfer(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: ClassifyTransferDto,
+  ) {
+    return this.transfersService.classify(user.id, id, dto);
+  }
+
   @Delete('transfers/:id')
   @ApiOperation({
     summary: 'Delete a transfer',
-    description: 'The money goes back to your free balance, since it was never really spent.',
+    description:
+      'The money goes back to your free balance, since it was never really spent. Refused for ' +
+      'transfers imported from the exchange — classify those instead.',
   })
   removeTransfer(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.transfersService.remove(user.id, id);
@@ -279,6 +311,31 @@ export class InvestingController {
   @ApiOkResponse({ schema: { example: { deleted: true } } })
   removeAccount(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.investingService.removeAccount(user.id, id);
+  }
+
+  @Get('accounts/:id/p2p-orders')
+  @ApiOperation({
+    summary: 'P2P order history of a connected Bybit account',
+    description:
+      'Read live from the exchange, newest first, one page at a time — nothing is stored. Needs ' +
+      "the key's Fiat trading → P2P → Orders permission; without it the answer is 400 with " +
+      "code P2P_UNAVAILABLE and Bybit's own retCode.",
+  })
+  @ApiQuery({ name: 'page', required: false, description: 'From 1, default 1' })
+  @ApiQuery({ name: 'size', required: false, description: 'Default 20, max 50' })
+  @ApiOkResponse({ type: P2pOrdersResponseDto })
+  listP2pOrders(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('size') size?: string,
+  ) {
+    return this.p2pService.list(
+      user.id,
+      id,
+      page ? Number(page) || 1 : 1,
+      size ? Number(size) || 20 : 20,
+    );
   }
 
   @Post('accounts/:id/sync')

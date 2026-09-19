@@ -4,6 +4,7 @@ import type { ExchangeAccount } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BybitClient } from './bybit.client';
 import { encryptSecret } from './crypto.util';
+import { InvestingMovementsService } from './investing-movements.service';
 import { InvestingSyncService } from './investing-sync.service';
 import { InvestingVenuesService } from './investing-venues.service';
 import { TradeCloseNotifierService } from './trade-close-notifier.service';
@@ -119,6 +120,7 @@ describe('InvestingSyncService', () => {
         { provide: TradeCloseNotifierService, useValue: { notifyNewlyClosed: jest.fn() } },
         // The balance read is covered by its own spec; here it only has to not get in the way.
         { provide: InvestingVenuesService, useValue: { refreshLiveBalance: jest.fn() } },
+        { provide: InvestingMovementsService, useValue: { sync: jest.fn() } },
       ],
     }).compile();
 
@@ -628,6 +630,7 @@ describe('InvestingSyncService', () => {
         { provide: TradeCloseNotifierService, useValue: { notifyNewlyClosed: jest.fn() } },
         // The balance read is covered by its own spec; here it only has to not get in the way.
         { provide: InvestingVenuesService, useValue: { refreshLiveBalance: jest.fn() } },
+        { provide: InvestingMovementsService, useValue: { sync: jest.fn() } },
       ],
     }).compile();
 

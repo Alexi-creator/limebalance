@@ -562,12 +562,24 @@ model InvestingVenue {
   balanceUsd Decimal?  @map("balance_usd") @db.Decimal(20, 8)
   balanceAt  DateTime? @map("balance_at")
   // What the exchange reports holding, coin by coin — arrives with the balance, so it costs nothing.
+  // Both accounts merged: the unified trading one and FUND.
   coins      Json?
+  // LIVE only: the FUND account, priced in USD. Kept apart from `balanceUsd` because it has its own
+  // baseline: it only started being read after the trading balance already had one, and folding it
+  // into that figure would have made everything already sitting in FUND look like profit.
+  fundUsd    Decimal?  @map("fund_usd") @db.Decimal(20, 8)
 
   // "There was already this much here when tracking started": the baseline every result is
   // measured against. Immutable by design — a photograph of a moment, not a running total.
-  openingUsd Decimal?  @map("opening_usd") @db.Decimal(20, 8)
-  openingAt  DateTime? @map("opening_at")
+  openingUsd        Decimal?  @map("opening_usd") @db.Decimal(20, 8)
+  openingAt         DateTime? @map("opening_at")
+  // The same photograph of FUND, taken on its first successful read. Also immutable.
+  openingFundUsd    Decimal?  @map("opening_fund_usd") @db.Decimal(20, 8)
+  openingFundAt     DateTime? @map("opening_fund_at")
+  // How far deposits and withdrawals have been imported. Starts at `openingFundAt` and never
+  // earlier: whatever arrived before that is already inside the two baselines, and importing it
+  // as well would count the same money twice.
+  movementsSyncedTo DateTime? @map("movements_synced_to")
 
   archived  Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
@@ -590,36 +602,47 @@ model InvestingVenue {
 // expense (net worth does not change when money changes pocket, the same reasoning as
 // CurrencyExchange), so no report is affected.
 model InvestingTransfer {
-  id          String            @id @default(uuid())
-  userId      String            @map("user_id")
-  venueId     String            @map("venue_id")
+  id           String            @id @default(uuid())
+  userId       String            @map("user_id")
+  venueId      String            @map("venue_id")
   // IN: the venue gained this money. OUT: it left the venue.
-  direction   TransferDirection
-  peer        TransferPeer
+  direction    TransferDirection
+  peer         TransferPeer
   // Set only when peer = VENUE — the venue on the other side of the move.
-  peerVenueId String?           @map("peer_venue_id")
+  peerVenueId  String?           @map("peer_venue_id")
   // As the user entered it, in `currency`. Always positive; `direction` carries the sign.
-  amount      Decimal           @db.Decimal(12, 2)
+  amount       Decimal           @db.Decimal(12, 2)
   // Set when the move was made in a coin rather than in money — sending BTC to a cold wallet, say.
   // The composition of every manual venue involved is then adjusted by `assetAmount`, and stored
   // here so that deleting the transfer can put it back exactly.
-  asset       String?
-  assetAmount Decimal?          @map("asset_amount") @db.Decimal(30, 12)
-  currency    String
+  asset        String?
+  assetAmount  Decimal?          @map("asset_amount") @db.Decimal(30, 12)
+  currency     String
   // The same amount in USD at the rate of `date` — the investing side is USD-denominated, and
   // fixing the rate on the operation's own day keeps the result free of later FX moves.
   // NULL when no rate was available for that day, even as a live fallback: the transfer is still
   // recorded and still moves the ledger in its own currency, it just cannot join the USD baseline
   // until a rate exists. Better than refusing to save something that actually happened.
-  amountUsd   Decimal?          @map("amount_usd") @db.Decimal(20, 8)
-  note        String?
-  date        DateTime          @db.Date
-  createdAt   DateTime          @default(now()) @map("created_at")
+  amountUsd    Decimal?          @map("amount_usd") @db.Decimal(20, 8)
+  note         String?
+  date         DateTime          @db.Date
+  // Who typed it in: the user, or the exchange's own deposit/withdrawal history.
+  source       TransferSource    @default(MANUAL)
+  // The exchange's id for the movement — what keeps a re-scanned window from importing it twice.
+  externalId   String?           @map("external_id")
+  // Who sent it or where it went, as the exchange names them: an address, an email, a UID.
+  counterparty String?
+  txId         String?           @map("tx_id")
+  // Imported and not yet explained. Counts as EXTERNAL until then — money that simply appeared is
+  // not a trading result, and it is not the ledger's either until the user says so.
+  needsReview  Boolean           @default(false) @map("needs_review")
+  createdAt    DateTime          @default(now()) @map("created_at")
 
   venue     InvestingVenue  @relation("VenueTransfers", fields: [venueId], references: [id], onDelete: Cascade)
   peerVenue InvestingVenue? @relation("PeerVenueTransfers", fields: [peerVenueId], references: [id], onDelete: SetNull)
   user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([venueId, externalId])
   @@index([userId, date])
   @@index([venueId, date])
   @@map("investing_transfers")
@@ -628,6 +651,11 @@ model InvestingTransfer {
 enum TransferDirection {
   IN
   OUT
+}
+
+enum TransferSource {
+  MANUAL
+  BYBIT
 }
 
 // "The venue is worth X more/less than we think, and here is why." Manual venues only: a LIVE

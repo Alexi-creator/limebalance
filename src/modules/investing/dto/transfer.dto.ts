@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TransferDirection, TransferPeer, VenueMode } from '@prisma/client';
+import { TransferDirection, TransferPeer, TransferSource, VenueMode } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
@@ -94,6 +94,17 @@ export class CreateTransferDto {
   @IsString()
   @MaxLength(200)
   note?: string;
+
+  @ApiPropertyOptional({
+    example: '1893412345678901234',
+    description:
+      'The Bybit P2P order this transfer records (from GET /investing/accounts/:id/p2p-orders). ' +
+      'The order then shows as recorded, and cannot be recorded a second time.',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[0-9A-Za-z-]{1,64}$/, { message: 'p2pOrderId must be an order id' })
+  p2pOrderId?: string;
 }
 
 export class UpdateTransferDto {
@@ -127,6 +138,52 @@ export class UpdateTransferDto {
   note?: string;
 }
 
+export class ClassifyTransferDto {
+  @ApiProperty({
+    enum: TransferPeer,
+    description:
+      'Who was really on the other side. LEDGER: your own money from (or back to) the balance. ' +
+      'VENUE: another of your venues. EXTERNAL: someone else.',
+  })
+  @IsEnum(TransferPeer)
+  peer: TransferPeer;
+
+  @ApiPropertyOptional({ description: 'Required when peer = VENUE' })
+  @IsOptional()
+  @IsUUID()
+  peerVenueId?: string;
+
+  @ApiPropertyOptional({
+    example: 50000,
+    description: 'peer = LEDGER only, required there: what left or reached your wallet.',
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
+  amount?: number;
+
+  @ApiPropertyOptional({ example: 'RUB', description: 'peer = LEDGER only, required there' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z]{3}$/, CURRENCY)
+  currency?: string;
+
+  @ApiPropertyOptional({ example: 'от брата' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  note?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'A transfer you already recorded by hand for this same movement: it is removed and its ' +
+      'answer taken over. peer and the rest of this body are then ignored, except the note.',
+  })
+  @IsOptional()
+  @IsUUID()
+  replacesId?: string;
+}
+
 export class TransferResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() venueId: string;
@@ -154,6 +211,27 @@ export class TransferResponseDto {
 
   @ApiProperty({ example: 'на торговлю', nullable: true }) note: string | null;
   @ApiProperty() date: Date;
+
+  @ApiProperty({
+    enum: TransferSource,
+    description: 'MANUAL: typed in by you. BYBIT: imported from the exchange history.',
+  })
+  source: TransferSource;
+
+  @ApiProperty({
+    description: 'Imported and not yet classified — counts as EXTERNAL until it is.',
+  })
+  needsReview: boolean;
+
+  @ApiProperty({
+    example: 'friend@mail.com',
+    nullable: true,
+    description: 'Imported only: the sender or recipient as the exchange names them.',
+  })
+  counterparty: string | null;
+
+  @ApiProperty({ nullable: true, description: 'Imported only: the transaction hash, if any' })
+  txId: string | null;
 }
 
 export class TransferListResponseDto {
@@ -229,6 +307,18 @@ export class VenueDto {
 
   @ApiProperty({ type: [VenueCoinDto], description: 'What the exchange reports holding' })
   coins: VenueCoinDto[];
+
+  @ApiProperty({
+    example: 120,
+    nullable: true,
+    description:
+      'LIVE only: the part of valueUsd sitting in the FUND account, where deposits land. null ' +
+      'when the key cannot read it.',
+  })
+  fundUsd: number | null;
+
+  @ApiProperty({ example: 1, description: 'Imported movements waiting to be classified' })
+  pendingReview: number;
 }
 
 export class VenuesResponseDto {
@@ -259,6 +349,12 @@ export class VenuesResponseDto {
     description: 'At least one venue could not be valued, so the totals are a lower bound.',
   })
   isPartial: boolean;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Imported movements waiting to be classified, all venues',
+  })
+  pendingReview: number;
 }
 
 export class CreateVenueDto {
@@ -320,4 +416,40 @@ export class AdjustmentResponseDto {
   @ApiProperty({ example: -200 }) amountUsd: number;
   @ApiProperty({ example: 'перевёл подрядчику' }) note: string;
   @ApiProperty() date: Date;
+}
+
+export class P2pOrderDto {
+  @ApiProperty({ example: '1893412345678901234' }) id: string;
+  @ApiProperty({ enum: ['BUY', 'SELL'], description: 'BUY: you paid fiat and got the coin' })
+  side: 'BUY' | 'SELL';
+
+  @ApiProperty({ example: 'USDT' }) asset: string;
+  @ApiProperty({ example: 540.5 }) quantity: number;
+  @ApiProperty({ example: 50000 }) fiatAmount: number;
+  @ApiProperty({ example: 'RUB' }) fiatCurrency: string;
+  @ApiProperty({ example: 92.5 }) price: number;
+  @ApiProperty({ example: 0, nullable: true }) fee: number | null;
+  @ApiProperty({ example: 'CryptoSeller', nullable: true }) counterparty: string | null;
+
+  @ApiProperty({
+    enum: ['DONE', 'CANCELLED', 'DISPUTE', 'ACTIVE'],
+    description: 'Only DONE orders moved money and can be recorded',
+  })
+  status: 'DONE' | 'CANCELLED' | 'DISPUTE' | 'ACTIVE';
+
+  @ApiProperty() createdAt: Date;
+
+  @ApiProperty({ nullable: true, description: 'The transfer this order was recorded as, if any' })
+  transferId: string | null;
+}
+
+export class P2pOrdersResponseDto {
+  @ApiProperty({ type: [P2pOrderDto] }) items: P2pOrderDto[];
+  @ApiProperty({ example: 42 }) total: number;
+
+  @ApiProperty({
+    nullable: true,
+    description: "The account's venue — where a recorded order's transfer goes",
+  })
+  venueId: string | null;
 }

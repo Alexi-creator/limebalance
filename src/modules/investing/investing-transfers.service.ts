@@ -3,6 +3,7 @@ import type { InvestingTransfer, InvestingVenue, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService, type Rates } from '../currency/currency.service';
 import { FxRatesService } from '../currency/fx-rates.service';
+import { p2pExternalId } from './investing-p2p.service';
 import { InvestingVenuesService } from './investing-venues.service';
 import { PriceService } from './price.service';
 
@@ -16,6 +17,8 @@ export interface CurrencyRow {
 
 export interface TransfersQuery {
   venueId?: string;
+  /** Only the imported movements still waiting to be explained. */
+  needsReview?: boolean;
   from?: Date;
   to?: Date;
   limit?: number;
@@ -35,6 +38,27 @@ export interface CreateTransferInput {
   assetAmount?: number;
   date?: Date;
   note?: string;
+  /** The Bybit P2P order this transfer records — one order can be recorded only once. */
+  p2pOrderId?: string;
+}
+
+/**
+ * What an imported movement really was. The exchange knows the coin that arrived or left; only the
+ * user knows whose money it was.
+ */
+export interface ClassifyTransferInput {
+  peer: 'LEDGER' | 'VENUE' | 'EXTERNAL';
+  peerVenueId?: string;
+  /** peer = LEDGER only: what actually left or reached the wallet, in its own currency. */
+  amount?: number;
+  currency?: string;
+  note?: string;
+  /**
+   * A transfer the user already recorded by hand for this same movement. It is removed and its
+   * peer, amount and note are carried over — the imported row stays, since it is the one the
+   * exchange will keep reporting.
+   */
+  replacesId?: string;
 }
 
 type TransferWithVenues = InvestingTransfer & {
@@ -72,6 +96,7 @@ export class InvestingTransfersService {
         ? { OR: [{ venueId: query.venueId }, { peerVenueId: query.venueId }] }
         : {}),
       ...(query.from || query.to ? { date: { gte: query.from, lte: query.to } } : {}),
+      ...(query.needsReview !== undefined ? { needsReview: query.needsReview } : {}),
     };
 
     const [rows, total] = await Promise.all([
@@ -102,6 +127,15 @@ export class InvestingTransfersService {
       throw new BadRequestException('amount must be positive — use `direction` for the sign');
     }
 
+    if (input.p2pOrderId) {
+      // Checked up front rather than left to the unique index: a clear sentence beats a 500.
+      const taken = await this.prisma.investingTransfer.findFirst({
+        where: { venueId: venue.id, externalId: p2pExternalId(input.p2pOrderId) },
+        select: { id: true },
+      });
+      if (taken) throw new BadRequestException('This P2P order is already recorded.');
+    }
+
     const row = await this.prisma.investingTransfer.create({
       data: {
         userId,
@@ -116,6 +150,8 @@ export class InvestingTransfersService {
         assetAmount: coin?.amount ?? null,
         note: input.note ?? null,
         date,
+        // Still MANUAL: the user decided what the order was, the exchange only reported it.
+        externalId: input.p2pOrderId ? p2pExternalId(input.p2pOrderId) : null,
       },
       include: { venue: { select: { name: true } }, peerVenue: { select: { name: true } } },
     });
@@ -126,6 +162,19 @@ export class InvestingTransfersService {
 
   async update(userId: string, id: string, input: Partial<CreateTransferInput>) {
     const existing = await this.owned(userId, id);
+    // An imported movement is the exchange's record, not the user's: its size, direction and day
+    // are facts. What it was is said through classify(); only the note is free.
+    const touchesFacts =
+      input.direction !== undefined ||
+      input.amount !== undefined ||
+      input.currency !== undefined ||
+      input.date !== undefined;
+    if (existing.source !== 'MANUAL' && touchesFacts) {
+      throw new BadRequestException(
+        'This transfer comes from the exchange — only its note can be edited. Use classify to say ' +
+          'where the money came from or went.',
+      );
+    }
     // Editing the size or direction of a coin move would have to unwind the composition it already shifted and
     // re-apply it — two chances to get the books wrong. Delete it and record the real one instead.
     const flipped = input.direction !== undefined && input.direction !== existing.direction;
@@ -164,17 +213,110 @@ export class InvestingTransfersService {
 
   async remove(userId: string, id: string): Promise<{ success: true }> {
     const row = await this.owned(userId, id);
+    // Deleting an imported movement would not make it untrue — the balance still moved, and the
+    // result would quietly count it as profit or loss again. Classifying it is the way to say what
+    // it was, EXTERNAL included.
+    if (row.source !== 'MANUAL') {
+      throw new BadRequestException(
+        'This transfer comes from the exchange and cannot be deleted — classify it instead.',
+      );
+    }
     // Put the coins back where they were before deleting the record of having moved them.
     if (row.asset) await this.shiftComposition(userId, id, -1);
     await this.prisma.investingTransfer.delete({ where: { id } });
     return { success: true };
   }
 
+  /**
+   * Says what an imported movement was. Can be repeated — a second answer replaces the first.
+   *
+   * The USD figure is never touched: it is what actually reached or left the exchange, priced on
+   * arrival, and the venue's result is measured against exactly that. Against the LEDGER the
+   * amount and currency become what moved in the wallet instead — the two can differ by whatever
+   * the conversion cost, which is a real cost and shows up in net worth, not as a trading result.
+   */
+  async classify(userId: string, id: string, input: ClassifyTransferInput) {
+    const row = await this.owned(userId, id);
+    if (row.source === 'MANUAL') {
+      throw new BadRequestException(
+        'Only transfers imported from the exchange are classified — edit this one instead.',
+      );
+    }
+    const venue = await this.ownedVenue(userId, row.venueId);
+    const answer = input.replacesId ? await this.takeOver(userId, row, input) : input;
+
+    if (answer.peer === 'LEDGER' && !(answer.amount && answer.amount > 0 && answer.currency)) {
+      throw new BadRequestException(
+        'Say how much left or reached your balance, and in which currency.',
+      );
+    }
+    const peerVenueId = await this.resolvePeer(
+      userId,
+      { ...answer, venueId: venue.id, direction: row.direction },
+      venue,
+    );
+
+    // The coin moved on the far side of a venue-to-venue move is the only composition an imported
+    // row ever shifts (see shiftComposition). Undone first, so a changed answer starts clean.
+    await this.shiftComposition(userId, id, -1);
+
+    const toLedger = answer.peer === 'LEDGER';
+    await this.prisma.investingTransfer.update({
+      where: { id },
+      data: {
+        peer: answer.peer,
+        peerVenueId,
+        amount: toLedger ? answer.amount : Number(row.amountUsd ?? 0),
+        currency: toLedger ? answer.currency : 'USD',
+        note: answer.note?.trim() || null,
+        needsReview: false,
+      },
+    });
+    await this.shiftComposition(userId, id, 1);
+
+    const updated = await this.prisma.investingTransfer.findUniqueOrThrow({
+      where: { id },
+      include: { venue: { select: { name: true } }, peerVenue: { select: { name: true } } },
+    });
+    return this.present(updated);
+  }
+
+  /**
+   * Folds a hand-recorded duplicate into the imported row: its answer is taken over, and it is
+   * removed the ordinary way, so any coins it moved are put back before the imported row moves
+   * them again.
+   */
+  private async takeOver(
+    userId: string,
+    imported: InvestingTransfer,
+    input: ClassifyTransferInput,
+  ): Promise<ClassifyTransferInput> {
+    const manual = await this.owned(userId, input.replacesId as string);
+    if (
+      manual.source !== 'MANUAL' ||
+      manual.venueId !== imported.venueId ||
+      manual.direction !== imported.direction
+    ) {
+      throw new BadRequestException(
+        'Only a transfer you recorded by hand, for the same venue and in the same direction, can ' +
+          'be merged into this one.',
+      );
+    }
+    await this.remove(userId, manual.id);
+    return {
+      peer: manual.peer,
+      peerVenueId: manual.peerVenueId ?? undefined,
+      amount: Number(manual.amount),
+      currency: manual.currency,
+      note: input.note?.trim() || manual.note || undefined,
+    };
+  }
+
   // --- venues with their figures ---
 
   /** Every venue with what was put in, what it is worth now, and the difference. */
   async listVenues(userId: string) {
-    const [venues, netByVenue, coinValues, adjustments, user, rates] = await Promise.all([
+    const [venues, netByVenue, coinValues, adjustments, pending, user, rates] = await Promise.all([
       this.prisma.investingVenue.findMany({
         where: { userId },
         orderBy: [{ archived: 'asc' }, { createdAt: 'asc' }],
@@ -182,6 +324,7 @@ export class InvestingTransfersService {
       this.netTransferredUsdByVenue(userId),
       this.venues.manualCoinValues(userId),
       this.venues.adjustmentTotals(userId),
+      this.pendingByVenue(userId),
       this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),
       this.currency.getRates(),
     ]);
@@ -191,6 +334,7 @@ export class InvestingTransfersService {
         transferredUsd: netByVenue.get(venue.id) ?? 0,
         coinsUsd: coinValues.get(venue.id) ?? null,
         adjustmentsUsd: adjustments.get(venue.id) ?? 0,
+        pendingReview: pending.get(venue.id) ?? 0,
       }),
     );
 
@@ -213,6 +357,8 @@ export class InvestingTransfersService {
       resultUsd: round2(totalUsd - investedUsd),
       // A venue whose value could not be read at all makes every total a lower bound.
       isPartial: items.some((i) => i.valueUsd === null),
+      // Imported movements nobody has explained yet — the result is provisional until they are.
+      pendingReview: items.reduce((sum, i) => sum + i.pendingReview, 0),
     };
   }
 
@@ -224,23 +370,30 @@ export class InvestingTransfersService {
    * that only looks like a venue.
    */
   async venueView(userId: string, venue: InvestingVenue) {
-    const [netByVenue, coinValues, adjustments] = await Promise.all([
+    const [netByVenue, coinValues, adjustments, pending] = await Promise.all([
       this.netTransferredUsdByVenue(userId),
       this.venues.manualCoinValues(userId),
       this.venues.adjustmentTotals(userId),
+      this.pendingByVenue(userId),
     ]);
 
     return this.viewOf(venue, {
       transferredUsd: netByVenue.get(venue.id) ?? 0,
       coinsUsd: coinValues.get(venue.id) ?? null,
       adjustmentsUsd: adjustments.get(venue.id) ?? 0,
+      pendingReview: pending.get(venue.id) ?? 0,
     });
   }
 
   /** A venue as the API shows it: the row plus the three figures that give it meaning. */
   private viewOf(
     venue: InvestingVenue,
-    parts: { transferredUsd: number; coinsUsd: number | null; adjustmentsUsd: number },
+    parts: {
+      transferredUsd: number;
+      coinsUsd: number | null;
+      adjustmentsUsd: number;
+      pendingReview: number;
+    },
   ) {
     const transferred = round2(parts.transferredUsd);
     const value = this.venues.valueOf(venue, {
@@ -257,11 +410,17 @@ export class InvestingTransfersService {
       transferredUsd: transferred,
       valueUsd: value,
       resultUsd: this.venues.resultOf(venue, value, transferred),
-      openingUsd: venue.openingUsd === null ? null : Number(venue.openingUsd),
+      // Both baselines together — to the user it is one figure: what was there when tracking began.
+      openingUsd:
+        venue.openingUsd === null && venue.openingFundUsd === null
+          ? null
+          : round2(Number(venue.openingUsd ?? 0) + Number(venue.openingFundUsd ?? 0)),
       openingAt: venue.openingAt,
       adjustmentsUsd: round2(parts.adjustmentsUsd),
       valueAt: venue.balanceAt,
       coins: this.venues.coinsOf(venue),
+      fundUsd: venue.fundUsd === null ? null : Number(venue.fundUsd),
+      pendingReview: parts.pendingReview,
     };
   }
 
@@ -318,6 +477,15 @@ export class InvestingTransfersService {
   }
 
   // --- internals ---
+
+  private async pendingByVenue(userId: string): Promise<Map<string, number>> {
+    const grouped = await this.prisma.investingTransfer.groupBy({
+      by: ['venueId'],
+      where: { userId, needsReview: true },
+      _count: { _all: true },
+    });
+    return new Map(grouped.map((g) => [g.venueId, g._count._all]));
+  }
 
   private async owned(userId: string, id: string): Promise<InvestingTransfer> {
     const row = await this.prisma.investingTransfer.findFirst({ where: { id, userId } });
@@ -390,7 +558,12 @@ export class InvestingTransfersService {
 
     const qty = Number(row.assetAmount) * sign;
     const towardsVenue = row.direction === 'IN' ? qty : -qty;
-    await this.venues.applyCoinMove(userId, row.venue, row.asset, towardsVenue);
+    // An imported row's own venue is the exchange that reported it, whose coins it reads itself —
+    // shifting it would count the coin twice, and would still do so if the venue were later
+    // disconnected and fell back to MANUAL.
+    if (row.source === 'MANUAL') {
+      await this.venues.applyCoinMove(userId, row.venue, row.asset, towardsVenue);
+    }
     if (row.peerVenue) {
       await this.venues.applyCoinMove(userId, row.peerVenue, row.asset, -towardsVenue);
     }
@@ -490,6 +663,10 @@ export class InvestingTransfersService {
       amountUsd: row.amountUsd === null ? null : Number(row.amountUsd),
       note: row.note,
       date: row.date,
+      source: row.source,
+      needsReview: row.needsReview,
+      counterparty: row.counterparty,
+      txId: row.txId,
     };
   }
 }

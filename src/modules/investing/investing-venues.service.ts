@@ -26,6 +26,29 @@ export interface VenueCoin {
   coin: string;
   amount: number;
   usdValue: number | null;
+  /** Set on coins that came from FUND — lets a failed read of one half keep the other's snapshot. */
+  source?: 'FUND';
+}
+
+/** The snapshot as stored: one row per coin per account, FUND rows tagged. */
+function storedCoins(venue: InvestingVenue): VenueCoin[] {
+  const rows = venue.coins as unknown as VenueCoin[] | null;
+  return Array.isArray(rows) ? rows : [];
+}
+
+/**
+ * One row per coin across both accounts, largest first. A coin held in both is summed — to the
+ * user it is simply how much of it they have on the exchange.
+ */
+function mergeCoins(rows: VenueCoin[]): VenueCoin[] {
+  const byCoin = new Map<string, VenueCoin>();
+  for (const c of rows) {
+    const row = byCoin.get(c.coin) ?? { coin: c.coin, amount: 0, usdValue: null };
+    row.amount += c.amount;
+    if (c.usdValue !== null) row.usdValue = (row.usdValue ?? 0) + c.usdValue;
+    byCoin.set(c.coin, row);
+  }
+  return [...byCoin.values()].sort((a, b) => (b.usdValue ?? 0) - (a.usdValue ?? 0));
 }
 
 /**
@@ -80,7 +103,57 @@ export class InvestingVenuesService {
    */
   async refreshLiveBalance(account: ExchangeAccount, creds: BybitCredentials): Promise<void> {
     const venue = await this.ensureForAccount(account);
+    const [trading, fund] = await Promise.all([
+      this.readTradingBalance(account, creds),
+      this.readFundBalance(account, creds),
+    ]);
+    if (!trading && !fund) return;
 
+    const now = new Date();
+    // Each half is written only when it was actually read — a failed read keeps the last known
+    // figure rather than zeroing it. The coin list is rebuilt from whichever halves are fresh,
+    // falling back to the stored snapshot for the other.
+    // Stored per account, not summed: the halves have to stay separable for exactly that fallback.
+    const stored = storedCoins(venue);
+    const coins = [
+      ...(trading?.coins ?? stored.filter((c) => c.source !== 'FUND')),
+      ...(fund?.coins ?? stored.filter((c) => c.source === 'FUND')),
+    ].filter((c) => c.amount > 0);
+
+    await this.prisma.investingVenue.update({
+      where: { id: venue.id },
+      data: {
+        mode: 'LIVE',
+        balanceAt: now,
+        coins: coins as unknown as Prisma.InputJsonValue,
+        ...(trading
+          ? {
+              balanceUsd: trading.equity,
+              // The baseline is written exactly once, on the first successful read: whatever is on
+              // the exchange the moment tracking starts was not put there through this app, so it
+              // must not count as a result. Never rewritten afterwards — a photograph, not a total.
+              ...(venue.openingUsd === null ? { openingUsd: trading.equity, openingAt: now } : {}),
+            }
+          : {}),
+        ...(fund
+          ? {
+              fundUsd: fund.usd,
+              // Same rule for FUND, on its own first read — which for an account connected before
+              // FUND was read at all comes long after the trading baseline. Everything sitting
+              // there by then predates the deposit import and must not read as profit either.
+              ...(venue.openingFundUsd === null
+                ? { openingFundUsd: fund.usd, openingFundAt: now }
+                : {}),
+            }
+          : {}),
+      },
+    });
+  }
+
+  private async readTradingBalance(
+    account: ExchangeAccount,
+    creds: BybitCredentials,
+  ): Promise<{ equity: number; coins: VenueCoin[] } | null> {
     let wallet: Awaited<ReturnType<BybitClient['getWalletBalance']>>;
     try {
       wallet = await this.bybit.getWalletBalance(creds);
@@ -88,36 +161,57 @@ export class InvestingVenuesService {
       // A key without the wallet scope, or an exchange that has no such endpoint: the venue simply
       // stops being live rather than the sync failing.
       this.logger.warn(`Wallet balance unavailable for account ${account.id}: ${err}`);
-      return;
+      return null;
     }
-    if (!wallet) return;
+    if (!wallet) return null;
 
     const equity = Number(wallet.totalEquity);
-    if (!Number.isFinite(equity)) return;
+    if (!Number.isFinite(equity)) return null;
 
-    const coins: VenueCoin[] = (wallet.coin ?? [])
-      .map((c) => ({
-        coin: c.coin,
-        amount: Number(c.walletBalance),
-        usdValue: c.usdValue === '' ? null : Number(c.usdValue),
-      }))
-      // Bybit lists every coin the account has ever touched, zeroes included.
-      .filter((c) => c.amount > 0)
-      .sort((a, b) => (b.usdValue ?? 0) - (a.usdValue ?? 0));
+    const coins: VenueCoin[] = (wallet.coin ?? []).map((c) => ({
+      coin: c.coin,
+      amount: Number(c.walletBalance),
+      usdValue: c.usdValue === '' ? null : Number(c.usdValue),
+    }));
+    return { equity, coins };
+  }
 
-    await this.prisma.investingVenue.update({
-      where: { id: venue.id },
-      data: {
-        mode: 'LIVE',
-        balanceUsd: equity,
-        balanceAt: new Date(),
-        coins: coins as unknown as Prisma.InputJsonValue,
-        // The baseline is written exactly once, on the first successful read: whatever is on the
-        // exchange the moment tracking starts was not put there through this app, so it must not
-        // count as a result. Never rewritten afterwards — it is a photograph, not a running total.
-        ...(venue.openingUsd === null ? { openingUsd: equity, openingAt: new Date() } : {}),
-      },
-    });
+  /**
+   * FUND — where deposits land. Priced here off the spot feed, since Bybit sends no USD figure for
+   * it; a coin with no ticker is left out of the sum, the same rule as manual venues.
+   *
+   * Null when it cannot be read, which for a key without the Account Transfer permission is every
+   * time. The venue then stays on the trading balance alone, exactly as before FUND was read, and
+   * the deposit import stays off with it (see InvestingMovementsService).
+   */
+  private async readFundBalance(
+    account: ExchangeAccount,
+    creds: BybitCredentials,
+  ): Promise<{ usd: number; coins: VenueCoin[] } | null> {
+    let balance: Awaited<ReturnType<BybitClient['getFundBalance']>>;
+    try {
+      balance = await this.bybit.getFundBalance(creds);
+    } catch (err) {
+      this.logger.warn(`FUND balance unavailable for account ${account.id}: ${err}`);
+      return null;
+    }
+
+    const prices = await this.prices.getUsdPrices();
+    // No price feed at all would value FUND at zero and, on a first read, bake that zero into the
+    // baseline forever. Skipping the read is the safe way to wait for the next sync.
+    if (!prices) return null;
+
+    let usd = 0;
+    const coins: VenueCoin[] = [];
+    for (const c of balance) {
+      const amount = Number(c.walletBalance);
+      if (!(amount > 0)) continue;
+      const price = this.prices.priceOf(c.coin, prices);
+      const value = price === null ? null : amount * price;
+      if (value !== null) usd += value;
+      coins.push({ coin: c.coin, amount, usdValue: value, source: 'FUND' });
+    }
+    return { usd: round2(usd), coins };
   }
 
   // --- manual venues ---
@@ -359,16 +453,14 @@ export class InvestingVenuesService {
 
   /** Coins of a live venue, parsed back out of the JSON snapshot. */
   coinsOf(venue: InvestingVenue): VenueCoin[] {
-    if (!venue.coins) return [];
-    const rows = venue.coins as unknown as VenueCoin[];
-    return Array.isArray(rows) ? rows : [];
+    return mergeCoins(storedCoins(venue));
   }
 
   /**
    * What a venue is worth.
    *
-   * LIVE: whatever the exchange last said — it already knows about every coin and every open
-   * position, so nothing is added to it.
+   * LIVE: whatever the exchange last said — the trading account, which already knows about every
+   * coin and every open position, plus FUND, where deposits wait until they are moved over.
    *
    * MANUAL: the tracked coins at today's price, and if none are tracked, whatever was put in —
    * a wallet nobody has described is at least worth the money sent to it, and showing zero there
@@ -377,7 +469,8 @@ export class InvestingVenuesService {
    */
   valueOf(venue: InvestingVenue, parts: ManualParts): number | null {
     if (venue.mode === 'LIVE') {
-      return venue.balanceUsd === null ? null : round2(Number(venue.balanceUsd));
+      if (venue.balanceUsd === null) return null;
+      return round2(Number(venue.balanceUsd) + Number(venue.fundUsd ?? 0));
     }
     const base = parts.coinsUsd === null ? parts.transferredUsd : parts.coinsUsd;
     return round2(base + parts.adjustmentsUsd);
@@ -393,7 +486,8 @@ export class InvestingVenuesService {
    */
   resultOf(venue: InvestingVenue, value: number | null, netTransferredUsd: number): number | null {
     if (value === null) return null;
-    const opening = venue.openingUsd === null ? 0 : Number(venue.openingUsd);
+    // Both photographs: the trading account's and FUND's, each taken on its own first read.
+    const opening = Number(venue.openingUsd ?? 0) + Number(venue.openingFundUsd ?? 0);
     return round2(value - opening - netTransferredUsd);
   }
 }

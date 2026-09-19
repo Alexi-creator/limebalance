@@ -23,6 +23,10 @@ const VENUE = {
   coins: null,
   openingUsd: null,
   openingAt: null,
+  fundUsd: null,
+  openingFundUsd: null,
+  openingFundAt: null,
+  movementsSyncedTo: null,
   archived: false,
   createdAt: new Date(),
 };
@@ -82,7 +86,7 @@ describe('InvestingVenuesService', () => {
       count: jest.Mock;
     };
   };
-  let bybit: { getWalletBalance: jest.Mock };
+  let bybit: { getWalletBalance: jest.Mock; getFundBalance: jest.Mock };
   let prices: { getUsdPrices: jest.Mock; priceOf: jest.Mock };
 
   beforeEach(async () => {
@@ -105,7 +109,13 @@ describe('InvestingVenuesService', () => {
         count: jest.fn().mockResolvedValue(0),
       },
     };
-    bybit = { getWalletBalance: jest.fn().mockResolvedValue(WALLET) };
+    bybit = {
+      getWalletBalance: jest.fn().mockResolvedValue(WALLET),
+      // A key without the Account Transfer permission — the state every existing key starts in.
+      getFundBalance: jest
+        .fn()
+        .mockRejectedValue(new Error('Bybit error 10005: permission denied')),
+    };
     prices = {
       getUsdPrices: jest.fn().mockResolvedValue(new Map([['BTC', 70_000]])),
       priceOf: jest.fn((asset: string, map: Map<string, number>) => map.get(asset) ?? null),
@@ -178,6 +188,103 @@ describe('InvestingVenuesService', () => {
       ).resolves.toBeUndefined();
       // No write at all — a stale value with a visible timestamp beats a zero.
       expect(prisma.investingVenue.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refreshLiveBalance — FUND', () => {
+    const FUND = [
+      { coin: 'USDT', walletBalance: '100' },
+      { coin: 'BTC', walletBalance: '0.001' },
+      { coin: 'ETH', walletBalance: '0' },
+    ];
+
+    beforeEach(() => {
+      bybit.getFundBalance.mockResolvedValue(FUND);
+      prices.getUsdPrices.mockResolvedValue(
+        new Map([
+          ['BTC', 70_000],
+          ['USDT', 1],
+        ]),
+      );
+    });
+
+    it('prices FUND itself and takes its own baseline on the first read', async () => {
+      await service.refreshLiveBalance(ACCOUNT, { apiKey: 'k', apiSecret: 's' });
+
+      const data = prisma.investingVenue.update.mock.calls[0][0].data;
+      expect(data.fundUsd).toBe(170);
+      expect(data.openingFundUsd).toBe(170);
+      expect(data.openingFundAt).toBeInstanceOf(Date);
+      // Stored per account so either half can survive the other's failed read.
+      expect(data.coins).toContainEqual({
+        coin: 'BTC',
+        amount: 0.001,
+        usdValue: 70,
+        source: 'FUND',
+      });
+      expect(data.coins).toContainEqual({ coin: 'BTC', amount: 0.002, usdValue: 138.17 });
+    });
+
+    it('never rewrites the FUND baseline afterwards', async () => {
+      prisma.investingVenue.findUnique.mockResolvedValue({ ...VENUE, openingFundUsd: 20 });
+
+      await service.refreshLiveBalance(ACCOUNT, { apiKey: 'k', apiSecret: 's' });
+
+      const data = prisma.investingVenue.update.mock.calls[0][0].data;
+      expect(data.fundUsd).toBe(170);
+      expect(data.openingFundUsd).toBeUndefined();
+    });
+
+    it('keeps the last FUND figure and coins when FUND cannot be read', async () => {
+      bybit.getFundBalance.mockRejectedValue(new Error('network'));
+      const kept = { coin: 'USDT', amount: 40, usdValue: 40, source: 'FUND' };
+      prisma.investingVenue.findUnique.mockResolvedValue({ ...VENUE, fundUsd: 40, coins: [kept] });
+
+      await service.refreshLiveBalance(ACCOUNT, { apiKey: 'k', apiSecret: 's' });
+
+      const data = prisma.investingVenue.update.mock.calls[0][0].data;
+      expect(data.fundUsd).toBeUndefined();
+      expect(data.coins).toContainEqual(kept);
+    });
+
+    it('skips FUND without a price feed rather than baking a zero into its baseline', async () => {
+      prices.getUsdPrices.mockResolvedValue(null);
+
+      await service.refreshLiveBalance(ACCOUNT, { apiKey: 'k', apiSecret: 's' });
+
+      const data = prisma.investingVenue.update.mock.calls[0][0].data;
+      expect(data.openingFundUsd).toBeUndefined();
+      expect(data.fundUsd).toBeUndefined();
+    });
+
+    it('shows one row per coin across both accounts', () => {
+      const venue = {
+        ...VENUE,
+        coins: [
+          { coin: 'BTC', amount: 0.002, usdValue: 140 },
+          { coin: 'USDT', amount: 100, usdValue: 100, source: 'FUND' },
+          { coin: 'BTC', amount: 0.001, usdValue: 70, source: 'FUND' },
+        ],
+      } as never;
+
+      expect(service.coinsOf(venue)).toEqual([
+        { coin: 'BTC', amount: 0.003, usdValue: 210 },
+        { coin: 'USDT', amount: 100, usdValue: 100 },
+      ]);
+    });
+
+    it('counts FUND in the value and its baseline in the result', () => {
+      const venue = {
+        ...VENUE,
+        balanceUsd: 600,
+        fundUsd: 150,
+        openingUsd: 500,
+        openingFundUsd: 0,
+      } as never;
+
+      // 150 USDT arrived in FUND and was imported as a 150 transfer: value 750, result still 100.
+      expect(service.valueOf(venue, parts())).toBe(750);
+      expect(service.resultOf(venue, 750, 150)).toBe(100);
     });
   });
 

@@ -87,7 +87,79 @@ export type BybitConvertCoin = {
   [key: string]: unknown;
 };
 
+// A coin sitting in the FUND account — where deposits land and withdrawals leave from. No USD
+// figure comes with it, unlike the unified account's coins, so callers price it themselves.
+export type BybitFundCoin = {
+  coin: string;
+  walletBalance: string;
+  [key: string]: unknown;
+};
+
+// An on-chain deposit. `status` 3 is the only one that means the money is there.
+export type BybitDepositRecord = {
+  id?: string;
+  coin: string;
+  chain: string;
+  amount: string;
+  txID: string;
+  txIndex?: string;
+  status: number;
+  fromAddress?: string;
+  toAddress?: string;
+  successAt: string;
+  [key: string]: unknown;
+};
+
+// Money sent by another Bybit user, off-chain. `address` is how the sender was named — an email,
+// a phone number or a UID. `status` 2 is success.
+export type BybitInternalDepositRecord = {
+  id: string;
+  coin: string;
+  amount: string;
+  status: number;
+  address?: string;
+  txID?: string;
+  createdTime: string;
+  [key: string]: unknown;
+};
+
+// A withdrawal, on-chain or to another Bybit user. `status` is a word here — "success" when done.
+export type BybitWithdrawalRecord = {
+  withdrawId: string;
+  coin: string;
+  chain?: string;
+  amount: string;
+  withdrawFee?: string;
+  status: string;
+  toAddress?: string;
+  txID?: string;
+  updateTime: string;
+  [key: string]: unknown;
+};
+
+// One P2P order as /v5/p2p/order/simplifyList reports it. `side` 0 = the user bought crypto
+// (paid fiat), 1 = sold it. `amount` is the fiat side, `quantity` the coin side. Statuses: 50 is
+// completed, 40/80 cancelled, 30/100/110 disputed; anything else is still in progress.
+export type BybitP2pOrder = {
+  id: string;
+  side: number;
+  tokenId: string;
+  amount: string;
+  currencyId: string;
+  price: string;
+  quantity?: string;
+  notifyTokenQuantity?: string;
+  fee?: string;
+  targetNickName?: string;
+  status: number;
+  createDate: string;
+  [key: string]: unknown;
+};
+
 type Page<T> = { list: T[]; nextPageCursor: string };
+
+// Deposit and withdrawal history: a window of at most 30 days, cursor pagination.
+type MovementParams = { startTime: number; endTime: number; cursor?: string };
 
 type RangeParams = {
   category: string;
@@ -174,6 +246,60 @@ export class BybitClient {
     return page.list?.[0] ?? null;
   }
 
+  /**
+   * The FUND account: where deposits arrive and withdrawals leave from. The unified balance above
+   * does not include it, so money sent to the exchange stays invisible until it is moved over.
+   * Needs the key's Assets → Wallet → Account Transfer permission (read-only is enough).
+   */
+  async getFundBalance(creds: BybitCredentials): Promise<BybitFundCoin[]> {
+    const result = await this.get<{ balance: BybitFundCoin[] }>(
+      creds,
+      '/v5/asset/transfer/query-account-coins-balance',
+      { accountType: 'FUND' },
+    );
+    return result.balance ?? [];
+  }
+
+  // On-chain deposits. Same permission as the FUND balance.
+  async getDeposits(
+    creds: BybitCredentials,
+    params: MovementParams,
+  ): Promise<{ rows: BybitDepositRecord[]; nextPageCursor: string }> {
+    return this.get(creds, '/v5/asset/deposit/query-record', { limit: 50, ...params });
+  }
+
+  // Deposits from other Bybit users (by email, phone or UID) — they never touch a chain.
+  async getInternalDeposits(
+    creds: BybitCredentials,
+    params: MovementParams,
+  ): Promise<{ rows: BybitInternalDepositRecord[]; nextPageCursor: string }> {
+    return this.get(creds, '/v5/asset/deposit/query-internal-record', { limit: 50, ...params });
+  }
+
+  // Withdrawals of both kinds (withdrawType 2 = on-chain and internal together).
+  async getWithdrawals(
+    creds: BybitCredentials,
+    params: MovementParams,
+  ): Promise<{ rows: BybitWithdrawalRecord[]; nextPageCursor: string }> {
+    return this.get(creds, '/v5/asset/withdraw/query-record', {
+      limit: 50,
+      withdrawType: 2,
+      ...params,
+    });
+  }
+
+  /**
+   * P2P orders, newest first, one page at a time (`page` starts at 1). Needs the key's Fiat
+   * trading → P2P → Orders permission (read-only is enough). The only POST we make — the P2P API
+   * takes its filters in a JSON body.
+   */
+  async getP2pOrders(
+    creds: BybitCredentials,
+    params: { page: number; size: number },
+  ): Promise<{ count: number; items: BybitP2pOrder[] }> {
+    return this.post(creds, '/v5/p2p/order/simplifyList', params);
+  }
+
   // Public market data — no API key needed. Used to value manual holdings and manual/spot
   // positions (looked up by bare asset ticker — see PriceService.priceOf).
   async getSpotTickers(): Promise<{ symbol: string; lastPrice: string }[]> {
@@ -214,6 +340,40 @@ export class BybitClient {
     };
     if (body.retCode !== 0) throw new BybitApiError(body.retCode, body.retMsg);
     return body.result.list;
+  }
+
+  // POST flavour of the v5 signature: the JSON body takes the query string's place in it.
+  private async post<T>(creds: BybitCredentials, path: string, body: object): Promise<T> {
+    const json = JSON.stringify(body);
+    const timestamp = Date.now().toString();
+    const signature = createHmac('sha256', creds.apiSecret)
+      .update(timestamp + creds.apiKey + RECV_WINDOW + json)
+      .digest('hex');
+
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-BAPI-API-KEY': creds.apiKey,
+        'X-BAPI-TIMESTAMP': timestamp,
+        'X-BAPI-RECV-WINDOW': RECV_WINDOW,
+        'X-BAPI-SIGN': signature,
+      },
+      body: json,
+    });
+    if (!res.ok) throw new Error(`Bybit HTTP ${res.status} on ${path}`);
+
+    const parsed = (await res.json()) as {
+      retCode?: number;
+      ret_code?: number;
+      retMsg?: string;
+      ret_msg?: string;
+      result: T;
+    };
+    // The P2P API answers in the older snake_case envelope on some routes.
+    const code = parsed.retCode ?? parsed.ret_code ?? 0;
+    if (code !== 0) throw new BybitApiError(code, parsed.retMsg ?? parsed.ret_msg ?? '');
+    return parsed.result;
   }
 
   private async get<T>(
