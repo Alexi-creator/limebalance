@@ -16,6 +16,16 @@ export enum TransactionType {
   EXPENSE = 'expense',
 }
 
+export enum TransactionSortField {
+  DATE = 'date',
+  AMOUNT = 'amount',
+}
+
+export enum SortDirection {
+  ASC = 'asc',
+  DESC = 'desc',
+}
+
 export class GetTransactionsDto {
   @ApiPropertyOptional({ enum: TransactionType })
   @IsOptional()
@@ -56,6 +66,22 @@ export class GetTransactionsDto {
   @IsOptional()
   @IsISO8601()
   to?: string;
+
+  @ApiPropertyOptional({
+    enum: TransactionSortField,
+    default: TransactionSortField.DATE,
+    description:
+      'amount sorts by the USD value at the time of the transaction, so rows in different ' +
+      'currencies compare by what they were worth rather than by their bare figures.',
+  })
+  @IsOptional()
+  @IsEnum(TransactionSortField)
+  sortBy?: TransactionSortField;
+
+  @ApiPropertyOptional({ enum: SortDirection, default: SortDirection.DESC })
+  @IsOptional()
+  @IsEnum(SortDirection)
+  sortDir?: SortDirection;
 
   @ApiPropertyOptional({ default: 1, minimum: 1 })
   @IsOptional()

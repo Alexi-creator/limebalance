@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseEnumPipe,
   Patch,
   Post,
   Query,
@@ -52,7 +53,11 @@ import {
   VenuesResponseDto,
 } from './dto/transfer.dto';
 import { UpdateExchangeAccountDto } from './dto/update-exchange-account.dto';
-import { InvestingService } from './investing.service';
+import {
+  InvestingService,
+  POSITION_SORT_FIELDS,
+  type PositionSortField,
+} from './investing.service';
 import { InvestingP2pService } from './investing-p2p.service';
 import { InvestingTransfersService } from './investing-transfers.service';
 import { InvestingVenuesService } from './investing-venues.service';
@@ -356,7 +361,7 @@ export class InvestingController {
   @ApiOperation({
     summary: 'Positions (the diary) — open and closed',
     description:
-      'Open positions first, then closed ones newest first: derivatives (PnL from Bybit, and ' +
+      'Open and closed together, newest entry first unless sortBy says otherwise: derivatives (PnL from Bybit, and ' +
       "live open positions from Bybit's position list), spot (one row per unsold buy, from fills " +
       'by FIFO, category=spot) and manual entries. Each item carries its journal notes. Filters: ' +
       'accountId, symbol (e.g. BTCUSDT), status (OPEN/CLOSED), category (linear/spot/manual), ' +
@@ -375,6 +380,21 @@ export class InvestingController {
   @ApiQuery({ name: 'to', required: false, example: '2026-07-31' })
   @ApiQuery({ name: 'pnl', required: false, enum: ['positive', 'negative'] })
   @ApiQuery({ name: 'hideDust', required: false, example: 'true' })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    enum: POSITION_SORT_FIELDS,
+    description:
+      'Default openedAt. pnl/roi/duration are realized figures (closedPnl, closedPnl / ' +
+      'entryVolumeUsd, closedAt − openedAt): OPEN positions have none and sort last in either ' +
+      'direction, as do rows missing closedAt for sortBy=closedAt.',
+  })
+  @ApiQuery({
+    name: 'sortDir',
+    required: false,
+    enum: ['asc', 'desc'],
+    description: 'Default desc',
+  })
   @ApiQuery({ name: 'limit', required: false, example: 50 })
   @ApiQuery({ name: 'offset', required: false, example: 0 })
   @ApiOkResponse({ type: PositionListResponseDto })
@@ -388,6 +408,10 @@ export class InvestingController {
     @Query('to') to?: string,
     @Query('pnl') pnl?: 'positive' | 'negative',
     @Query('hideDust') hideDust?: string,
+    @Query('sortBy', new ParseEnumPipe(POSITION_SORT_FIELDS, { optional: true }))
+    sortBy?: PositionSortField,
+    @Query('sortDir', new ParseEnumPipe(['asc', 'desc'], { optional: true }))
+    sortDir?: 'asc' | 'desc',
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
@@ -400,6 +424,8 @@ export class InvestingController {
       to: to ? endOfDay(to) : undefined,
       pnl,
       hideDust: hideDust === 'true',
+      sortBy,
+      sortDir,
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
     });

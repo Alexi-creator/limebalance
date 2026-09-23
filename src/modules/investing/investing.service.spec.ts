@@ -286,7 +286,7 @@ describe('InvestingService', () => {
           symbol: { contains: 'BTCUSDT' },
           openedAt: { gte: from, lte: undefined },
         },
-        orderBy: [{ openedAt: 'desc' }, { closedAt: 'desc' }],
+        orderBy: [{ openedAt: 'desc' }, { closedAt: 'desc' }, { id: 'asc' }],
         include: { notes: { orderBy: { createdAt: 'asc' } } },
         take: 10,
         skip: 0,
@@ -294,6 +294,60 @@ describe('InvestingService', () => {
       // Manual entries have no leverage (→ 1x) and no fee lookup (no accountId/openedAt).
       expect(result.total).toBe(42);
       expect(result.items[0]).toMatchObject({ id: 'p1', entryVolumeUsd: 65000, totalFeeUsd: null });
+    });
+
+    it.each([
+      ['pnl', { closedPnl: { sort: 'desc', nulls: 'last' } }],
+      ['roi', { roiPct: { sort: 'desc', nulls: 'last' } }],
+      ['volume', { entryVolumeUsd: { sort: 'desc', nulls: 'last' } }],
+      ['duration', { durationSec: { sort: 'desc', nulls: 'last' } }],
+      ['closedAt', { closedAt: { sort: 'desc', nulls: 'last' } }],
+    ] as const)(
+      'sorts by %s with open (NULL) rows last, entry date and id as tiebreakers',
+      async (sortBy, primary) => {
+        prisma.position.findMany.mockResolvedValue([]);
+        prisma.position.count.mockResolvedValue(0);
+
+        await service.getPositions('u1', { sortBy, sortDir: 'desc' });
+
+        expect(prisma.position.findMany.mock.calls[0][0].orderBy).toEqual([
+          primary,
+          { openedAt: { sort: 'desc', nulls: 'last' } },
+          { id: 'asc' },
+        ]);
+      },
+    );
+
+    it('keeps NULLs last when ascending too — open rows never lead a PnL sort', async () => {
+      prisma.position.findMany.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+
+      await service.getPositions('u1', { sortBy: 'pnl', sortDir: 'asc' });
+
+      expect(prisma.position.findMany.mock.calls[0][0].orderBy[0]).toEqual({
+        closedPnl: { sort: 'asc', nulls: 'last' },
+      });
+    });
+
+    it('keeps the sort-only columns out of the response', async () => {
+      prisma.position.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          source: 'manual',
+          accountId: null,
+          qty: 1,
+          avgEntryPrice: 100,
+          leverage: null,
+          roiPct: 5,
+          durationSec: 3600,
+        },
+      ]);
+      prisma.position.count.mockResolvedValue(1);
+
+      const result = await service.getPositions('u1', {});
+
+      expect(result.items[0]).not.toHaveProperty('roiPct');
+      expect(result.items[0]).not.toHaveProperty('durationSec');
     });
 
     it('filters by openedAt range so still-open trades outside it stay hidden, unlike closedAt', async () => {

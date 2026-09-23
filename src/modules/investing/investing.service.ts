@@ -40,6 +40,17 @@ const sideToDirection = (side: string): 'long' | 'short' => (side === 'Sell' ? '
 const computePnl = (direction: 'long' | 'short', qty: number, entry: number, exit: number) =>
   direction === 'long' ? (exit - entry) * qty : (entry - exit) * qty;
 
+/** Columns the diary can be sorted by — see positionsOrderBy. */
+export const POSITION_SORT_FIELDS = [
+  'openedAt',
+  'closedAt',
+  'pnl',
+  'roi',
+  'volume',
+  'duration',
+] as const;
+export type PositionSortField = (typeof POSITION_SORT_FIELDS)[number];
+
 type ListQuery = {
   accountId?: string;
   symbol?: string;
@@ -54,6 +65,9 @@ type ListQuery = {
   pnl?: 'positive' | 'negative';
   /** Drop rows whose committed capital is under a dollar — leftover change, not trades. */
   hideDust?: boolean;
+  /** Default openedAt desc — the chronological timeline. */
+  sortBy?: PositionSortField;
+  sortDir?: 'asc' | 'desc';
 };
 
 @Injectable()
@@ -161,10 +175,7 @@ export class InvestingService {
     const [rows, total] = await Promise.all([
       this.prisma.position.findMany({
         where,
-        // One chronological timeline by entry date — open and closed, spot and linear, all
-        // interleaved — rather than bucketed by status first. closedAt is the tiebreaker for the
-        // rare rows with no derivable openedAt (see Position.openedAt).
-        orderBy: [{ openedAt: 'desc' }, { closedAt: 'desc' }],
+        orderBy: this.positionsOrderBy(query.sortBy, query.sortDir),
         include: { notes: { orderBy: { createdAt: 'asc' } } },
         take: Math.min(query.limit ?? 50, MAX_PAGE),
         skip: query.offset ?? 0,
@@ -198,8 +209,11 @@ export class InvestingService {
                 ),
               )
             : null;
+        // roiPct/durationSec are stored only to sort by (see positionsOrderBy) — the UI derives
+        // both itself, open positions included, so they stay out of the response.
+        const { roiPct: _roiPct, durationSec: _durationSec, ...position } = p;
         return {
-          ...p,
+          ...position,
           // Capital actually committed, in USDT — notional at entry price divided by leverage,
           // fees aside. 1x for spot/manual (no leverage).
           entryVolumeUsd: round2(notional / leverage),
@@ -210,6 +224,35 @@ export class InvestingService {
       }),
     );
     return { items, total };
+  }
+
+  /**
+   * The default is one chronological timeline by entry date — open and closed, spot and linear,
+   * all interleaved — rather than bucketed by status first. closedAt is the tiebreaker for the
+   * rare rows with no derivable openedAt (see Position.openedAt).
+   *
+   * PnL/ROI/duration sort on what is stored: realized closedPnl and the generated roiPct/durationSec
+   * columns, all NULL while OPEN. An open position's live PnL comes from a price feed on read and
+   * can't take part in an SQL sort, so open rows go last whichever the direction — with
+   * status=CLOSED the order is exact. id is the final tiebreaker so paging stays stable.
+   */
+  private positionsOrderBy(
+    sortBy: PositionSortField = 'openedAt',
+    sortDir: 'asc' | 'desc' = 'desc',
+  ): Prisma.PositionOrderByWithRelationInput[] {
+    if (sortBy === 'openedAt') return [{ openedAt: sortDir }, { closedAt: 'desc' }, { id: 'asc' }];
+    const last = { sort: sortDir, nulls: 'last' } as const;
+    const primary: Record<
+      Exclude<PositionSortField, 'openedAt'>,
+      Prisma.PositionOrderByWithRelationInput
+    > = {
+      closedAt: { closedAt: last },
+      pnl: { closedPnl: last },
+      roi: { roiPct: last },
+      volume: { entryVolumeUsd: last },
+      duration: { durationSec: last },
+    };
+    return [primary[sortBy], { openedAt: { sort: 'desc', nulls: 'last' } }, { id: 'asc' }];
   }
 
   // Synced positions (spot/linear) carry the exchange's own trading-pair symbol, which is

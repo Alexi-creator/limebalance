@@ -424,6 +424,11 @@ model Position {
   // Prisma reads a generated column as a default, and without it every `migrate dev` would see
   // drift and try to strip the expression.
   entryVolumeUsd  Decimal?       @default(dbgenerated("((qty * avg_entry_price) / COALESCE(NULLIF(leverage, (0)::numeric), (1)::numeric))")) @map("entry_volume_usd") @db.Decimal(30, 12)
+  // Realized PnL / entry_volume_usd, in percent, and closed_at - opened_at, in seconds — GENERATED
+  // STORED like entry_volume_usd above (same caveats: never written by the app, the @default mirrors
+  // Postgres' own printout), so the diary can sort by ROI and time held in SQL. NULL while OPEN.
+  roiPct          Decimal?       @default(dbgenerated("((closed_pnl * (100)::numeric) / NULLIF(((qty * avg_entry_price) / COALESCE(NULLIF(leverage, (0)::numeric), (1)::numeric)), (0)::numeric))")) @map("roi_pct") @db.Decimal(30, 12)
+  durationSec     Decimal?       @default(dbgenerated("EXTRACT(epoch FROM (closed_at - opened_at))")) @map("duration_sec") @db.Decimal(20, 3)
   // Synced from Bybit's live position list for linear (NULL if not set there, or once closed —
   // kept as the last known value rather than cleared). Manual entries set it by hand.
   takeProfitPrice Decimal?       @map("take_profit_price") @db.Decimal(30, 12)

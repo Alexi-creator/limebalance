@@ -6,7 +6,12 @@ import { FxRatesService } from '../currency/fx-rates.service';
 import { ExchangesService } from '../exchanges/exchanges.service';
 import { GoalsService } from '../goals/goals.service';
 import { InvestingTransfersService } from '../investing/investing-transfers.service';
-import { GetTransactionsDto, TransactionType } from './dto/get-transactions.dto';
+import {
+  GetTransactionsDto,
+  SortDirection,
+  TransactionSortField,
+  TransactionType,
+} from './dto/get-transactions.dto';
 
 export interface TransactionRow {
   id: string;
@@ -86,7 +91,7 @@ export class TransactionsService {
     const [items, countResult, user] = await Promise.all([
       this.prisma.$queryRaw<TransactionRow[]>`
         ${union}
-        ORDER BY date DESC, "createdAt" DESC
+        ORDER BY ${this.orderBy(dto.sortBy, dto.sortDir)}
         LIMIT ${limit} OFFSET ${offset}
       `,
       this.prisma.$queryRaw<[{ count: bigint }]>`
@@ -267,6 +272,22 @@ export class TransactionsService {
       sum += inBase;
     }
     return Math.round(sum * 100) / 100;
+  }
+
+  /**
+   * ORDER BY for the combined list. Only enum values reach Prisma.raw — the DTO rejects anything
+   * else. Amount compares the USD snapshot, not the bare figure (1000 THB is not more than 100 USD);
+   * rows without a snapshot sort last. Date/createdAt, then id, break ties so paging stays stable.
+   */
+  private orderBy(
+    sortBy: TransactionSortField = TransactionSortField.DATE,
+    sortDir: SortDirection = SortDirection.DESC,
+  ): Prisma.Sql {
+    const dir = Prisma.raw(sortDir === SortDirection.ASC ? 'ASC' : 'DESC');
+    if (sortBy === TransactionSortField.AMOUNT) {
+      return Prisma.sql`"amountUsd" ${dir} NULLS LAST, date DESC, "createdAt" DESC, id`;
+    }
+    return Prisma.sql`date ${dir}, "createdAt" ${dir}, id`;
   }
 
   private buildWhere(

@@ -60,3 +60,20 @@ describe('GetTransactionsDto — currency', () => {
     await expect(run({ currency: ['THB', 'EU'] })).rejects.toThrow(BadRequestException);
   });
 });
+
+describe('GetTransactionsDto — sort', () => {
+  it('accepts a known field and direction', async () => {
+    const dto = await run({ sortBy: 'amount', sortDir: 'asc' });
+    expect(dto).toMatchObject({ sortBy: 'amount', sortDir: 'asc' });
+  });
+
+  it('rejects an unknown field — it would otherwise reach ORDER BY', async () => {
+    await expect(run({ sortBy: 'amount; DROP TABLE expenses' })).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('rejects an unknown direction', async () => {
+    await expect(run({ sortDir: 'sideways' })).rejects.toThrow(BadRequestException);
+  });
+});

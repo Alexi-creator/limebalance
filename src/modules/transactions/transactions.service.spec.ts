@@ -5,6 +5,7 @@ import { FxRatesService } from '../currency/fx-rates.service';
 import { ExchangesService } from '../exchanges/exchanges.service';
 import { GoalsService } from '../goals/goals.service';
 import { InvestingTransfersService } from '../investing/investing-transfers.service';
+import { SortDirection, TransactionSortField } from './dto/get-transactions.dto';
 import { TransactionsService } from './transactions.service';
 
 // rates[X] = units of X per 1 USD.
@@ -112,6 +113,28 @@ describe('TransactionsService', () => {
         { id: 'i1', type: 'income', currency: 'USD', amount: 200, date: DAY },
         { id: 'e1', type: 'expense', currency: 'USD', amount: 50, date: DAY },
       ]);
+    });
+
+    // The items query is a tagged template: [strings, union, orderBy, limit, offset].
+    const orderBySql = () => (prisma.$queryRaw.mock.calls[0][2] as { sql: string }).sql;
+
+    it('orders newest first by default', async () => {
+      prisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([{ count: 0n }]);
+
+      await service.findAll('u1', {});
+
+      expect(orderBySql()).toBe('date DESC, "createdAt" DESC, id');
+    });
+
+    it('sorts by amount on the USD snapshot, rows without one last', async () => {
+      prisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([{ count: 0n }]);
+
+      await service.findAll('u1', {
+        sortBy: TransactionSortField.AMOUNT,
+        sortDir: SortDirection.ASC,
+      });
+
+      expect(orderBySql()).toBe('"amountUsd" ASC NULLS LAST, date DESC, "createdAt" DESC, id');
     });
 
     it('reports net=null when a total could not be computed (rates unavailable)', async () => {
