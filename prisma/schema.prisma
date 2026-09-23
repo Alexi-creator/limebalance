@@ -93,6 +93,7 @@ model User {
   investingVenues            InvestingVenue[]
   investingTransfers         InvestingTransfer[]
   investingAdjustments       InvestingAdjustment[]
+  filterPresets              FilterPreset[]
 
   @@map("users")
 }
@@ -748,4 +749,30 @@ model P2pOrder {
   @@unique([userId, orderId])
   @@index([userId, placedAt])
   @@map("p2p_orders")
+}
+
+// Which table a saved filter set belongs to — each table has its own filter params.
+enum FilterPresetScope {
+  TRANSACTIONS
+  POSITIONS
+}
+
+// A named, saved set of table filters ("presets" above the transactions table / trade journal).
+// `filters` is the table's own URL params with defaults stripped — opaque to the backend, which only
+// canonicalizes it (sorted keys and arrays) so the same set always hashes the same.
+model FilterPreset {
+  id          String            @id @default(uuid())
+  userId      String            @map("user_id")
+  scope       FilterPresetScope
+  name        String
+  filters     Json
+  // sha256 of the canonical `filters` — lets the unique index below refuse the same set twice.
+  filtersHash String            @map("filters_hash")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scope, filtersHash])
+  @@unique([userId, scope, name])
+  @@map("filter_presets")
 }

@@ -12,6 +12,7 @@ import { CurrencyModule } from './modules/currency/currency.module';
 import { ExchangesModule } from './modules/exchanges/exchanges.module';
 import { ExpenseCategoriesModule } from './modules/expense-categories/expense-categories.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
+import { FilterPresetsModule } from './modules/filter-presets/filter-presets.module';
 import { GoalsModule } from './modules/goals/goals.module';
 import { IncomeCategoriesModule } from './modules/income-categories/income-categories.module';
 import { IncomesModule } from './modules/incomes/incomes.module';
@@ -43,6 +44,7 @@ import { PrismaModule } from './prisma/prisma.module';
     GoalsModule,
     InvestingModule,
     TransactionsModule,
+    FilterPresetsModule,
     NotificationsModule,
     SubscriptionsModule,
     AuthModule,

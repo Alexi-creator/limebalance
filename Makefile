@@ -5,6 +5,10 @@ dev:
 	-kill $$(lsof -ti:$(PORT)) 2>/dev/null
 	docker compose up -d --build
 	docker compose run --rm app bunx prisma migrate deploy
+	# node_modules is a named volume that shadows the image's generated client — regenerate into it
+	# after a schema change, then restart so the app picks the new client up
+	docker compose run --rm app bunx prisma generate
+	docker compose restart app
 	@trap 'docker compose down' EXIT; docker compose logs -f app
 
 migrate:
