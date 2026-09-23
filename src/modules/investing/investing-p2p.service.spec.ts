@@ -101,15 +101,19 @@ describe('InvestingP2pService', () => {
   });
 
   describe('sync', () => {
-    it('reaches the whole 180 days Bybit keeps on the first run', async () => {
+    it('reaches the whole 180 days Bybit keeps, in windows it accepts', async () => {
       await service.sync(ACCOUNT as never, CREDS);
 
-      const { beginTime, endTime, size } = bybit.getP2pOrders.mock.calls[0][1];
-      const span = Number(endTime) - Number(beginTime);
-      expect(span).toBeLessThanOrEqual(180 * DAY);
-      expect(span).toBeGreaterThan(179 * DAY);
-      // Bybit's own page cap.
-      expect(size).toBe(30);
+      const calls = bybit.getP2pOrders.mock.calls.map((c) => c[1]);
+      // One request may span at most 90 days, so 180 takes two windows, back to back.
+      expect(calls).toHaveLength(2);
+      for (const c of calls) {
+        expect(Number(c.endTime) - Number(c.beginTime)).toBeLessThanOrEqual(90 * DAY);
+        expect(c.size).toBe(30);
+      }
+      const covered = Number(calls[1].endTime) - Number(calls[0].beginTime);
+      expect(covered).toBeLessThanOrEqual(180 * DAY);
+      expect(covered).toBeGreaterThan(179 * DAY);
     });
 
     it('re-reads a week behind the last run afterwards, so statuses catch up', async () => {
@@ -146,9 +150,12 @@ describe('InvestingP2pService', () => {
       const full = Array.from({ length: 30 }, (_, i) => order({ id: `a${i}` }));
       bybit.getP2pOrders
         .mockResolvedValueOnce({ count: 31, items: full })
-        .mockResolvedValueOnce({ count: 31, items: [order({ id: 'last' })] });
+        .mockResolvedValueOnce({ count: 31, items: [order({ id: 'last' })] })
+        .mockResolvedValue({ count: 0, items: [] });
+      // One window, so the pages are all this run does.
+      const yesterday = new Date(Date.now() - DAY);
 
-      await service.sync(ACCOUNT as never, CREDS);
+      await service.sync({ ...ACCOUNT, p2pSyncedAt: yesterday } as never, CREDS);
 
       expect(bybit.getP2pOrders.mock.calls.map((c) => c[1].page)).toEqual([1, 2]);
       expect(prisma.p2pOrder.upsert).toHaveBeenCalledTimes(31);

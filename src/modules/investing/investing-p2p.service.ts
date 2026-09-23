@@ -21,6 +21,10 @@ const BYBIT_PAGE_SIZE = 30;
 const MAX_PAGE_SIZE = 50;
 // The furthest back Bybit's API goes at all. Without an explicit range it returns only 90 days.
 const HISTORY_DAYS = 180;
+// …but one request may span at most 90 days — asking for more is refused outright (retCode
+// 912120130), so the range is walked in windows. Splitting it evenly keeps every window strictly
+// under the cap, so this figure needs no safety margin of its own.
+const WINDOW_MS = 90 * DAY_MS;
 // Re-read behind the last sync on every run: an order stays open, or in dispute, for a while after
 // it was placed, and its status has to catch up. Seven days covers all but the longest disputes.
 const REFRESH_BEHIND_MS = 7 * DAY_MS;
@@ -93,20 +97,28 @@ export class InvestingP2pService {
       : oldest;
 
     try {
-      let page = 1;
-      let seen = 0;
-      while (page <= MAX_PAGES) {
-        const result = await this.bybit.getP2pOrders(creds, {
-          page,
-          size: BYBIT_PAGE_SIZE,
-          beginTime: String(begin),
-          endTime: String(now),
-        });
-        const items = result.items ?? [];
-        for (const order of items) await this.upsert(account, order);
-        seen += items.length;
-        if (items.length < BYBIT_PAGE_SIZE || seen >= Number(result.count ?? 0)) break;
-        page += 1;
+      // Split evenly rather than in fixed steps, so a 180-day range is two 90-day windows and
+      // never a third one covering the last few seconds.
+      const windows = Math.max(1, Math.ceil((now - begin) / WINDOW_MS));
+      const step = Math.ceil((now - begin) / windows);
+      for (let i = 0; i < windows; i += 1) {
+        const from = begin + i * step;
+        const to = Math.min(from + step, now);
+        let page = 1;
+        let seen = 0;
+        while (page <= MAX_PAGES) {
+          const result = await this.bybit.getP2pOrders(creds, {
+            page,
+            size: BYBIT_PAGE_SIZE,
+            beginTime: String(from),
+            endTime: String(to),
+          });
+          const items = result.items ?? [];
+          for (const order of items) await this.upsert(account, order);
+          seen += items.length;
+          if (items.length < BYBIT_PAGE_SIZE || seen >= Number(result.count ?? 0)) break;
+          page += 1;
+        }
       }
 
       await this.autoRecord(account);
