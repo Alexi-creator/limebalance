@@ -331,6 +331,27 @@ describe('InvestingService', () => {
       });
     });
 
+    it('hides sub-dollar leftovers when asked — before pagination, not in the UI', async () => {
+      prisma.position.findMany.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+
+      await service.getPositions('u1', { hideDust: true });
+
+      expect(prisma.position.findMany.mock.calls[0][0].where).toEqual({
+        userId: 'u1',
+        entryVolumeUsd: { gte: 1 },
+      });
+    });
+
+    it('keeps the dust when the filter is off', async () => {
+      prisma.position.findMany.mockResolvedValue([]);
+      prisma.position.count.mockResolvedValue(0);
+
+      await service.getPositions('u1', { hideDust: false });
+
+      expect(prisma.position.findMany.mock.calls[0][0].where).toEqual({ userId: 'u1' });
+    });
+
     it('filters by category', async () => {
       prisma.position.findMany.mockResolvedValue([]);
       prisma.position.count.mockResolvedValue(0);

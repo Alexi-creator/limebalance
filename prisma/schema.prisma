@@ -415,6 +415,15 @@ model Position {
   // while open.
   closedPnl       Decimal?       @map("closed_pnl") @db.Decimal(30, 12)
   leverage        Decimal?       @db.Decimal(10, 2)
+  // Capital actually committed at entry, in USDT: qty x avgEntryPrice / leverage (1x when
+  // leverage is NULL or 0). A Postgres GENERATED ALWAYS ... STORED column — the database keeps
+  // it in step with the three fields above, so it stays right no matter which sync path wrote
+  // the row. It exists so the diary can filter out sub-dollar dust in SQL, which Prisma can't
+  // express as arithmetic. Never write it from the app: Postgres rejects an INSERT/UPDATE that
+  // sets it. The @default mirrors the column's expression exactly as Postgres prints it back —
+  // Prisma reads a generated column as a default, and without it every `migrate dev` would see
+  // drift and try to strip the expression.
+  entryVolumeUsd  Decimal?       @default(dbgenerated("((qty * avg_entry_price) / COALESCE(NULLIF(leverage, (0)::numeric), (1)::numeric))")) @map("entry_volume_usd") @db.Decimal(30, 12)
   // Synced from Bybit's live position list for linear (NULL if not set there, or once closed —
   // kept as the last known value rather than cleared). Manual entries set it by hand.
   takeProfitPrice Decimal?       @map("take_profit_price") @db.Decimal(30, 12)

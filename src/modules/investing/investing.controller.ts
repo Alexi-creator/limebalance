@@ -363,8 +363,9 @@ export class InvestingController {
       'from/to — closing date range (inclusive, either bound may be omitted; OPEN positions have ' +
       'no closedAt so they stay visible regardless of this range unless status=CLOSED narrows ' +
       'them out). pnl — currently in profit/loss: realized closedPnl for CLOSED rows, live PnL ' +
-      '(currentPrice vs avgEntryPrice) for OPEN ones. Pagination via limit/offset; total carries ' +
-      'the full count for the filter.',
+      '(currentPrice vs avgEntryPrice) for OPEN ones. hideDust=true drops rows with under $1 of ' +
+      'committed capital (entryVolumeUsd) — the change left over after a trade rather than a ' +
+      'trade. Pagination via limit/offset; total carries the full count for the filter.',
   })
   @ApiQuery({ name: 'accountId', required: false })
   @ApiQuery({ name: 'symbol', required: false, example: 'BTCUSDT' })
@@ -373,6 +374,7 @@ export class InvestingController {
   @ApiQuery({ name: 'from', required: false, example: '2026-07-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-07-31' })
   @ApiQuery({ name: 'pnl', required: false, enum: ['positive', 'negative'] })
+  @ApiQuery({ name: 'hideDust', required: false, example: 'true' })
   @ApiQuery({ name: 'limit', required: false, example: 50 })
   @ApiQuery({ name: 'offset', required: false, example: 0 })
   @ApiOkResponse({ type: PositionListResponseDto })
@@ -385,6 +387,7 @@ export class InvestingController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('pnl') pnl?: 'positive' | 'negative',
+    @Query('hideDust') hideDust?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
@@ -396,6 +399,7 @@ export class InvestingController {
       from: from ? new Date(from) : undefined,
       to: to ? endOfDay(to) : undefined,
       pnl,
+      hideDust: hideDust === 'true',
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
     });
@@ -430,6 +434,7 @@ export class InvestingController {
   @ApiQuery({ name: 'from', required: false, example: '2026-07-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-07-31' })
   @ApiQuery({ name: 'pnl', required: false, enum: ['positive', 'negative'] })
+  @ApiQuery({ name: 'hideDust', required: false, example: 'true' })
   @ApiOkResponse({ type: PositionsSummaryResponseDto })
   getPositionsSummary(
     @CurrentUser() user: { id: string },
@@ -440,6 +445,7 @@ export class InvestingController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('pnl') pnl?: 'positive' | 'negative',
+    @Query('hideDust') hideDust?: string,
   ) {
     return this.investingService.getPositionsSummary(user.id, {
       accountId,
@@ -449,6 +455,7 @@ export class InvestingController {
       from: from ? new Date(from) : undefined,
       to: to ? endOfDay(to) : undefined,
       pnl,
+      hideDust: hideDust === 'true',
     });
   }
 
@@ -466,6 +473,7 @@ export class InvestingController {
   @ApiQuery({ name: 'category', required: false, enum: ['linear', 'spot', 'manual'] })
   @ApiQuery({ name: 'from', required: false, example: '2026-07-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-07-31' })
+  @ApiQuery({ name: 'hideDust', required: false, example: 'true' })
   @ApiOkResponse({ type: EquityCurveResponseDto })
   getEquityCurve(
     @CurrentUser() user: { id: string },
@@ -474,6 +482,7 @@ export class InvestingController {
     @Query('category') category?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('hideDust') hideDust?: string,
   ) {
     return this.investingService.getEquityCurve(user.id, {
       accountId,
@@ -481,6 +490,7 @@ export class InvestingController {
       category,
       from: from ? new Date(from) : undefined,
       to: to ? endOfDay(to) : undefined,
+      hideDust: hideDust === 'true',
     });
   }
 

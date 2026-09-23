@@ -27,6 +27,11 @@ const MAX_HISTORY_MS = 729 * 24 * 60 * 60 * 1000;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+// Below a dollar of committed capital a row isn't a trade any more — it's the change left over
+// after one (an unsellable remainder, a rounding tail). Same line the wallet draws on its coin
+// list, so "dust" means the same thing in both places.
+const DUST_ENTRY_VOLUME_USD = 1;
+
 // All rows share the exchange convention: side is the CLOSING order's side.
 const directionToSide = (direction: 'long' | 'short') => (direction === 'long' ? 'Sell' : 'Buy');
 const sideToDirection = (side: string): 'long' | 'short' => (side === 'Sell' ? 'long' : 'short');
@@ -47,6 +52,8 @@ type ListQuery = {
   /** Currently in profit/loss — realized (closedPnl) for CLOSED rows, live (currentPrice vs
    *  avgEntryPrice) for OPEN ones. See applyPnlFilter. */
   pnl?: 'positive' | 'negative';
+  /** Drop rows whose committed capital is under a dollar — leftover change, not trades. */
+  hideDust?: boolean;
 };
 
 @Injectable()
@@ -306,6 +313,10 @@ export class InvestingService {
       ...(query.symbol ? { symbol: { contains: query.symbol.toUpperCase() } } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(query.category ? { category: query.category } : {}),
+      // Stored (generated) column, so the sub-dollar rows are gone before pagination and before
+      // the summary counts them — hiding them client-side would leave short pages and a winrate
+      // still weighted by cents. See Position.entryVolumeUsd.
+      ...(query.hideDust ? { entryVolumeUsd: { gte: DUST_ENTRY_VOLUME_USD } } : {}),
       ...(query.from || query.to ? { [dateField]: { gte: query.from, lte: query.to } } : {}),
     };
   }
