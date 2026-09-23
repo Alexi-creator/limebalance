@@ -47,6 +47,9 @@ export class SubscriptionResponseDto {
 }
 
 export class ProfileResponseDto {
+  @ApiProperty({ example: 'b3f1…' })
+  id: string;
+
   @ApiProperty({ example: 'user@example.com', nullable: true })
   email: string | null;
 
