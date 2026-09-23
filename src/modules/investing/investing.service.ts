@@ -121,10 +121,18 @@ export class InvestingService {
   }
 
   async renameAccount(userId: string, id: string, dto: UpdateExchangeAccountDto) {
-    await this.findOwnAccount(userId, id);
+    const current = await this.findOwnAccount(userId, id);
+    // Turning auto-recording on starts it now; turning it on again while on keeps the original
+    // start, so a repeated toggle never shifts which orders count.
+    const autoFrom =
+      dto.p2pAutoRecord === undefined
+        ? undefined
+        : dto.p2pAutoRecord
+          ? (current.p2pAutoRecordFrom ?? new Date())
+          : null;
     const account = await this.prisma.exchangeAccount.update({
       where: { id },
-      data: { label: dto.label },
+      data: { label: dto.label, p2pAutoRecordFrom: autoFrom },
     });
     return this.sanitize(account);
   }
@@ -698,6 +706,8 @@ export class InvestingService {
       syncFrom: account.syncFrom,
       lastSyncAt: account.lastSyncAt,
       createdAt: account.createdAt,
+      // null: P2P orders are not recorded automatically.
+      p2pAutoRecordFrom: account.p2pAutoRecordFrom,
     };
   }
 }

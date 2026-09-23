@@ -313,29 +313,31 @@ export class InvestingController {
     return this.investingService.removeAccount(user.id, id);
   }
 
-  @Get('accounts/:id/p2p-orders')
+  @Get('p2p-orders')
   @ApiOperation({
-    summary: 'P2P order history of a connected Bybit account',
+    summary: 'P2P order history',
     description:
-      'Read live from the exchange, newest first, one page at a time — nothing is stored. Needs ' +
-      "the key's Fiat trading → P2P → Orders permission; without it the answer is 400 with " +
-      "code P2P_UNAVAILABLE and Bybit's own retCode.",
+      'Your Bybit P2P orders, saved on our side and kept for good — Bybit itself only reaches 180 ' +
+      'days back. Refreshed from the exchange first when the saved copy is more than a couple of ' +
+      "minutes old. Needs the key's Fiat trading → P2P → Orders permission: a failed refresh is " +
+      'reported in syncError next to whatever is already saved, and only when nothing is saved ' +
+      "is it a 400 with code P2P_UNAVAILABLE and Bybit's own retCode.",
   })
+  @ApiQuery({ name: 'accountId', required: false, description: 'One account; default all' })
   @ApiQuery({ name: 'page', required: false, description: 'From 1, default 1' })
   @ApiQuery({ name: 'size', required: false, description: 'Default 20, max 50' })
   @ApiOkResponse({ type: P2pOrdersResponseDto })
   listP2pOrders(
     @CurrentUser() user: { id: string },
-    @Param('id') id: string,
+    @Query('accountId') accountId?: string,
     @Query('page') page?: string,
     @Query('size') size?: string,
   ) {
-    return this.p2pService.list(
-      user.id,
-      id,
-      page ? Number(page) || 1 : 1,
-      size ? Number(size) || 20 : 20,
-    );
+    return this.p2pService.list(user.id, {
+      accountId: accountId || undefined,
+      page: page ? Number(page) || 1 : 1,
+      size: size ? Number(size) || 20 : 20,
+    });
   }
 
   @Post('accounts/:id/sync')

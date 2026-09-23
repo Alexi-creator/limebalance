@@ -89,6 +89,7 @@ model User {
   holdings                   Holding[]
   botNotificationPreferences BotNotificationPreference[]
   currencyExchanges          CurrencyExchange[]
+  p2pOrders                  P2pOrder[]
   investingVenues            InvestingVenue[]
   investingTransfers         InvestingTransfer[]
   investingAdjustments       InvestingAdjustment[]
@@ -203,8 +204,10 @@ model Expense {
   date        DateTime @db.Date
   createdAt   DateTime @default(now()) @map("created_at")
 
-  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category ExpenseCategory    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  // The transfer that brought this money off a venue, when it was spent straight from there.
+  transfer InvestingTransfer?
 
   @@index([userId, date, createdAt])
   @@index([categoryId])
@@ -236,8 +239,10 @@ model Income {
   date        DateTime @db.Date
   createdAt   DateTime @default(now()) @map("created_at")
 
-  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category IncomeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category IncomeCategory     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  // The transfer that moved this income straight onto a venue, when it was earned there.
+  transfer InvestingTransfer?
 
   @@index([userId, date, createdAt])
   @@index([categoryId])
@@ -319,12 +324,23 @@ model ExchangeAccount {
   closedPnlSyncedTo  DateTime?             @map("closed_pnl_synced_to")
   executionsSyncedTo DateTime?             @map("executions_synced_to")
   lastSyncAt         DateTime?             @map("last_sync_at")
+  // P2P history: when it was last read, and why the last read failed (null when it worked).
+  // Kept apart from lastError — a key without the P2P permission is a normal state, not a
+  // broken account, and must not flip the whole account to ERROR.
+  p2pSyncedAt        DateTime?             @map("p2p_synced_at")
+  p2pError           String?               @map("p2p_error")
+  // When set, every completed P2P order placed from this moment on is recorded as a transfer
+  // between the wallet and this account's venue — a buy takes the fiat out of the wallet, a sell
+  // puts it back. Never earlier: orders before it were already accounted for some other way
+  // (typically as a currency exchange), and recording them again would take the money twice.
+  p2pAutoRecordFrom  DateTime?             @map("p2p_auto_record_from")
   createdAt          DateTime              @default(now()) @map("created_at")
 
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   executions TradeExecution[]
   positions  Position[]
   venue      InvestingVenue?
+  p2pOrders  P2pOrder[]
 
   @@index([userId])
   @@index([status])
@@ -636,11 +652,19 @@ model InvestingTransfer {
   // Imported and not yet explained. Counts as EXTERNAL until then — money that simply appeared is
   // not a trading result, and it is not the ledger's either until the user says so.
   needsReview  Boolean           @default(false) @map("needs_review")
+  // Set when the movement was answered as income (money earned straight onto the venue) or as an
+  // expense (paid straight from it). The transaction and this transfer are one event seen from two
+  // sides: the income puts the money into the wallet, this transfer takes it straight on to the
+  // venue, so the wallet nets to zero while the reports show what was earned or spent.
+  incomeId     String?           @unique @map("income_id")
+  expenseId    String?           @unique @map("expense_id")
   createdAt    DateTime          @default(now()) @map("created_at")
 
   venue     InvestingVenue  @relation("VenueTransfers", fields: [venueId], references: [id], onDelete: Cascade)
   peerVenue InvestingVenue? @relation("PeerVenueTransfers", fields: [peerVenueId], references: [id], onDelete: SetNull)
   user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  income    Income?         @relation(fields: [incomeId], references: [id], onDelete: SetNull)
+  expense   Expense?        @relation(fields: [expenseId], references: [id], onDelete: SetNull)
 
   @@unique([venueId, externalId])
   @@index([userId, date])
@@ -675,4 +699,39 @@ model InvestingAdjustment {
 
   @@index([venueId, date])
   @@map("investing_adjustments")
+}
+
+// A P2P order, copied from Bybit and kept for good. Bybit's API only reaches 180 days back, so
+// without this copy the history would keep sliding away; with it, everything seen once stays.
+// Belongs to the user rather than the key: disconnecting an account must not erase what was
+// bought and sold through it.
+model P2pOrder {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  // The account it was read through; NULL once that account is disconnected.
+  accountId    String?  @map("account_id")
+  // Bybit's own order id — what re-reads are matched on.
+  orderId      String   @map("order_id")
+  // BUY: fiat paid, coin received. SELL: the other way round.
+  side         String
+  asset        String
+  quantity     Decimal  @db.Decimal(30, 12)
+  fiatAmount   Decimal  @map("fiat_amount") @db.Decimal(20, 2)
+  fiatCurrency String   @map("fiat_currency")
+  price        Decimal  @db.Decimal(20, 8)
+  fee          Decimal? @db.Decimal(30, 12)
+  counterparty String?
+  // Bybit's numeric status, stored as is — its meaning is folded into four states when shown.
+  status       Int
+  placedAt     DateTime @map("placed_at")
+  raw          Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account ExchangeAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, orderId])
+  @@index([userId, placedAt])
+  @@map("p2p_orders")
 }

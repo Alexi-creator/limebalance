@@ -295,7 +295,7 @@ export class BybitClient {
    */
   async getP2pOrders(
     creds: BybitCredentials,
-    params: { page: number; size: number },
+    params: { page: number; size: number; beginTime?: string; endTime?: string },
   ): Promise<{ count: number; items: BybitP2pOrder[] }> {
     return this.post(creds, '/v5/p2p/order/simplifyList', params);
   }

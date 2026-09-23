@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService, type DatedRow } from '../currency/currency.service';
 import { FxRatesService } from '../currency/fx-rates.service';
 import { aggregateSummary, buildBuckets, type Granularity } from '../currency/summary.util';
+import { reopenLinkedTransfers, syncLinkedTransfer } from '../investing/linked-transfers.util';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateIncomeDto } from './dto/create-income.dto';
 import { UpdateIncomeDto } from './dto/update-income.dto';
@@ -96,15 +97,28 @@ export class IncomesService {
       amountUsd = await this.fx.convertOn(amount, currency, 'USD', date);
     }
 
-    return this.prisma.income.update({
-      where: { id },
-      data: { ...dto, ...(amountUsd !== undefined ? { amountUsd } : {}) },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.income.update({
+        where: { id },
+        data: { ...dto, ...(amountUsd !== undefined ? { amountUsd } : {}) },
+      });
+      // Earned or spent straight on a venue: the transfer beside it has to move by the same
+      // amount, or the wallet stops netting to zero.
+      if (amountChanged || currencyChanged) {
+        await syncLinkedTransfer(tx, { incomeId: id }, Number(updated.amount), updated.currency);
+      }
+      return updated;
     });
   }
 
   async remove(id: string, userId: string) {
     await this.findOne(id, userId);
-    return this.prisma.income.delete({ where: { id } });
+    return this.prisma.$transaction(async (tx) => {
+      // A venue movement answered as this income goes back up for review rather than keep moving
+      // money through a wallet it no longer reaches.
+      await reopenLinkedTransfers(tx, { incomeId: { in: [id] } });
+      return tx.income.delete({ where: { id } });
+    });
   }
 
   // Bulk delete: first verify that all ids belong to the user,
@@ -121,6 +135,7 @@ export class IncomesService {
         throw new NotFoundException(`Incomes not found: ${missing.join(', ')}`);
       }
 
+      await reopenLinkedTransfers(tx, { incomeId: { in: ids } });
       const { count } = await tx.income.deleteMany({ where: { id: { in: ids }, userId } });
       return { deleted: count };
     });

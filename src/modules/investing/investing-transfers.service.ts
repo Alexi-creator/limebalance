@@ -1,10 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { InvestingTransfer, InvestingVenue, Prisma } from '@prisma/client';
+import type { InvestingTransfer, InvestingVenue, P2pOrder, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService, type Rates } from '../currency/currency.service';
 import { FxRatesService } from '../currency/fx-rates.service';
-import { p2pExternalId } from './investing-p2p.service';
+import { ExpensesService } from '../expenses/expenses.service';
+import { IncomesService } from '../incomes/incomes.service';
 import { InvestingVenuesService } from './investing-venues.service';
+import { p2pExternalId } from './p2p.util';
 import { PriceService } from './price.service';
 
 const MAX_PAGE = 200;
@@ -47,7 +49,16 @@ export interface CreateTransferInput {
  * user knows whose money it was.
  */
 export interface ClassifyTransferInput {
+  /** Ignored when `as` is set — income and expense are always against the wallet. */
   peer: 'LEDGER' | 'VENUE' | 'EXTERNAL';
+  /**
+   * Money earned straight onto the venue (a client paying in USDT), or spent straight from it
+   * (paying a contractor). Recorded as a real income or expense in `categoryId`, for `amount` in
+   * `currency`, plus this transfer carrying it on to the venue — the wallet nets to zero, the
+   * reports show what was earned or spent.
+   */
+  as?: 'INCOME' | 'EXPENSE';
+  categoryId?: string;
   peerVenueId?: string;
   /** peer = LEDGER only: what actually left or reached the wallet, in its own currency. */
   amount?: number;
@@ -61,9 +72,22 @@ export interface ClassifyTransferInput {
   replacesId?: string;
 }
 
+// What every read of a transfer brings along: the venue names, and the income or expense it was
+// answered as, so the history can say "income · Freelance" instead of a bare transfer.
+const TRANSFER_INCLUDE = {
+  venue: { select: { name: true } },
+  peerVenue: { select: { name: true } },
+  income: { select: { category: { select: { name: true, emoji: true } } } },
+  expense: { select: { category: { select: { name: true, emoji: true } } } },
+} as const;
+
+type LinkedCategory = { category: { name: string; emoji: string | null } } | null;
+
 type TransferWithVenues = InvestingTransfer & {
   venue: { name: string };
   peerVenue: { name: string } | null;
+  income?: LinkedCategory;
+  expense?: LinkedCategory;
 };
 
 /**
@@ -85,6 +109,8 @@ export class InvestingTransfersService {
     private readonly fx: FxRatesService,
     private readonly venues: InvestingVenuesService,
     private readonly prices: PriceService,
+    private readonly incomes: IncomesService,
+    private readonly expenses: ExpensesService,
   ) {}
 
   // --- transfers ---
@@ -103,7 +129,7 @@ export class InvestingTransfersService {
       this.prisma.investingTransfer.findMany({
         where,
         orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-        include: { venue: { select: { name: true } }, peerVenue: { select: { name: true } } },
+        include: TRANSFER_INCLUDE,
         take: Math.min(query.limit ?? 50, MAX_PAGE),
         skip: query.offset ?? 0,
       }),
@@ -119,10 +145,12 @@ export class InvestingTransfersService {
     const date = input.date ?? new Date();
     const coin = await this.resolveCoin(userId, input, venue);
 
-    // A coin move is denominated by its price, and the ledger is never on the other side of one —
-    // your wallet holds money, not satoshis, so there would be nothing to take the coin out of.
-    const currency = coin ? 'USD' : (input.currency ?? 'USD');
-    const amount = coin ? coin.usd : (input.amount ?? 0);
+    // Against the wallet the figure is always the wallet's own money — even when a coin moved on
+    // the venue's side (sold USDT for baht and withdrew them): the wallet gained baht, not USDT.
+    // Everywhere else a coin move is denominated by the coin's price.
+    const moneySide = !coin || input.peer === 'LEDGER';
+    const currency = moneySide ? (input.currency ?? 'USD') : 'USD';
+    const amount = moneySide ? (input.amount ?? 0) : (coin?.usd ?? 0);
     if (amount <= 0) {
       throw new BadRequestException('amount must be positive — use `direction` for the sign');
     }
@@ -145,7 +173,9 @@ export class InvestingTransfersService {
         peerVenueId,
         amount,
         currency,
-        amountUsd: coin ? coin.usd : await this.toUsd(amount, currency, date),
+        // The money side's value when there is one: whatever the conversion cost on the way (the
+        // spread of selling USDT for baht) then shows in this venue's result, where it happened.
+        amountUsd: moneySide ? await this.toUsd(amount, currency, date) : coin?.usd,
         asset: coin?.asset ?? null,
         assetAmount: coin?.amount ?? null,
         note: input.note ?? null,
@@ -153,7 +183,7 @@ export class InvestingTransfersService {
         // Still MANUAL: the user decided what the order was, the exchange only reported it.
         externalId: input.p2pOrderId ? p2pExternalId(input.p2pOrderId) : null,
       },
-      include: { venue: { select: { name: true } }, peerVenue: { select: { name: true } } },
+      include: TRANSFER_INCLUDE,
     });
 
     if (coin) await this.shiftComposition(userId, row.id, 1);
@@ -177,8 +207,11 @@ export class InvestingTransfersService {
     }
     // Editing the size or direction of a coin move would have to unwind the composition it already shifted and
     // re-apply it — two chances to get the books wrong. Delete it and record the real one instead.
+    // The money side of a coin-for-money transfer is free to fix, though: it never touched the
+    // composition, only the wallet.
     const flipped = input.direction !== undefined && input.direction !== existing.direction;
-    if (existing.asset && (input.amount !== undefined || input.currency !== undefined || flipped)) {
+    const moneyEdit = input.amount !== undefined || input.currency !== undefined;
+    if (existing.asset && (flipped || (moneyEdit && existing.peer !== 'LEDGER'))) {
       throw new BadRequestException(
         'This transfer was made in a coin — delete it and record a new one to change the amount ' +
           'or the direction.',
@@ -206,7 +239,7 @@ export class InvestingTransfersService {
         note: input.note,
         ...(repriced ? { amountUsd: await this.toUsd(amount, currency, date) } : {}),
       },
-      include: { venue: { select: { name: true } }, peerVenue: { select: { name: true } } },
+      include: TRANSFER_INCLUDE,
     });
     return this.present(row);
   }
@@ -243,7 +276,12 @@ export class InvestingTransfersService {
       );
     }
     const venue = await this.ownedVenue(userId, row.venueId);
-    const answer = input.replacesId ? await this.takeOver(userId, row, input) : input;
+    if (input.as) this.assertEarnedOrSpent(row, input);
+    const answer: ClassifyTransferInput = input.as
+      ? { ...input, peer: 'LEDGER' }
+      : input.replacesId
+        ? await this.takeOver(userId, row, input)
+        : input;
 
     if (answer.peer === 'LEDGER' && !(answer.amount && answer.amount > 0 && answer.currency)) {
       throw new BadRequestException(
@@ -259,6 +297,11 @@ export class InvestingTransfersService {
     // The coin moved on the far side of a venue-to-venue move is the only composition an imported
     // row ever shifts (see shiftComposition). Undone first, so a changed answer starts clean.
     await this.shiftComposition(userId, id, -1);
+    // A previous answer of income or expense goes with it — the new answer replaces the event,
+    // not just the label. Deleted directly: going through the incomes service would put this very
+    // transfer back up for review.
+    await this.dropLinkedTransaction(row);
+    const linked = input.as ? await this.recordEarnedOrSpent(userId, row, input) : {};
 
     const toLedger = answer.peer === 'LEDGER';
     await this.prisma.investingTransfer.update({
@@ -270,15 +313,59 @@ export class InvestingTransfersService {
         currency: toLedger ? answer.currency : 'USD',
         note: answer.note?.trim() || null,
         needsReview: false,
+        incomeId: null,
+        expenseId: null,
+        ...linked,
       },
     });
     await this.shiftComposition(userId, id, 1);
 
     const updated = await this.prisma.investingTransfer.findUniqueOrThrow({
       where: { id },
-      include: { venue: { select: { name: true } }, peerVenue: { select: { name: true } } },
+      include: TRANSFER_INCLUDE,
     });
     return this.present(updated);
+  }
+
+  /** Income only arrives and expenses only leave — anything else is a mistaken answer. */
+  private assertEarnedOrSpent(row: InvestingTransfer, input: ClassifyTransferInput): void {
+    if (input.as === 'INCOME' && row.direction !== 'IN') {
+      throw new BadRequestException('Only money that arrived can be income.');
+    }
+    if (input.as === 'EXPENSE' && row.direction !== 'OUT') {
+      throw new BadRequestException('Only money that left can be an expense.');
+    }
+    if (!input.categoryId) throw new BadRequestException('Pick a category.');
+  }
+
+  /** Writes the income or expense the movement was answered as, and returns the link to it. */
+  private async recordEarnedOrSpent(
+    userId: string,
+    row: InvestingTransfer,
+    input: ClassifyTransferInput,
+  ): Promise<{ incomeId?: string; expenseId?: string }> {
+    const dto = {
+      categoryId: input.categoryId as string,
+      amount: input.amount as number,
+      currency: input.currency,
+      // A description is required on every transaction; the note, or who it came from, says it.
+      description:
+        input.note?.trim() ||
+        [row.asset ?? 'Bybit', row.counterparty].filter(Boolean).join(' · ') ||
+        'Bybit',
+      date: row.date,
+    };
+    if (input.as === 'INCOME') {
+      const income = await this.incomes.create(userId, dto);
+      return { incomeId: income.id };
+    }
+    const expense = await this.expenses.create(userId, dto);
+    return { expenseId: expense.id };
+  }
+
+  private async dropLinkedTransaction(row: InvestingTransfer): Promise<void> {
+    if (row.incomeId) await this.prisma.income.delete({ where: { id: row.incomeId } });
+    if (row.expenseId) await this.prisma.expense.delete({ where: { id: row.expenseId } });
   }
 
   /**
@@ -310,6 +397,50 @@ export class InvestingTransfersService {
       currency: manual.currency,
       note: input.note?.trim() || manual.note || undefined,
     };
+  }
+
+  /**
+   * Records completed P2P orders as transfers between the wallet and the account's venue: a buy
+   * took the fiat out of the wallet, a sell put it back. The coin side is kept for the record only —
+   * the exchange reads its own coins.
+   *
+   * Marked as imported, so the answer can still be changed later (it was not my wallet's money
+   * after all), but never deleted. An order already recorded — by hand or on an earlier run — is
+   * skipped. Returns how many were recorded.
+   */
+  async recordP2pOrders(userId: string, venueId: string, orders: P2pOrder[]): Promise<number> {
+    if (orders.length === 0) return 0;
+    const existing = await this.prisma.investingTransfer.findMany({
+      where: { venueId, externalId: { in: orders.map((o) => p2pExternalId(o.orderId)) } },
+      select: { externalId: true },
+    });
+    const taken = new Set(existing.map((e) => e.externalId));
+
+    let recorded = 0;
+    for (const o of orders) {
+      if (taken.has(p2pExternalId(o.orderId))) continue;
+      const amount = Number(o.fiatAmount);
+      await this.prisma.investingTransfer.create({
+        data: {
+          userId,
+          venueId,
+          direction: o.side === 'BUY' ? 'IN' : 'OUT',
+          peer: 'LEDGER',
+          amount,
+          currency: o.fiatCurrency,
+          amountUsd: await this.toUsd(amount, o.fiatCurrency, o.placedAt),
+          asset: o.asset,
+          assetAmount: o.quantity,
+          date: o.placedAt,
+          source: 'BYBIT',
+          externalId: p2pExternalId(o.orderId),
+          counterparty: o.counterparty,
+          needsReview: false,
+        },
+      });
+      recorded += 1;
+    }
+    return recorded;
   }
 
   // --- venues with their figures ---
@@ -502,18 +633,22 @@ export class InvestingTransfersService {
   /**
    * Validates a coin move and prices it. Returns null for an ordinary money transfer.
    *
-   * Coins never move against the ledger: a wallet holds money, so there would be nothing on the
-   * other side to take them out of — that case is an ordinary withdrawal in the currency received.
+   * Against the wallet a coin move has two sides: the coin that leaves or reaches the venue, and
+   * the money that reaches or leaves the wallet — sold 1 079 USDT, got 34 500 baht. Both are
+   * required, since a wallet holds money and not coins: without the money side there would be
+   * nothing to put into it. The coin then needs no price — the money side is the figure.
    */
   private async resolveCoin(
     userId: string,
     input: CreateTransferInput,
     venue: InvestingVenue,
-  ): Promise<{ asset: string; amount: number; usd: number } | null> {
+  ): Promise<{ asset: string; amount: number; usd: number | null } | null> {
     if (!input.asset) return null;
-    if (input.peer === 'LEDGER') {
+    const toWallet = input.peer === 'LEDGER';
+    if (toWallet && !(input.amount && input.amount > 0 && input.currency)) {
       throw new BadRequestException(
-        'A coin cannot move to or from your balance — record the money that changed hands instead.',
+        'A coin moving to or from your balance needs the money on the other side — say how much ' +
+          'reached or left the wallet, and in which currency.',
       );
     }
     const amount = input.assetAmount ?? 0;
@@ -522,7 +657,7 @@ export class InvestingTransfersService {
     const asset = input.asset.toUpperCase();
     const prices = await this.prices.getUsdPrices();
     const price = prices ? this.prices.priceOf(asset, prices) : null;
-    if (price === null) {
+    if (price === null && !toWallet) {
       throw new BadRequestException(`No price for ${asset} — record the move in USD instead.`);
     }
 
@@ -542,7 +677,7 @@ export class InvestingTransfersService {
       }
     }
 
-    return { asset, amount, usd: round2(amount * price) };
+    return { asset, amount, usd: price === null ? null : round2(amount * price) };
   }
 
   /**
@@ -667,6 +802,9 @@ export class InvestingTransfersService {
       needsReview: row.needsReview,
       counterparty: row.counterparty,
       txId: row.txId,
+      // What it was answered as, when it was earned or spent right there on the venue.
+      linkedAs: row.incomeId ? 'INCOME' : row.expenseId ? 'EXPENSE' : null,
+      linkedCategory: (row.income ?? row.expense)?.category ?? null,
     };
   }
 }

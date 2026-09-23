@@ -27,6 +27,7 @@ describe('ExpensesService', () => {
       delete: jest.Mock;
     };
     user: { findUnique: jest.Mock };
+    investingTransfer: { findMany: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
     $transaction: jest.Mock;
   };
   let currency: { convert: jest.Mock; getRates: jest.Mock; historicalTotalInBase: jest.Mock };
@@ -42,7 +43,13 @@ describe('ExpensesService', () => {
         delete: jest.fn(),
       },
       user: { findUnique: jest.fn() },
-      $transaction: jest.fn(),
+      investingTransfer: {
+        findMany: jest.fn().mockResolvedValue([]),
+        update: jest.fn(),
+        updateMany: jest.fn(),
+      },
+      // Runs the callback against the same mocks, so single-row writes read as before.
+      $transaction: jest.fn((cb: (tx: unknown) => unknown) => cb(prisma)),
     };
     currency = { convert: jest.fn(), getRates: jest.fn(), historicalTotalInBase: jest.fn() };
     fx = { convertOn: jest.fn(), resolverFor: jest.fn().mockResolvedValue(() => 1) };
@@ -221,10 +228,49 @@ describe('ExpensesService', () => {
     });
   });
 
+  describe('money earned or spent straight on a venue', () => {
+    it('puts the venue movement back up for review when the expense is deleted', async () => {
+      prisma.expense.findFirst.mockResolvedValue({ id: 'x1' });
+      prisma.investingTransfer.findMany.mockResolvedValue([{ id: 't1', amountUsd: 150 }]);
+
+      await service.remove('x1', 'u1');
+
+      expect(prisma.investingTransfer.update).toHaveBeenCalledWith({
+        where: { id: 't1' },
+        data: expect.objectContaining({
+          peer: 'EXTERNAL',
+          amount: 150,
+          currency: 'USD',
+          needsReview: true,
+        }),
+      });
+      expect(prisma.expense.delete).toHaveBeenCalledWith({ where: { id: 'x1' } });
+    });
+
+    it('moves the transfer by the same amount when the expense changes', async () => {
+      prisma.expense.findFirst.mockResolvedValue({
+        id: 'x1',
+        amount: 150,
+        currency: 'USD',
+        date: new Date('2026-09-20'),
+      });
+      prisma.expense.update.mockResolvedValue({ id: 'x1', amount: 160, currency: 'USD' });
+
+      await service.update('x1', 'u1', { amount: 160 });
+
+      expect(prisma.investingTransfer.updateMany).toHaveBeenCalledWith({
+        where: { expenseId: 'x1' },
+        data: { amount: 160, currency: 'USD' },
+      });
+    });
+  });
+
   describe('removeMany', () => {
     // The transaction callback runs against a `tx` client; the mock just invokes it inline.
     const runTx = (tx: unknown) =>
-      prisma.$transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
+      prisma.$transaction.mockImplementation((cb: (tx: unknown) => unknown) =>
+        cb({ investingTransfer: { findMany: jest.fn().mockResolvedValue([]) }, ...(tx as object) }),
+      );
 
     it('deletes every id when they all belong to the user', async () => {
       const tx = {

@@ -3,6 +3,8 @@ import { Test } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
 import { FxRatesService } from '../currency/fx-rates.service';
+import { ExpensesService } from '../expenses/expenses.service';
+import { IncomesService } from '../incomes/incomes.service';
 import { InvestingTransfersService } from './investing-transfers.service';
 import { InvestingVenuesService } from './investing-venues.service';
 import { PriceService } from './price.service';
@@ -94,7 +96,11 @@ describe('InvestingTransfersService', () => {
       delete: jest.Mock;
     };
     investingAdjustment: { groupBy: jest.Mock };
+    income: { delete: jest.Mock };
+    expense: { delete: jest.Mock };
   };
+  let incomes: { create: jest.Mock };
+  let expenses: { create: jest.Mock };
   let currency: { getRates: jest.Mock; convertWithRates: jest.Mock };
   let fx: { convertOn: jest.Mock };
   let prices: { getUsdPrices: jest.Mock; priceOf: jest.Mock };
@@ -125,7 +131,11 @@ describe('InvestingTransfersService', () => {
         delete: jest.fn(),
       },
       investingAdjustment: { groupBy: jest.fn().mockResolvedValue([]) },
+      income: { delete: jest.fn() },
+      expense: { delete: jest.fn() },
     };
+    incomes = { create: jest.fn().mockResolvedValue({ id: 'inc1' }) };
+    expenses = { create: jest.fn().mockResolvedValue({ id: 'exp1' }) };
     currency = {
       getRates: jest.fn().mockResolvedValue({ THB: 32 }),
       convertWithRates: jest.fn((rates, amount, from, to) =>
@@ -150,6 +160,8 @@ describe('InvestingTransfersService', () => {
         { provide: CurrencyService, useValue: currency },
         { provide: FxRatesService, useValue: fx },
         { provide: PriceService, useValue: prices },
+        { provide: IncomesService, useValue: incomes },
+        { provide: ExpensesService, useValue: expenses },
       ],
     })
       .overrideProvider(InvestingVenuesService)
@@ -253,6 +265,56 @@ describe('InvestingTransfersService', () => {
           currency: 'USD',
         }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('recordP2pOrders', () => {
+    const p2p = (over: Record<string, unknown> = {}) => ({
+      orderId: 'o1',
+      side: 'BUY',
+      asset: 'USDT',
+      quantity: 540.54,
+      fiatAmount: 50_000,
+      fiatCurrency: 'THB',
+      counterparty: 'CryptoSeller',
+      placedAt: new Date('2026-09-21T10:00:00Z'),
+      ...over,
+    });
+
+    it('turns a buy into money leaving the wallet for the venue', async () => {
+      fx.convertOn.mockResolvedValue(1530);
+
+      const n = await service.recordP2pOrders('u1', 'v1', [p2p()] as never);
+
+      expect(n).toBe(1);
+      expect(prisma.investingTransfer.create.mock.calls[0][0].data).toMatchObject({
+        venueId: 'v1',
+        direction: 'IN',
+        peer: 'LEDGER',
+        amount: 50_000,
+        currency: 'THB',
+        amountUsd: 1530,
+        asset: 'USDT',
+        assetAmount: 540.54,
+        source: 'BYBIT',
+        externalId: 'p2p:o1',
+        needsReview: false,
+      });
+    });
+
+    it('turns a sell into money coming back to the wallet', async () => {
+      await service.recordP2pOrders('u1', 'v1', [p2p({ side: 'SELL' })] as never);
+
+      expect(prisma.investingTransfer.create.mock.calls[0][0].data.direction).toBe('OUT');
+    });
+
+    it('skips an order already recorded, by hand or on an earlier run', async () => {
+      prisma.investingTransfer.findMany.mockResolvedValue([{ externalId: 'p2p:o1' }]);
+
+      const n = await service.recordP2pOrders('u1', 'v1', [p2p()] as never);
+
+      expect(n).toBe(0);
+      expect(prisma.investingTransfer.create).not.toHaveBeenCalled();
     });
   });
 
@@ -590,7 +652,7 @@ describe('InvestingTransfersService', () => {
       expect(data.amountUsd).toBe(700);
     });
 
-    it('refuses a coin moving to or from the wallet', async () => {
+    it('asks for the money side when a coin moves to or from the wallet', async () => {
       await expect(
         service.create('u1', {
           venueId: 'v1',
@@ -599,7 +661,64 @@ describe('InvestingTransfersService', () => {
           asset: 'BTC',
           assetAmount: 0.01,
         }),
-      ).rejects.toThrow(/cannot move to or from your balance/);
+      ).rejects.toThrow(/needs the money on the other side/);
+    });
+
+    it('sells a coin on a manual venue into the wallet: coin out there, money in here', async () => {
+      // The Thai exchange case: 1 079 USDT sold for 34 500 baht and withdrawn to the card.
+      const THAI = { ...WALLET_VENUE, id: 'v3', name: 'Bitkub' };
+      prisma.investingVenue.findFirst.mockResolvedValue(THAI);
+      prisma.holding.findMany.mockResolvedValue([{ amount: 1079 }]);
+      prisma.holding.findFirst.mockResolvedValue({ id: 'h1', amount: 1079 });
+      prisma.investingTransfer.findUnique.mockResolvedValue({
+        ...ROW,
+        venueId: 'v3',
+        direction: 'OUT',
+        peer: 'LEDGER',
+        asset: 'USDT',
+        assetAmount: 1079,
+        venue: THAI,
+        peerVenue: null,
+      });
+      fx.convertOn.mockResolvedValue(1065);
+
+      await service.create('u1', {
+        venueId: 'v3',
+        direction: 'OUT',
+        peer: 'LEDGER',
+        asset: 'USDT',
+        assetAmount: 1079,
+        amount: 34_500,
+        currency: 'THB',
+      });
+
+      const data = prisma.investingTransfer.create.mock.calls[0][0].data;
+      // The wallet side is the baht that arrived…
+      expect(data).toMatchObject({
+        amount: 34_500,
+        currency: 'THB',
+        asset: 'USDT',
+        assetAmount: 1079,
+      });
+      // …valued in USD from the baht, so the selling spread lands in this venue's result.
+      expect(data.amountUsd).toBe(1065);
+      // …and the USDT leaves the venue's composition — no more coins left behind on the books.
+      expect(prisma.holding.delete).toHaveBeenCalledWith({ where: { id: 'h1' } });
+    });
+
+    it('lets the money side of a coin-for-money transfer be corrected', async () => {
+      prisma.investingTransfer.findFirst.mockResolvedValue({
+        ...ROW,
+        peer: 'LEDGER',
+        asset: 'USDT',
+        assetAmount: 1079,
+        amount: 34_500,
+        currency: 'THB',
+      });
+
+      await service.update('u1', 't1', { amount: 34_550 });
+
+      expect(prisma.investingTransfer.update.mock.calls[0][0].data.amount).toBe(34_550);
     });
 
     it('refuses a coin it cannot price', async () => {
@@ -728,6 +847,87 @@ describe('InvestingTransfersService', () => {
         service.classify('u1', 't9', { peer: 'EXTERNAL', replacesId: 't2' }),
       ).rejects.toThrow(/same venue and in the same direction/);
       expect(prisma.investingTransfer.delete).not.toHaveBeenCalled();
+    });
+
+    it('records money earned straight onto the exchange as income, and keeps it there', async () => {
+      await service.classify('u1', 't9', {
+        peer: 'EXTERNAL',
+        as: 'INCOME',
+        categoryId: 'cat-freelance',
+        amount: 150,
+        currency: 'USD',
+        note: 'сайт для клиента',
+      });
+
+      // A real income, in the reports…
+      expect(incomes.create).toHaveBeenCalledWith('u1', {
+        categoryId: 'cat-freelance',
+        amount: 150,
+        currency: 'USD',
+        description: 'сайт для клиента',
+        date: IMPORTED.date,
+      });
+      // …carried straight on to the exchange by the transfer, so the wallet nets to zero.
+      expect(prisma.investingTransfer.update.mock.calls[0][0].data).toMatchObject({
+        peer: 'LEDGER',
+        amount: 150,
+        currency: 'USD',
+        incomeId: 'inc1',
+        needsReview: false,
+      });
+    });
+
+    it('replaces the income when the movement is answered again', async () => {
+      prisma.investingTransfer.findFirst.mockResolvedValue({
+        ...IMPORTED,
+        peer: 'LEDGER',
+        needsReview: false,
+        incomeId: 'inc-old',
+      });
+
+      await service.classify('u1', 't9', { peer: 'EXTERNAL', note: 'подарок' });
+
+      expect(prisma.income.delete).toHaveBeenCalledWith({ where: { id: 'inc-old' } });
+      expect(prisma.investingTransfer.update.mock.calls[0][0].data).toMatchObject({
+        peer: 'EXTERNAL',
+        incomeId: null,
+      });
+    });
+
+    it('refuses to call money that left an income', async () => {
+      prisma.investingTransfer.findFirst.mockResolvedValue({ ...IMPORTED, direction: 'OUT' });
+
+      await expect(
+        service.classify('u1', 't9', {
+          peer: 'EXTERNAL',
+          as: 'INCOME',
+          categoryId: 'c',
+          amount: 1,
+          currency: 'USD',
+        }),
+      ).rejects.toThrow(/Only money that arrived/);
+      expect(incomes.create).not.toHaveBeenCalled();
+    });
+
+    it('records money paid straight from the exchange as an expense', async () => {
+      prisma.investingTransfer.findFirst.mockResolvedValue({ ...IMPORTED, direction: 'OUT' });
+
+      await service.classify('u1', 't9', {
+        peer: 'EXTERNAL',
+        as: 'EXPENSE',
+        categoryId: 'cat-services',
+        amount: 80,
+        currency: 'USD',
+      });
+
+      expect(expenses.create).toHaveBeenCalledWith(
+        'u1',
+        expect.objectContaining({ categoryId: 'cat-services', amount: 80 }),
+      );
+      expect(prisma.investingTransfer.update.mock.calls[0][0].data).toMatchObject({
+        peer: 'LEDGER',
+        expenseId: 'exp1',
+      });
     });
 
     it('classifies only imported transfers', async () => {

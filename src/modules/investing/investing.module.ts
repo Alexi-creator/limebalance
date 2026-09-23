@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BotModule } from '../../bot/bot.module';
+import { ExpensesModule } from '../expenses/expenses.module';
+import { IncomesModule } from '../incomes/incomes.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { BybitClient } from './bybit.client';
 import { CoinIconService } from './coin-icon.service';
@@ -14,7 +16,7 @@ import { PriceService } from './price.service';
 import { TradeCloseNotifierService } from './trade-close-notifier.service';
 
 @Module({
-  imports: [BotModule, NotificationsModule],
+  imports: [BotModule, NotificationsModule, IncomesModule, ExpensesModule],
   controllers: [InvestingController],
   providers: [
     InvestingService,

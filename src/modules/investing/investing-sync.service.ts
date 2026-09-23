@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BybitClient, type BybitCredentials } from './bybit.client';
 import { decryptSecret } from './crypto.util';
 import { InvestingMovementsService } from './investing-movements.service';
+import { InvestingP2pService } from './investing-p2p.service';
 import { InvestingVenuesService } from './investing-venues.service';
 import { deriveLinearOpenedAt } from './linear-fifo.util';
 import { flipSide } from './side.util';
@@ -34,6 +35,7 @@ export class InvestingSyncService {
     private readonly tradeCloseNotifier: TradeCloseNotifierService,
     private readonly venues: InvestingVenuesService,
     private readonly movements: InvestingMovementsService,
+    private readonly p2p: InvestingP2pService,
   ) {}
 
   @Cron('*/2 * * * *')
@@ -92,6 +94,8 @@ export class InvestingSyncService {
       // After the balance, never before: the import only starts once FUND has its baseline, and
       // this is the read that takes it. Never throws either.
       await this.movements.sync(account, creds);
+      // Throttled to every half hour, and never throws: no P2P permission is a normal state.
+      await this.p2p.syncIfDue(account, creds);
       await this.rebuildSpotPositions(account);
       await this.rebuildLinearOpenedAt(account);
       if (previousSyncAt) {

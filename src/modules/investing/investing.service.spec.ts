@@ -196,6 +196,25 @@ describe('InvestingService', () => {
       expect(result.label).toBe('Futures acc');
     });
 
+    it('starts P2P auto-recording now, and keeps the original start when already on', async () => {
+      prisma.exchangeAccount.findFirst.mockResolvedValue({ id: 'acc-1', p2pAutoRecordFrom: null });
+      prisma.exchangeAccount.update.mockResolvedValue({ id: 'acc-1', apiKey: 'x' });
+
+      await service.renameAccount('u1', 'acc-1', { p2pAutoRecord: true });
+      expect(prisma.exchangeAccount.update.mock.calls[0][0].data.p2pAutoRecordFrom).toBeInstanceOf(
+        Date,
+      );
+
+      // A second "on" must not move the start — that would change which orders count.
+      const since = new Date('2026-09-21T00:00:00Z');
+      prisma.exchangeAccount.findFirst.mockResolvedValue({ id: 'acc-1', p2pAutoRecordFrom: since });
+      await service.renameAccount('u1', 'acc-1', { p2pAutoRecord: true });
+      expect(prisma.exchangeAccount.update.mock.calls[1][0].data.p2pAutoRecordFrom).toBe(since);
+
+      await service.renameAccount('u1', 'acc-1', { p2pAutoRecord: false });
+      expect(prisma.exchangeAccount.update.mock.calls[2][0].data.p2pAutoRecordFrom).toBeNull();
+    });
+
     it('404s on a foreign or missing account', async () => {
       prisma.exchangeAccount.findFirst.mockResolvedValue(null);
       await expect(service.renameAccount('u1', 'other', { label: 'x' })).rejects.toThrow(

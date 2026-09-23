@@ -40,6 +40,15 @@ export class ExchangeAccountResponseDto {
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
 
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description:
+      'Since when completed P2P orders are recorded as wallet transfers automatically; null = off',
+  })
+  p2pAutoRecordFrom: Date | null;
+
   @ApiPropertyOptional({
     example: true,
     description:

@@ -5,6 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BybitClient } from './bybit.client';
 import { encryptSecret } from './crypto.util';
 import { InvestingMovementsService } from './investing-movements.service';
+import { InvestingP2pService } from './investing-p2p.service';
 import { InvestingSyncService } from './investing-sync.service';
 import { InvestingVenuesService } from './investing-venues.service';
 import { TradeCloseNotifierService } from './trade-close-notifier.service';
@@ -121,6 +122,7 @@ describe('InvestingSyncService', () => {
         // The balance read is covered by its own spec; here it only has to not get in the way.
         { provide: InvestingVenuesService, useValue: { refreshLiveBalance: jest.fn() } },
         { provide: InvestingMovementsService, useValue: { sync: jest.fn() } },
+        { provide: InvestingP2pService, useValue: { syncIfDue: jest.fn() } },
       ],
     }).compile();
 
@@ -631,6 +633,7 @@ describe('InvestingSyncService', () => {
         // The balance read is covered by its own spec; here it only has to not get in the way.
         { provide: InvestingVenuesService, useValue: { refreshLiveBalance: jest.fn() } },
         { provide: InvestingMovementsService, useValue: { sync: jest.fn() } },
+        { provide: InvestingP2pService, useValue: { syncIfDue: jest.fn() } },
       ],
     }).compile();
 

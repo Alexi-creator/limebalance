@@ -5,6 +5,7 @@ import {
   IsBoolean,
   IsDate,
   IsEnum,
+  IsIn,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -175,6 +176,23 @@ export class ClassifyTransferDto {
   note?: string;
 
   @ApiPropertyOptional({
+    enum: ['INCOME', 'EXPENSE'],
+    description:
+      'Money earned straight onto the venue (INCOME, arrivals only) or spent straight from it ' +
+      '(EXPENSE, departures only). Records a real income or expense in categoryId for amount in ' +
+      'currency, plus the transfer carrying it on to the venue — the wallet nets to zero and the ' +
+      'reports show it. peer is ignored then.',
+  })
+  @IsOptional()
+  @IsIn(['INCOME', 'EXPENSE'])
+  as?: 'INCOME' | 'EXPENSE';
+
+  @ApiPropertyOptional({ description: 'Income or expense category; required with `as`' })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({
     description:
       'A transfer you already recorded by hand for this same movement: it is removed and its ' +
       'answer taken over. peer and the rest of this body are then ignored, except the note.',
@@ -232,6 +250,19 @@ export class TransferResponseDto {
 
   @ApiProperty({ nullable: true, description: 'Imported only: the transaction hash, if any' })
   txId: string | null;
+
+  @ApiProperty({
+    enum: ['INCOME', 'EXPENSE'],
+    nullable: true,
+    description: 'Answered as money earned or spent straight on the venue',
+  })
+  linkedAs: 'INCOME' | 'EXPENSE' | null;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'The category of that income or expense: { name, emoji }',
+  })
+  linkedCategory: { name: string; emoji: string | null } | null;
 }
 
 export class TransferListResponseDto {
@@ -419,7 +450,20 @@ export class AdjustmentResponseDto {
 }
 
 export class P2pOrderDto {
-  @ApiProperty({ example: '1893412345678901234' }) id: string;
+  @ApiProperty({ example: '1893412345678901234', description: "Bybit's order id" }) id: string;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'The account it came through; null once disconnected',
+  })
+  accountId: string | null;
+
+  @ApiProperty({
+    nullable: true,
+    description: "That account's venue — where recording the order sends the transfer",
+  })
+  venueId: string | null;
+
   @ApiProperty({ enum: ['BUY', 'SELL'], description: 'BUY: you paid fiat and got the coin' })
   side: 'BUY' | 'SELL';
 
@@ -441,15 +485,23 @@ export class P2pOrderDto {
 
   @ApiProperty({ nullable: true, description: 'The transfer this order was recorded as, if any' })
   transferId: string | null;
+
+  @ApiProperty({ description: 'Recorded automatically (P2P auto-recording) rather than by hand' })
+  autoRecorded: boolean;
 }
 
 export class P2pOrdersResponseDto {
   @ApiProperty({ type: [P2pOrderDto] }) items: P2pOrderDto[];
   @ApiProperty({ example: 42 }) total: number;
 
+  @ApiProperty({ nullable: true, description: 'When the saved copy was last refreshed from Bybit' })
+  syncedAt: Date | null;
+
   @ApiProperty({
     nullable: true,
-    description: "The account's venue — where a recorded order's transfer goes",
+    description:
+      'Set when the latest refresh failed: { code: P2P_UNAVAILABLE, retCode, message }. The ' +
+      'saved orders are still returned.',
   })
-  venueId: string | null;
+  syncError: { code: string; retCode: number; message: string } | null;
 }
