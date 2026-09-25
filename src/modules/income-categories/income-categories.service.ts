@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService, type DatedRow } from '../currency/currency.service';
 import { FxRatesService } from '../currency/fx-rates.service';
 import { earliest, latest } from '../currency/summary.util';
+import { remapCategoryInPresets } from '../filter-presets/remap-category';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateIncomeCategoryDto } from './dto/create-income-category.dto';
 import { UpdateIncomeCategoryDto } from './dto/update-income-category.dto';
@@ -149,5 +150,33 @@ export class IncomeCategoriesService {
   async remove(id: string, userId: string) {
     await this.findOne(id, userId);
     return this.prisma.incomeCategory.delete({ where: { id } });
+  }
+
+  /**
+   * Moves every income of `sourceId` into `targetId` and deletes `sourceId` — for folding a
+   * category the user no longer needs into another one without losing its history. Saved
+   * transactions presets that filtered by the source are repointed at the target, and a bot flow
+   * that was mid-way through adding to the source is reset (it would now point at nothing).
+   * All-or-nothing: one transaction.
+   */
+  async merge(sourceId: string, targetId: string, userId: string) {
+    if (sourceId === targetId) {
+      throw new BadRequestException('Cannot merge a category into itself');
+    }
+    const [, target] = await Promise.all([
+      this.findOne(sourceId, userId),
+      this.findOne(targetId, userId),
+    ]);
+
+    return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.income.updateMany({
+        where: { userId, categoryId: sourceId },
+        data: { categoryId: targetId },
+      });
+      await remapCategoryInPresets(tx, userId, sourceId, targetId);
+      await tx.userState.deleteMany({ where: { userId, categoryId: sourceId } });
+      await tx.incomeCategory.delete({ where: { id: sourceId } });
+      return { moved: count, target };
+    });
   }
 }

@@ -77,3 +77,11 @@ export class IncomeCategoryStatDto {
   })
   deltaApproxTotal?: number | null;
 }
+
+export class MergeIncomeCategoryResponseDto {
+  @ApiProperty({ example: 3, description: 'How many incomes were moved to the target category' })
+  moved: number;
+
+  @ApiProperty({ type: IncomeCategoryResponseDto, description: 'The category they now belong to' })
+  target: IncomeCategoryResponseDto;
+}

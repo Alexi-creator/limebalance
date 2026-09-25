@@ -77,3 +77,11 @@ export class ExpenseCategoryStatDto {
   })
   deltaApproxTotal?: number | null;
 }
+
+export class MergeExpenseCategoryResponseDto {
+  @ApiProperty({ example: 12, description: 'How many expenses were moved to the target category' })
+  moved: number;
+
+  @ApiProperty({ type: ExpenseCategoryResponseDto, description: 'The category they now belong to' })
+  target: ExpenseCategoryResponseDto;
+}

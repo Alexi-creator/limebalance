@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -11,7 +11,9 @@ import { CreateExpenseCategoryDto } from './dto/create-expense-category.dto';
 import {
   ExpenseCategoryResponseDto,
   ExpenseCategoryStatDto,
+  MergeExpenseCategoryResponseDto,
 } from './dto/expense-category-response.dto';
+import { MergeExpenseCategoryDto } from './dto/merge-expense-category.dto';
 import { UpdateExpenseCategoryDto } from './dto/update-expense-category.dto';
 import { ExpenseCategoriesService } from './expense-categories.service';
 
@@ -100,6 +102,25 @@ export class ExpenseCategoriesController {
     @Body() dto: UpdateExpenseCategoryDto,
   ) {
     return this.expenseCategoriesService.update(id, user.id, dto);
+  }
+
+  @Post(':id/merge')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Merge an expense category into another',
+    description:
+      'Moves every expense of category :id into targetId (another of your expense categories), then ' +
+      'deletes :id permanently. Saved transactions presets that filtered by :id are switched to ' +
+      'targetId (a preset that would duplicate an existing one is removed). All-or-nothing. ' +
+      'targetId equal to :id → 400; a foreign or missing id → 404.',
+  })
+  @ApiOkResponse({ type: MergeExpenseCategoryResponseDto })
+  merge(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: MergeExpenseCategoryDto,
+  ) {
+    return this.expenseCategoriesService.merge(id, dto.targetId, user.id);
   }
 
   @Delete(':id')

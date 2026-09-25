@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
@@ -13,7 +13,10 @@ describe('IncomeCategoriesService', () => {
   let service: IncomeCategoriesService;
   let prisma: {
     incomeCategory: { findMany: jest.Mock; findFirst: jest.Mock; delete: jest.Mock };
-    income: { groupBy: jest.Mock };
+    income: { groupBy: jest.Mock; updateMany: jest.Mock };
+    filterPreset: { findMany: jest.Mock };
+    userState: { deleteMany: jest.Mock };
+    $transaction: jest.Mock;
     user: { findUnique: jest.Mock };
   };
   let currency: { getRates: jest.Mock; historicalTotalInBase: jest.Mock };
@@ -22,9 +25,14 @@ describe('IncomeCategoriesService', () => {
   beforeEach(async () => {
     prisma = {
       incomeCategory: { findMany: jest.fn(), findFirst: jest.fn(), delete: jest.fn() },
-      income: { groupBy: jest.fn() },
+      income: { groupBy: jest.fn(), updateMany: jest.fn() },
+      filterPreset: { findMany: jest.fn().mockResolvedValue([]) },
+      userState: { deleteMany: jest.fn() },
+      $transaction: jest.fn(),
       user: { findUnique: jest.fn() },
     };
+    // The transaction runs its callback against the same mock client.
+    prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
     currency = { getRates: jest.fn().mockResolvedValue({}), historicalTotalInBase: jest.fn() };
     fx = { resolverFor: jest.fn().mockResolvedValue(RATE_AT) };
 
@@ -91,6 +99,43 @@ describe('IncomeCategoriesService', () => {
       const res = await service.statsByCategory('u1', { compareFrom: new Date('2026-05-01') });
 
       expect(res[0]).toMatchObject({ previousApproxTotal: 100, deltaApproxTotal: 20 });
+    });
+  });
+
+  describe('merge', () => {
+    beforeEach(() => {
+      prisma.incomeCategory.findFirst.mockImplementation(({ where }: { where: { id: string } }) =>
+        Promise.resolve({ id: where.id, userId: 'u1', name: where.id, emoji: null }),
+      );
+      prisma.income.updateMany.mockResolvedValue({ count: 3 });
+    });
+
+    it('moves the operations, cleans up references and deletes the source', async () => {
+      const result = await service.merge('old', 'new', 'u1');
+
+      expect(prisma.income.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'u1', categoryId: 'old' },
+        data: { categoryId: 'new' },
+      });
+      expect(prisma.filterPreset.findMany).toHaveBeenCalled();
+      expect(prisma.userState.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'u1', categoryId: 'old' },
+      });
+      expect(prisma.incomeCategory.delete).toHaveBeenCalledWith({ where: { id: 'old' } });
+      expect(result).toEqual({ moved: 3, target: expect.objectContaining({ id: 'new' }) });
+    });
+
+    it('refuses to merge a category into itself', async () => {
+      await expect(service.merge('c1', 'c1', 'u1')).rejects.toThrow(BadRequestException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the target is not owned', async () => {
+      prisma.incomeCategory.findFirst.mockImplementation(({ where }: { where: { id: string } }) =>
+        Promise.resolve(where.id === 'new' ? null : { id: where.id }),
+      );
+      await expect(service.merge('old', 'new', 'u1')).rejects.toThrow(NotFoundException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
     });
   });
 });
