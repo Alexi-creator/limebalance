@@ -61,6 +61,13 @@ export class IncomeCategoryStatDto {
   })
   approxTotal: number | null;
 
+  @ApiProperty({
+    example: '2025-03-12',
+    nullable: true,
+    description: 'Date of the first operation in the period (YYYY-MM-DD). null if there are none.',
+  })
+  firstDate: string | null;
+
   @ApiPropertyOptional({
     example: 1400.0,
     nullable: true,

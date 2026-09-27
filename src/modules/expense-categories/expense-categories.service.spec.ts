@@ -95,6 +95,7 @@ describe('ExpenseCategoriesService', () => {
           ],
           baseCurrency: 'EUR',
           approxTotal: 140,
+          firstDate: '2026-06-10',
         },
       ]);
       // Only one groupBy call: no comparison period requested.

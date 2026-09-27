@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService, type DatedRow } from '../currency/currency.service';
 import { FxRatesService } from '../currency/fx-rates.service';
-import { earliest, latest } from '../currency/summary.util';
+import { earliest, firstDate, latest } from '../currency/summary.util';
 import { remapCategoryInPresets } from '../filter-presets/remap-category';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateIncomeCategoryDto } from './dto/create-income-category.dto';
@@ -86,6 +86,8 @@ export class IncomeCategoriesService {
         baseCurrency,
         // Approximate amount in the base currency, each row at its own date's rate.
         approxTotal,
+        // Earliest operation in the period — where the total actually starts.
+        firstDate: firstDate(group?.rows ?? []),
       };
 
       if (!previous) return base;

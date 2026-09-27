@@ -73,6 +73,16 @@ export function endOfDay(value: string): Date {
 }
 
 /**
+ * Date of the earliest operation among the rows (`YYYY-MM-DD`) — where an "all time" total
+ * actually starts. Null when there are no rows.
+ */
+export function firstDate(rows: { date: Date }[]): string | null {
+  if (rows.length === 0) return null;
+  const min = Math.min(...rows.map((r) => r.date.getTime()));
+  return new Date(min).toISOString().slice(0, 10);
+}
+
+/**
  * Earliest of the given range bounds; undefined if any of them is open, since an open bound
  * reaches back as far as the rows do. Used to size the span of rates a report has to load.
  */
