@@ -46,12 +46,19 @@ export class IncomesService {
     });
   }
 
-  async getSummary(userId: string, range: { from: Date; to: Date; granularity: Granularity }) {
-    const { from, to, granularity } = range;
+  async getSummary(
+    userId: string,
+    range: { from: Date; to: Date; granularity: Granularity; categoryIds?: string[] },
+  ) {
+    const { from, to, granularity, categoryIds } = range;
 
     const [rows, user] = await Promise.all([
       this.prisma.income.findMany({
-        where: { userId, date: { gte: from, lte: to } },
+        where: {
+          userId,
+          date: { gte: from, lte: to },
+          ...(categoryIds ? { categoryId: { in: categoryIds } } : {}),
+        },
         select: { amount: true, amountUsd: true, currency: true, date: true },
       }),
       this.prisma.user.findUnique({ where: { id: userId }, select: { currency: true } }),

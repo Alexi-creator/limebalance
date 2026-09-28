@@ -1,3 +1,5 @@
+import { BadRequestException } from '@nestjs/common';
+import { isUUID } from 'class-validator';
 import type { CurrencyService, DatedRow, RateAt } from './currency.service';
 
 export type Granularity = 'day' | 'week' | 'month';
@@ -62,6 +64,15 @@ export function resolveSummaryRange(params: { from?: string; to?: string; granul
   const to = params.to ? new Date(params.to) : new Date();
   const from = params.from ? new Date(params.from) : new Date(to.getFullYear(), to.getMonth(), 1);
   return { from, to, granularity };
+}
+
+// Parse the optional `categoryId` filter of /summary: a single value or a repeated param
+// (?categoryId=a&categoryId=b). Undefined — no filter (all categories).
+export function parseCategoryIds(value?: string | string[]): string[] | undefined {
+  if (value == null) return undefined;
+  const ids = Array.isArray(value) ? value : [value];
+  if (!ids.every((id) => isUUID(id))) throw new BadRequestException('categoryId must be a UUID');
+  return ids;
 }
 
 // Inclusive `to` bound for a civil date param: the end of that day in wall-clock (UTC) components,

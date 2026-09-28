@@ -7,7 +7,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { endOfDay, resolveSummaryRange } from '../currency/summary.util';
+import { endOfDay, parseCategoryIds, resolveSummaryRange } from '../currency/summary.util';
 import { BulkDeleteIncomesDto } from './dto/bulk-delete-incomes.dto';
 import { CreateIncomeDto } from './dto/create-income.dto';
 import {
@@ -70,14 +70,24 @@ export class IncomesController {
   @ApiQuery({ name: 'from', required: false, example: '2026-06-01' })
   @ApiQuery({ name: 'to', required: false, example: '2026-06-30' })
   @ApiQuery({ name: 'granularity', required: false, enum: ['day', 'week', 'month'] })
+  @ApiQuery({
+    name: 'categoryId',
+    required: false,
+    type: [String],
+    description: 'Only these categories. Repeat the param: ?categoryId=a&categoryId=b',
+  })
   @ApiOkResponse({ type: IncomeSummaryResponseDto })
   summary(
     @CurrentUser() user: { id: string },
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('granularity') granularity?: string,
+    @Query('categoryId') categoryId?: string | string[],
   ) {
-    return this.incomesService.getSummary(user.id, resolveSummaryRange({ from, to, granularity }));
+    return this.incomesService.getSummary(user.id, {
+      ...resolveSummaryRange({ from, to, granularity }),
+      categoryIds: parseCategoryIds(categoryId),
+    });
   }
 
   @Get('stat')

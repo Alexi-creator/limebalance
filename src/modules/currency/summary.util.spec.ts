@@ -3,6 +3,7 @@ import {
   aggregateSummary,
   bucketKey,
   buildBuckets,
+  parseCategoryIds,
   resolveSummaryRange,
   type SummaryRow,
 } from './summary.util';
@@ -113,6 +114,24 @@ describe('summary.util', () => {
       const result = aggregateSummary(rows, ['2026-06-15'], 'day', 'EUR', rateAt, currency);
       expect(result.baseCurrency).toBe('EUR');
       expect(result.granularity).toBe('day');
+    });
+  });
+
+  describe('parseCategoryIds', () => {
+    const A = '11111111-1111-4111-8111-111111111111';
+    const B = '22222222-2222-4222-8222-222222222222';
+
+    it('is undefined when the param is omitted — no filter', () => {
+      expect(parseCategoryIds(undefined)).toBeUndefined();
+    });
+
+    it('wraps a single id and keeps a repeated param as an array', () => {
+      expect(parseCategoryIds(A)).toEqual([A]);
+      expect(parseCategoryIds([A, B])).toEqual([A, B]);
+    });
+
+    it('rejects a non-UUID id', () => {
+      expect(() => parseCategoryIds([A, 'nope'])).toThrow('categoryId must be a UUID');
     });
   });
 });
