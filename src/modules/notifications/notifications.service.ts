@@ -73,6 +73,9 @@ export class NotificationsService {
    */
   private async generateMonthlySummary(userId: string): Promise<void> {
     const now = new Date();
+    // The 1st belongs to the monthly digest for the month that just closed — a card for a month
+    // that's a few hours old would sit right next to it and read like the same recap.
+    if (now.getUTCDate() === 1) return;
     const summary = await this.computeMonthSummary(userId, now.getUTCFullYear(), now.getUTCMonth());
     if (!summary) return; // nothing happened this month yet — don't create an empty card
 

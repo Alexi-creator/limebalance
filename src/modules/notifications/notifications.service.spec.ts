@@ -69,6 +69,22 @@ describe('NotificationsService', () => {
       expect(res).toEqual({ items: [], unreadCount: 0 });
     });
 
+    it('does not create a summary for a month that started today', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-10-01T12:00:00Z'));
+      prisma.income.groupBy.mockResolvedValue([
+        {
+          currency: 'USD',
+          date: new Date('2026-10-01T00:00:00Z'),
+          _sum: { amount: 100, amountUsd: 100 },
+        },
+      ]);
+
+      await service.list('u1');
+
+      expect(prisma.income.groupBy).not.toHaveBeenCalled();
+      expect(prisma.notification.upsert).not.toHaveBeenCalled();
+    });
+
     it('upserts the monthly summary keyed by period without touching isRead', async () => {
       jest.useFakeTimers().setSystemTime(new Date('2026-06-21T00:00:00Z'));
       prisma.income.groupBy.mockResolvedValue([
